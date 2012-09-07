@@ -1,0 +1,1 @@
+Decompress the premake archive corresponding to your system in the utilities/premake directory.
