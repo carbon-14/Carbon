@@ -2,11 +2,9 @@
 #ifndef _CORE_PLATFORM_H
 #define _CORE_PLATFORM_H
 
-#if defined( CARBON_PLATFORM_WIN32 )
-	#define CARBON_PLATFORM_NAME "win32"
-#else
-	#error  Could not determine your platform
-#endif
+#include "DLL.h"
+#include "Types.h"
 
+_CoreExport const Char * GetPlatformName();
 
 #endif // _CORE_PLATFORM_H

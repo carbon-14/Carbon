@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include "Core/HelloWorld.h"
+#include "Core/Platform.h"
 
 int main( int argc, const char* argv[] )
 {

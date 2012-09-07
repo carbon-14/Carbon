@@ -3,9 +3,12 @@
 -- Globals
 -------------------------------------------------------------------------------------------
 
+_G.platform_dir = "ps"
+
 if _OPTIONS[ "os" ] == "windows" and _OPTIONS[ "platform" ] == "x32" then
 	_G.platform_name	= "win32"
 	_G.platform_define	= "CARBON_PLATFORM_WIN32"
+	_G.platform_dirs	= { platform_dir.."/win32" }
 else
 	error( "Invalid platform : ".._OPTIONS[ "os" ].." - ".._OPTIONS[ "platform" ] )
 end
