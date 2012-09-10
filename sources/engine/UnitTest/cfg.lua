@@ -22,9 +22,11 @@ configuration 		( config_debug.name )
 	targetsuffix	( config_debug.suffix )
 	defines			( config_debug.defines )
 	flags			( config_debug.flags )
+	links			{ "Core"..config_debug.suffix }
 		
 configuration 		( config_release.name )
 	targetsuffix	( config_release.suffix )
 	defines			( config_release.defines )
 	flags			( config_release.flags )
+	links			{ "Core"..config_release.suffix }
 	
