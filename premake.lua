@@ -56,7 +56,7 @@ defines			{ platform_define }
 p = os.matchdirs( sln_basedir.."/*" )
 for _, prj_basedir in ipairs( p ) do
 	prj_name		= path.getname( prj_basedir )
-	prj_location	= prj_basedir.."/build/".._ACTION
+	prj_location	= sln_location.."/"..prj_name
 
 	print( "[ "..sln_name..":"..prj_name.." ]" )
 	
@@ -65,6 +65,7 @@ for _, prj_basedir in ipairs( p ) do
 	_G.prj.location	= prj_location
 	_G.prj.objdir	= prj_location.."/obj/"..platform_name
 	
+	vpaths			{ [""] = prj_basedir }
 	includedirs		{ prj_basedir, sln_basedir }
 	libdirs			{ lib_dir }
 

@@ -15,17 +15,16 @@ for _, ps_dir in ipairs( platform_dirs ) do
 	files	{ ps_dir.."/**.h", ps_dir.."/**.inl", ps_dir.."/**.cpp" }
 end
 
-targetdir 			( path.getrelative(prj.basedir,app_dir) )
 links				{ "Core" }
 	
 configuration 		( config_debug.name )
-	targetsuffix	( config_debug.suffix )
+	targetdir 		( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
 	defines			( config_debug.defines )
 	flags			( config_debug.flags )
 	links			{ "Core"..config_debug.suffix }
 		
 configuration 		( config_release.name )
-	targetsuffix	( config_release.suffix )
+	targetdir 		( path.getrelative(prj.basedir,app_dir).."/"..config_release.name )
 	defines			( config_release.defines )
 	flags			( config_release.flags )
 	links			{ "Core"..config_release.suffix }
