@@ -17,6 +17,7 @@
 
 Work with :
 - Windows 7 | MS Visual Studio 2008
+- Windows 7 | MS Visual Studio 2010
 
 #                                  07 09 2012
 #############################################
