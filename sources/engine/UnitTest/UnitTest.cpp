@@ -6,8 +6,8 @@
 
 int main( int argc, char* argv[] )
 {
-	printf( "%s\n", HelloWorld() );
-	printf( "Your platform is : %s\n", GetPlatformName() );
+    printf( "%s\n", HelloWorld() );
+    printf( "Your platform is : %s\n", GetPlatformName() );
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
