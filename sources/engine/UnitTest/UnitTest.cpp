@@ -1,13 +1,12 @@
 #include <cstdlib>
-#include <cstdio>
 
-#include "Core/HelloWorld.h"
-#include "Core/Platform.h"
+#include "Level0\Level0.h"
+#include "Level1\Level1.h"
 
 int main( int argc, char* argv[] )
 {
-    printf( "%s\n", HelloWorld() );
-    printf( "Your platform is : %s\n", GetPlatformName() );
+    Level0();
+    Level1();
 
     return EXIT_SUCCESS;
 }
