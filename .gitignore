@@ -1,0 +1,5 @@
+# Compiled sources #
+####################
+bin/
+build/
+lib/
