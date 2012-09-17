@@ -21,14 +21,14 @@ _G.app_dir = "bin/"..platform_name
 _G.config_debug = {
     name    = "Debug",
     suffix  = "_d",
-    defines = { "DEBUG" },
+    defines = { "DEBUG","CARBON_DEBUG" },
     flags   = { "Symbols" }
 }
 
 _G.config_release = {
     name    = "Release",
     suffix  = "_r",
-    defines = { "NDEBUG" },
+    defines = { "NDEBUG","CARBON_RELEASE" },
     flags   = { "Optimize" }
 }
 
