@@ -19,33 +19,33 @@ _CoreExport void __CarbonAssertFail( const char * predicate, const char * file, 
         #define CARBON_HALT() __debugbreak()
     #endif
 
-	#define CARBON_COMPILE_TIME_ASSERT( predicate ) switch(0){ case 0:; case ( predicate ):; }
+    #define CARBON_COMPILE_TIME_ASSERT( predicate ) switch(0){ case 0:; case ( predicate ):; }
 
-	#define CARBON_ASSERT( predicate ) \
-		do { \
-			if ( !( predicate ) ) { \
-				__CarbonAssertFail( #predicate, __FILE__, __LINE__, 0 ); \
+    #define CARBON_ASSERT( predicate ) \
+        do { \
+            if ( !( predicate ) ) { \
+                __CarbonAssertFail( #predicate, __FILE__, __LINE__, 0 ); \
                 CARBON_HALT(); \
-			} \
-		} while(0)
+            } \
+        } while(0)
 
-	#define CARBON_ASSERT_MESSAGE( predicate, msg ) \
-		do { \
-			if ( !( predicate ) ) { \
-				__CarbonAssertFail( #predicate, __FILE__, __LINE__, (msg) ); \
+    #define CARBON_ASSERT_MESSAGE( predicate, msg ) \
+        do { \
+            if ( !( predicate ) ) { \
+                __CarbonAssertFail( #predicate, __FILE__, __LINE__, (msg) ); \
                 CARBON_HALT(); \
-			} \
-		} while(0)
+            } \
+        } while(0)
 
 #else
 
     #define CARBON_VAR_UNUSED(x) do { (void)sizeof(x); } while(0)
 
-	#define CARBON_COMPILE_TIME_ASSERT( predicate ) do { CARBON_VAR_UNUSED( predicate ); } while(0)
+    #define CARBON_COMPILE_TIME_ASSERT( predicate ) do { CARBON_VAR_UNUSED( predicate ); } while(0)
 
-	#define CARBON_ASSERT( predicate ) do { CARBON_VAR_UNUSED( predicate ); } while(0)
+    #define CARBON_ASSERT( predicate ) do { CARBON_VAR_UNUSED( predicate ); } while(0)
 
-	#define CARBON_ASSERT_MESSAGE( predicate, msg ) do { CARBON_VAR_UNUSED( predicate ); CARBON_VAR_UNUSED( msg ); } while(0)
+    #define CARBON_ASSERT_MESSAGE( predicate, msg ) do { CARBON_VAR_UNUSED( predicate ); CARBON_VAR_UNUSED( msg ); } while(0)
 
 #endif
 
