@@ -3,3 +3,7 @@
 bin/
 build/
 lib/
+
+# Utilities #
+#############
+utilities/premake/*.exe
