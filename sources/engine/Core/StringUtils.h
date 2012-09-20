@@ -13,6 +13,4 @@ public:
     static Char *   StrCpy( Char * dest, SizeT size, const Char * src );
 };
 
-#define CARBON_FORMAT_STRING( dest, size, format, ... ) StringUtils::FormatString( dest, size, format, __VA_ARGS__ )
-
 #endif // _CORE_STRINGUTILS_H

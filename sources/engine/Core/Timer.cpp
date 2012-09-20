@@ -55,7 +55,7 @@ namespace Core
         m_timer.End();
 
         Char buffer[128];
-        CARBON_FORMAT_STRING( buffer, sizeof(buffer), "%s : %0.5f seconds\n", m_timer.GetName(), m_timer.GetElapsedTimeInSeconds() );
+        StringUtils::FormatString( buffer, sizeof(buffer), "%s : %0.5f seconds\n", m_timer.GetName(), m_timer.GetElapsedTimeInSeconds() );
 
         CARBON_TRACE( buffer );
     }
