@@ -3,6 +3,7 @@
 #define _CORE_PLATFORM_H
 
 #include "Types.h"
+#include "DLL.h"
 
 _CoreExport inline const Char * GetPlatformName();
 
