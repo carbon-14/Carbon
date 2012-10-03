@@ -2,8 +2,8 @@
 #ifndef _CORE_TRACE_H
 #define _CORE_TRACE_H
 
-#include "Types.h"
-#include "DLL.h"
+#include "Core/Types.h"
+#include "Core/DLL.h"
 
 namespace Core
 {

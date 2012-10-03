@@ -9,7 +9,7 @@
 //
 // Thx guys
 
-#include "DLL.h"
+#include "Core/DLL.h"
 
 _CoreExport void __CarbonAssertFail( const char * predicate, const char * file, int line, const char * msg );
 

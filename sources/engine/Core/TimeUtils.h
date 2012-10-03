@@ -2,8 +2,8 @@
 #ifndef _CORE_TIMEUTILS_H
 #define _CORE_TIMEUTILS_H
 
-#include "Types.h"
-#include "DLL.h"
+#include "Core/Types.h"
+#include "Core/DLL.h"
 
 class _CoreExport TimeUtils
 {

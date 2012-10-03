@@ -2,8 +2,8 @@
 #ifndef _CORE_PLATFORM_H
 #define _CORE_PLATFORM_H
 
-#include "Types.h"
-#include "DLL.h"
+#include "Core/Types.h"
+#include "Core/DLL.h"
 
 _CoreExport inline const Char * GetPlatformName();
 
