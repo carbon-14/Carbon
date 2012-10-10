@@ -1,6 +1,6 @@
-#include "Types.h"
+#include "Core/Types.h"
 
-#include "Assert.h"
+#include "Core/Assert.h"
 
 void __CheckTypeSizes()
 {

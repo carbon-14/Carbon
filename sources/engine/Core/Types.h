@@ -15,6 +15,10 @@ typedef unsigned __int64    U64;
 typedef float               F32;
 typedef double              F64;
 
+#else
+
+#error Basic types not defined
+
 #endif
 
 typedef bool	Bool;

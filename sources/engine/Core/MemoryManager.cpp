@@ -1,7 +1,7 @@
-#include "MemoryManager.h"
+#include "Core/MemoryManager.h"
 
-#include "NativeAllocator.h"
-#include "StackAllocator.h"
+#include "Core/NativeAllocator.h"
+#include "Core/StackAllocator.h"
 
 namespace Core
 {
