@@ -2,6 +2,9 @@
 
 #include "Core/MemoryManager.h"
 #include "Core/Array.h"
+#include "Core/FixedArray.h"
+#include "Core/String.h"
+#include "Core/FixedString.h"
 
 #include "Core/Trace.h"
 #include "Core/Timer.h"
@@ -10,9 +13,11 @@
 #define DEBUG_STRING_SIZE 128
 
 #define ALLOC_TYPE  char
-#define ALLOC_COUNT 5000000
+#define ALLOC_COUNT 500
 
 void * allocs[ ALLOC_COUNT ];
+
+using namespace Core;
 
 void Test_MemoryManager()
 {
@@ -21,13 +26,13 @@ void Test_MemoryManager()
 
         for ( int i=0; i<ALLOC_COUNT; ++i )
         {
-            allocs[ i ] = (U8*)Core::MemoryManager::Malloc( sizeof( ALLOC_TYPE ) );
+            allocs[ i ] = (U8*)MemoryManager::Malloc( sizeof( ALLOC_TYPE ) );
         }
     }
 
     for ( int i=0; i<ALLOC_COUNT; ++i )
     {
-        Core::MemoryManager::Free( allocs[ i ] );
+        MemoryManager::Free( allocs[ i ] );
     }
 
     {
@@ -35,7 +40,7 @@ void Test_MemoryManager()
 
         for ( int i=0; i<ALLOC_COUNT; ++i )
         {
-            allocs[ i ] = Core::MemoryManager::FrameAlloc( sizeof( ALLOC_TYPE ) );
+            allocs[ i ] = MemoryManager::FrameAlloc( sizeof( ALLOC_TYPE ) );
         }
     }
 }
@@ -44,10 +49,8 @@ void Test_Array()
 {
     Array< U32 > a;
     Array< U32 > b( 16 );
-    StaticArray< U32, 21 > c( 21, 42 );
-    StaticArray< U32, 16 > d( 12 );
-
-    a = b;
+    FixedArray< U32, 21 > c( 21, 42 );
+    FixedArray< U32, 16 > d( 12 );
 
     Char debugString[ DEBUG_STRING_SIZE ];
     
@@ -55,14 +58,14 @@ void Test_Array()
 
     CARBON_TRACE( StringUtils::FormatString( debugString, DEBUG_STRING_SIZE, "capacite de b : %d\n", b.Capacity() ) );
 
-    const U32 * read_data = b.ReadData();
+    const U32 * read_data = b.ConstPtr();
     read_data += 7;
 
     CARBON_TRACE( StringUtils::FormatString( debugString, DEBUG_STRING_SIZE, "element 7 de b : %d\n", *read_data ) );
     CARBON_TRACE( StringUtils::FormatString( debugString, DEBUG_STRING_SIZE, "element 7 de b : %d\n", b.At( 7 ) ) );
     CARBON_TRACE( StringUtils::FormatString( debugString, DEBUG_STRING_SIZE, "element 7 de b : %d\n", b[ 7 ] ) );
 
-    U32 * write_data = b.GetData();
+    U32 * write_data = b.Ptr();
     write_data += 7;
     *write_data = 27;
 
@@ -113,10 +116,10 @@ void Test_Array()
 
 void Level1()
 {
-    Core::MemoryManager::Initialize( sizeof( ALLOC_TYPE ) * ( ALLOC_COUNT + 1 ) );
+    MemoryManager::Initialize( sizeof( ALLOC_TYPE ) * ( ALLOC_COUNT + 1 ) );
 
     Test_MemoryManager();
     Test_Array();
 
-    Core::MemoryManager::Finish();
+    MemoryManager::Finish();
 }
