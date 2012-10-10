@@ -5,29 +5,27 @@
 #include "Core/Types.h"
 #include "Core/DLL.h"
 
-#include "Core/Assert.h"
-
-class _CoreExport MemoryUtils
+namespace Core
 {
-public:
-
-    template< typename T >
-    static SizeT AlignOf()
+    class _CoreExport MemoryUtils
     {
-#if defined( CARBON_PLATFORM_WIN32 )
-        return __alignof( T );
-#else
-#error "alignof is not implemented."
-#endif
-    }
+    public:
 
-    static SizeT GetNextAlignedAddress( SizeT ptr, SizeT alignment )
-    {
-        CARBON_ASSERT( alignment > 0 );
-        CARBON_ASSERT( ( alignment & (alignment-1) ) == 0 ); // alignment is power of 2
+        template< typename T >
+        static SizeT AlignOf()
+        {
+    #if defined( CARBON_PLATFORM_WIN32 )
+            return __alignof( T );
+    #else
+            #error "alignof is not implemented."
+    #endif
+        }
 
-        return (ptr + (alignment - 1)) & ~(alignment - 1);
-    }
-};
+        static SizeT GetNextAlignedAddress( SizeT ptr, SizeT alignment );
+
+        static void * MemCpy( void * dest, const void * src, SizeT sizeBytes );
+        static void * MemSet( void * ptr, U8 value, SizeT sizeBytes );
+    };
+}
 
 #endif // _CORE_MEMORYUTILS_H

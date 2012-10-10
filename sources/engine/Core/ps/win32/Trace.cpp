@@ -1,4 +1,4 @@
-#include "Trace.h"
+#include "Core/Trace.h"
 
 #include <cstdio>
 #include <Windows.h>
@@ -11,4 +11,3 @@ namespace Core
         OutputDebugStringA( msg );
     }
 }
-

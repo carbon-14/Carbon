@@ -5,12 +5,17 @@
 #include "Core/Types.h"
 #include "Core/DLL.h"
 
-class _CoreExport StringUtils
+namespace Core
 {
-public:
-    static Char * FormatString( Char * dest, SizeT size, const Char * format, ... );
+    class _CoreExport StringUtils
+    {
+    public:
+        static Char *   FormatString( Char * dest, SizeT size, const Char * format, ... );
 
-    static Char * StrCpy( Char * dest, SizeT size, const Char * src );
-};
+        static Char *   StrCpy( Char * dest, SizeT size, const Char * src );
+
+        static SizeT    StrLen( const Char * str );
+    };
+}
 
 #endif // _CORE_STRINGUTILS_H

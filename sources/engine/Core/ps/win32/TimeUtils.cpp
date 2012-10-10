@@ -1,18 +1,21 @@
-#include "TimeUtils.h"
+#include "Core/TimeUtils.h"
 
 #include <ctime>
 
-U64 TimeUtils::ClockTime()
+namespace Core
 {
-    return (U32)clock();
-}
+    U64 TimeUtils::ClockTime()
+    {
+        return (U32)clock();
+    }
 
-F64 TimeUtils::ClockFrequency()
-{
-    return (F64)CLOCKS_PER_SEC;
-}
+    F64 TimeUtils::ClockFrequency()
+    {
+        return (F64)CLOCKS_PER_SEC;
+    }
 
-F64 TimeUtils::ClockPeriod()
-{
-    return (F64)( 1.0 / CLOCKS_PER_SEC );
+    F64 TimeUtils::ClockPeriod()
+    {
+        return (F64)( 1.0 / CLOCKS_PER_SEC );
+    }
 }

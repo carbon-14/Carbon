@@ -7,9 +7,9 @@ void __CarbonAssertFail( const char * predicate, const char * file, int line, co
 {
     char buffer[512];
     if ( msg != 0 )
-        StringUtils::FormatString( buffer, sizeof(buffer), "%s(%i): CARBON_ASSERT( %s, \"%s\" )\n\0", file, line, predicate, msg );
+        Core::StringUtils::FormatString( buffer, sizeof(buffer), "%s(%i): CARBON_ASSERT( %s, \"%s\" )\n\0", file, line, predicate, msg );
     else
-        StringUtils::FormatString( buffer, sizeof(buffer), "%s(%i): CARBON_ASSERT( %s )\n\0", file, line, predicate );
+        Core::StringUtils::FormatString( buffer, sizeof(buffer), "%s(%i): CARBON_ASSERT( %s )\n\0", file, line, predicate );
 
     CARBON_TRACE( buffer );
 }

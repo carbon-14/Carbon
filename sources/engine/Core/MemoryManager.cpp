@@ -1,10 +1,14 @@
 #include "MemoryManager.h"
 
-#include "DefaultAllocator.h"
+#include "NativeAllocator.h"
 #include "StackAllocator.h"
 
 namespace Core
 {
+    //====================================================================================
+    // MemoryManager
+    //====================================================================================
+
     static StackAllocator frameAllocator;
 
     void MemoryManager::Initialize( SizeT frameAllocatorSize )
@@ -19,17 +23,17 @@ namespace Core
 
     void * MemoryManager::Malloc( SizeT sizeBytes, SizeT align )
     {
-        return DefaultAllocator::Malloc( sizeBytes, align );
+        return NativeAllocator::Malloc( sizeBytes, align );
     }
 
     void * MemoryManager::Realloc( void * ptr, SizeT sizeBytes, SizeT align )
     {
-        return DefaultAllocator::Realloc( ptr, sizeBytes, align );
+        return NativeAllocator::Realloc( ptr, sizeBytes, align );
     }
 
     void MemoryManager::Free( void * ptr )
     {
-        DefaultAllocator::Free( ptr );
+        NativeAllocator::Free( ptr );
     }
 
     void MemoryManager::FrameUpdate()
@@ -41,4 +45,27 @@ namespace Core
     {
         return frameAllocator.Allocate( sizeBytes, align );
     }
+
+    //====================================================================== MemoryManager
+
+    //====================================================================================
+    // DefaultAllocator
+    //====================================================================================
+
+    void * DefaultAllocator::Malloc( SizeT sizeBytes, SizeT align )
+    {
+        return MemoryManager::Malloc( sizeBytes, align );
+    }
+
+    void * DefaultAllocator::Realloc( void * ptr, SizeT sizeBytes, SizeT align )
+    {
+        return MemoryManager::Realloc( ptr, sizeBytes, align );
+    }
+
+    void DefaultAllocator::Free( void * ptr )
+    {
+        MemoryManager::Free( ptr );
+    }
+
+    //=================================================================== DefaultAllocator
 }

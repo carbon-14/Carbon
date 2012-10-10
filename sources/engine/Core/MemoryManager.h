@@ -7,6 +7,10 @@
 
 namespace Core
 {
+    //====================================================================================
+    // MemoryManager
+    //====================================================================================
+
     class _CoreExport MemoryManager
     {
     public:
@@ -20,6 +24,22 @@ namespace Core
         static void FrameUpdate();
         static void * FrameAlloc( SizeT sizeBytes, SizeT align = 1 );
     };
+
+    //====================================================================== MemoryManager
+
+    //====================================================================================
+    // DefaultAllocator
+    //====================================================================================
+
+    class _CoreExport DefaultAllocator
+    {
+    public:
+        static void * Malloc( SizeT sizeBytes, SizeT align = 1 );
+        static void * Realloc( void * ptr, SizeT sizeBytes, SizeT align = 1 );
+        static void Free( void * ptr );
+    };
+
+    //=================================================================== DefaultAllocator
 }
 
 #endif // _CORE_MEMORYMANAGER_H

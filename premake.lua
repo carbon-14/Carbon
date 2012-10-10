@@ -66,7 +66,7 @@ for _, prj_basedir in ipairs( p ) do
     _G.prj.objdir   = prj_location.."/obj/"..platform_name
 	
     vpaths          { [""] = prj_basedir }
-    includedirs     { prj_basedir, sln_basedir }
+    includedirs     { sln_basedir }
     libdirs         { lib_dir }
 
     dofile( prj_basedir.."/cfg.lua" )

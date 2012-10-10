@@ -2,22 +2,25 @@
 #ifndef _CORE_ALGORITHM_H
 #define _CORE_ALGORITHM_H
 
-template < typename Iterator, typename T >
-void Fill( Iterator begin, Iterator end, const T& value )
+namespace Core
 {
-    for ( ; begin != end; ++begin )
+    template < typename Iterator, typename ConstIterator, typename T >
+    void Fill( Iterator begin, ConstIterator end, const T& value )
     {
-        *begin = value;
+        for ( ; begin != end; ++begin )
+        {
+            *begin = value;
+        }
+    }
+
+    template< typename ConstIterator, typename Iterator >
+    void Copy( ConstIterator begin, ConstIterator end, Iterator to )
+    {
+        for ( ; begin != end; ++begin, ++to )
+        {
+            *to = *begin;
+        }
     }
 }
 
-template< typename Iterator >
-void Copy( Iterator begin, Iterator end, Iterator to )
-{
-    for ( ; begin != end; ++begin, ++to )
-    {
-        *to = *begin;
-    }
-}
-
-#endif
+#endif // _CORE_ALGORITHM_H

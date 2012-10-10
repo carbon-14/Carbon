@@ -1,3 +1,9 @@
-#include "Platform.h"
+#include "Core/Platform.h"
 
-const Char * GetPlatformName() { return "win32"; }
+namespace Core
+{
+    const Char * Platform::GetName()
+    {
+        return "win32";
+    }
+}
