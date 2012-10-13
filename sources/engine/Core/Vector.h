@@ -65,7 +65,7 @@ namespace Core
     inline void     SinCos( Vector angle, Vector& sin, Vector& cos );       // TODO
 
     // Comparison
-    inline Vector   LessThan( Vector l, Vector rt );
+    inline Vector   LessThan( Vector l, Vector r );
     inline Vector   LessEqual( Vector l, Vector r );
     inline Vector   GreaterThan( Vector l, Vector r );
     inline Vector   GreaterEqual( Vector l, Vector r );
