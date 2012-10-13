@@ -34,9 +34,9 @@ namespace Core
     class _CoreExport DefaultAllocator
     {
     public:
-        static void * Malloc( SizeT sizeBytes, SizeT align = 1 );
-        static void * Realloc( void * ptr, SizeT sizeBytes, SizeT align = 1 );
-        static void Free( void * ptr );
+        static void *   Malloc( SizeT sizeBytes, SizeT align = 1 );
+        static void *   Realloc( void * ptr, SizeT sizeBytes, SizeT align = 1 );
+        static void     Free( void * ptr );
     };
 
     //=================================================================== DefaultAllocator

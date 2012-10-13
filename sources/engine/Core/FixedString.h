@@ -14,7 +14,14 @@ namespace Core
     class FixedString : public FixedArray< Char, N >
     {
     public:
-        typedef FixedArray< Char, N >    Super;
+        typedef Char            ValueType;
+        typedef Char *          Pointer;
+        typedef const Char *    ConstPointer;
+        typedef Char&           Reference;
+        typedef const Char&     ConstReference;
+        typedef SizeT           SizeType;
+        typedef Char *          Iterator;
+        typedef const Char *    ConstIterator;
 
     public:
         FixedString();

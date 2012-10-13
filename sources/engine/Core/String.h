@@ -14,17 +14,16 @@ namespace Core
     class StringImpl : public Array< Char, Alloc >
     {
     public:
-        typedef Char                    ValueType;
-        typedef Char *                  Pointer;
-        typedef const Char *            ConstPointer;
-        typedef Char&                   Reference;
-        typedef const Char&             ConstReference;
-        typedef SizeT                   SizeType;
-        typedef Char *                  Iterator;
-        typedef const Char *            ConstIterator;
-        typedef Array< Char, Alloc >    Super;
+        typedef Char            ValueType;
+        typedef Char *          Pointer;
+        typedef const Char *    ConstPointer;
+        typedef Char&           Reference;
+        typedef const Char&     ConstReference;
+        typedef SizeT           SizeType;
+        typedef Char *          Iterator;
+        typedef const Char *    ConstIterator;
 
-        static const SizeT              ms_MinStringSize = 8;
+        static const SizeT      ms_MinStringSize = 8;
 
     public:
         StringImpl();
@@ -39,7 +38,7 @@ namespace Core
         StringImpl& operator=( const StringImpl& other );
     };
 
-    //============================================================================== StringImpl
+    //========================================================================= StringImpl
 
     template< typename Alloc >
     StringImpl< Alloc >::StringImpl()
@@ -75,7 +74,8 @@ namespace Core
     {
         return Append( str, StringUtils::StrLen( str ) );
     }
-template< typename Alloc >
+
+    template< typename Alloc >
     StringImpl< Alloc >& StringImpl< Alloc >::Append( ConstPointer str, SizeType len )
     {
         if ( len > 0 )
@@ -101,7 +101,7 @@ template< typename Alloc >
         return Append( str );
     }
 
-    //============================================================================== StringImpl
+    //========================================================================= StringImpl
 
     //====================================================================================
     // String

@@ -6,7 +6,8 @@
 
 #include <xmmintrin.h>
 
-typedef __m128	M128;
+typedef __declspec(align(16)) float F128[4];    // storage usage
+typedef __m128                      M128;       // compute usage
 
 #else
 

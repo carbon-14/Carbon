@@ -18,14 +18,14 @@ namespace Core
     class FixedArray : public IArray< T >
     {
     public:
-        typedef T           ValueType;
-        typedef T *         Pointer;
-        typedef const T *   ConstPointer;
-        typedef T&          Reference;
-        typedef const T&    ConstReference;
-        typedef SizeT       SizeType;
-        typedef T *         Iterator;
-        typedef const T *   ConstIterator;
+        typedef T               ValueType;
+        typedef T *             Pointer;
+        typedef const T *       ConstPointer;
+        typedef T&              Reference;
+        typedef const T&        ConstReference;
+        typedef SizeT           SizeType;
+        typedef T *             Iterator;
+        typedef const T *       ConstIterator;
 
     public:
         FixedArray();

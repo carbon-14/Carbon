@@ -18,8 +18,8 @@ namespace Core
     inline Vector   Vector2( F32 x, F32 y );
     inline Vector   Splat( F32 v );
 
-    inline F32      Get( Vector v, SizeT index );
-    inline void     Set( Vector& v, SizeT index, F32 value );
+    inline void     Store( F128 d, Vector v );
+    inline Vector   Load( F128 d );
 
     template< SizeT X, SizeT Y, SizeT Z, SizeT W >
     inline Vector   Swizzle( Vector v );
@@ -53,7 +53,6 @@ namespace Core
     inline Vector   Lerp( Vector left, Vector right, Vector ratio );
 
     inline Vector   Sqrt( Vector v );
-
     inline Vector   Exp( Vector v );                                        // TODO
     inline Vector   Log( Vector v );                                        // TODO
 
@@ -81,15 +80,23 @@ namespace Core
     inline Vector   operator!=( Vector l, Vector r );
 
     // Geometry
-    inline Vector  Dot( Vector l, Vector r );
+    inline Vector   Dot( Vector l, Vector r );
 
-    inline Vector  Cross4( Vector l, Vector r );
-    inline Vector  Cross3( Vector l, Vector r );
-    inline Vector  Cross2( Vector l, Vector r );
+    inline Vector   Cross4( Vector l, Vector r );
+    inline Vector   Cross3( Vector l, Vector r );
+    inline Vector   Cross2( Vector l, Vector r );
 
-    inline Vector  SquareLength( Vector v );
-    inline Vector  Length( Vector v );
-    inline Vector  Normalize( Vector v );
+    inline Vector   SquareLength( Vector v );
+    inline Vector   Length( Vector v );
+    inline Vector   Normalize( Vector v );
+
+    // Units
+    inline Vector   Zero4();
+    inline Vector   One4();
+    inline Vector   UnitX();
+    inline Vector   UnitY();
+    inline Vector   UnitZ();
+    inline Vector   UnitW();
 }
 
 #if defined( CARBON_PLATFORM_WIN32 )

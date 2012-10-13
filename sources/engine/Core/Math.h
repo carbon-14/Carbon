@@ -13,8 +13,6 @@ namespace Core
         static F32 Pi();
         static F32 TwoPi();
         static F32 HalfPi();
-        static F32 PosInf();
-        static F32 NegInf();
 
         static S32 IAbs( S32 value );
         static S32 IMin( S32 a, S32 b );
@@ -29,6 +27,7 @@ namespace Core
         static F32 Ceil( F32 value );
         static F32 Lerp( F32 left, F32 right, F32 ratio );
 
+        static F32 Pow( F32 value, F32 exponent );
         static F32 Sqrt( F32 value );
         static F32 Exp( F32 value );
         static F32 Log( F32 value );
@@ -39,7 +38,6 @@ namespace Core
         static F32 ASin( F32 value );
         static F32 ACos( F32 value );
         static F32 ATan( F32 value );
-        static void SinCos( F32 angle, F32& sin, F32& cos );
     };
 }
 
