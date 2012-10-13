@@ -13,93 +13,89 @@ namespace Core
     */
     typedef M128 Vector;
 
-    _CoreExport Vector  Vector4( F32 x, F32 y, F32 z, F32 w = 1.0f );
-    _CoreExport Vector  Vector3( F32 x, F32 y, F32 z );
-    _CoreExport Vector  Vector2( F32 x, F32 y );
-    _CoreExport Vector  Splat4( F32 v );
-    _CoreExport Vector  Splat3( F32 v );
-    _CoreExport Vector  Splat2( F32 v );
+    inline Vector   Vector4( F32 x, F32 y, F32 z, F32 w = 1.0f );
+    inline Vector   Vector3( F32 x, F32 y, F32 z );
+    inline Vector   Vector2( F32 x, F32 y );
+    inline Vector   Splat( F32 v );
 
-    _CoreExport F32     At( Vector v, SizeT index );
-    _CoreExport void    Set( Vector v, SizeT index, F32 value );
+    inline F32      Get( Vector v, SizeT index );
+    inline void     Set( Vector& v, SizeT index, F32 value );
 
     template< SizeT X, SizeT Y, SizeT Z, SizeT W >
-    Vector Swizzle< X, Y, Z, W >( Vector v );
+    inline Vector   Swizzle( Vector v );
 
     // Arithmetic
-    _CoreExport Vector  Neg( Vector v );
-    _CoreExport Vector  Add( Vector l, Vector r );
-    _CoreExport Vector  Sub( Vector l, Vector r );
-    _CoreExport Vector  Mul( Vector l, Vector r );
-    _CoreExport Vector  Div( Vector l, Vector r );
+    inline Vector   Neg( Vector v );
+    inline Vector   Add( Vector l, Vector r );
+    inline Vector   Sub( Vector l, Vector r );
+    inline Vector   Mul( Vector l, Vector r );
+    inline Vector   Div( Vector l, Vector r );
 
-    _CoreExport Vector  operator-( Vector v );
+    inline Vector   operator-( Vector v );
+    inline Vector   operator+( Vector l, Vector r );
+    inline Vector   operator-( Vector l, Vector r );
+    inline Vector   operator*( Vector l, Vector r );
+    inline Vector   operator/( Vector l, Vector r );
 
-    _CoreExport Vector  operator+( Vector l, Vector r );
-    _CoreExport Vector  operator+( F32 l, Vector r );
-    _CoreExport Vector  operator+( Vector l, F32 r );
+    inline Vector&  operator+=( Vector& l, Vector r );
+    inline Vector&  operator-=( Vector& l, Vector r );
+    inline Vector&  operator*=( Vector& l, Vector r );
+    inline Vector&  operator/=( Vector& l, Vector r );
 
-    _CoreExport Vector  operator-( Vector l, Vector r );
-    _CoreExport Vector  operator-( F32 l, Vector r );
-    _CoreExport Vector  operator-( Vector l, F32 r );
+    inline Vector   Abs( Vector v );
+    inline Vector   Min( Vector a, Vector b );
+    inline Vector   Max( Vector a, Vector b );
+    inline Vector   Clamp( Vector v, Vector min, Vector max );
 
-    _CoreExport Vector  operator*( Vector l, Vector r );
-    _CoreExport Vector  operator*( F32 l, Vector r );
-    _CoreExport Vector  operator*( Vector l, F32 r );
+    inline Vector   Floor( Vector v );                                      // TODO
+    inline Vector   Ceil( Vector v );                                       // TODO
 
-    _CoreExport Vector  operator/( Vector l, Vector r );
-    _CoreExport Vector  operator/( F32 l, Vector r );
-    _CoreExport Vector  operator/( Vector l, F32 r );
+    inline Vector   Lerp( Vector left, Vector right, Vector ratio );
 
-    _CoreExport Vector& operator+=( Vector& l, Vector r );
-    _CoreExport Vector& operator+=( Vector& l, F32 r );
-    _CoreExport Vector& operator-=( Vector& l, Vector r );
-    _CoreExport Vector& operator-=( Vector& l, F32 r );
-    _CoreExport Vector& operator*=( Vector& l, Vector r );
-    _CoreExport Vector& operator*=( Vector& l, F32 r );
-    _CoreExport Vector& operator/=( Vector& l, Vector r );
-    _CoreExport Vector& operator/=( Vector& l, F32 r );
+    inline Vector   Sqrt( Vector v );
 
-    // Geometry
-    _CoreExport Vector  Dot4( Vector l, Vector r );
-    _CoreExport Vector  Dot3( Vector l, Vector r );
-    _CoreExport Vector  Dot2( Vector l, Vector r );
+    inline Vector   Exp( Vector v );                                        // TODO
+    inline Vector   Log( Vector v );                                        // TODO
 
-    _CoreExport Vector  Cross4( Vector l, Vector r );
-    _CoreExport Vector  Cross3( Vector l, Vector r );
-    _CoreExport Vector  Cross2( Vector l, Vector r );
+    inline Vector   Sin( Vector angle );                                    // TODO
+    inline Vector   Cos( Vector angle );                                    // TODO
+    inline Vector   Tan( Vector angle );                                    // TODO
+    inline Vector   ASin( Vector v );                                       // TODO
+    inline Vector   ACos( Vector v );                                       // TODO
+    inline Vector   ATan( Vector v );                                       // TODO
+    inline void     SinCos( Vector angle, Vector& sin, Vector& cos );       // TODO
 
     // Comparison
-    _CoreExport Vector  LesserThan( Vector l, Vector rt );
-    _CoreExport Vector  LesserEqual( Vector l, Vector r );
-    _CoreExport Vector  GreaterThan( Vector l, Vector r );
-    _CoreExport Vector  GreaterEqual( Vector l, Vector r );
-    _CoreExport Vector  Equal( Vector l, Vector r );
-    _CoreExport Vector  NotEqual( Vector l, Vector r );
+    inline Vector   LessThan( Vector l, Vector rt );
+    inline Vector   LessEqual( Vector l, Vector r );
+    inline Vector   GreaterThan( Vector l, Vector r );
+    inline Vector   GreaterEqual( Vector l, Vector r );
+    inline Vector   Equal( Vector l, Vector r );
+    inline Vector   NotEqual( Vector l, Vector r );
 
-    _CoreExport Vector  operator<( Vector l, Vector r );
-    _CoreExport Vector  operator<( F32 l, Vector r );
-    _CoreExport Vector  operator<( Vector l, F32 r );
+    inline Vector   operator<( Vector l, Vector r );
+    inline Vector   operator<=( Vector l, Vector r );
+    inline Vector   operator>( Vector l, Vector r );
+    inline Vector   operator>=( Vector l, Vector r );
+    inline Vector   operator==( Vector l, Vector r );
+    inline Vector   operator!=( Vector l, Vector r );
 
-    _CoreExport Vector  operator<=( Vector l, Vector r );
-    _CoreExport Vector  operator<=( F32 l, Vector r );
-    _CoreExport Vector  operator<=( Vector l, F32 r );
+    // Geometry
+    inline Vector  Dot( Vector l, Vector r );
 
-    _CoreExport Vector  operator>( Vector l, Vector r );
-    _CoreExport Vector  operator>( F32 l, Vector r );
-    _CoreExport Vector  operator>( Vector l, F32 r );
+    inline Vector  Cross4( Vector l, Vector r );
+    inline Vector  Cross3( Vector l, Vector r );
+    inline Vector  Cross2( Vector l, Vector r );
 
-    _CoreExport Vector  operator>=( Vector l, Vector r );
-    _CoreExport Vector  operator>=( F32 l, Vector r );
-    _CoreExport Vector  operator>=( Vector l, F32 r );
-
-    _CoreExport Vector  operator==( Vector l, Vector r );
-    _CoreExport Vector  operator==( F32 l, Vector r );
-    _CoreExport Vector  operator==( Vector l, F32 r );
-
-    _CoreExport Vector  operator!=( Vector l, Vector r );
-    _CoreExport Vector  operator!=( F32 l, Vector r );
-    _CoreExport Vector  operator!=( Vector l, F32 r );
+    inline Vector  SquareLength( Vector v );
+    inline Vector  Length( Vector v );
+    inline Vector  Normalize( Vector v );
 }
+
+#if defined( CARBON_PLATFORM_WIN32 )
+    #include "Core/ps/win32/Vector.inl"
+#else
+    #error Vector not implemented
+#endif
 
 #endif // _CORE_VECTOR_H
