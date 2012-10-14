@@ -4,9 +4,9 @@
 
 namespace Core
 {
-    const F32 pi_f32        = 4.0f * atanf( 1.0f );
-    const F32 twoPi_f32     = 8.0f * atanf( 1.0f );
-    const F32 halfPi_f32    = 2.0f * atanf( 1.0f );
+    const F32 pi_f32                                        = 4.0f * atanf( 1.0f );
+    const F32 twoPi_f32                                     = 8.0f * atanf( 1.0f );
+    const F32 halfPi_f32                                    = 2.0f * atanf( 1.0f );
 
     inline F32 Math::Pi()                                   { return pi_f32;                            }
     inline F32 Math::TwoPi()                                { return twoPi_f32;                         }
@@ -25,7 +25,6 @@ namespace Core
     inline F32 Math::Ceil( F32 value )                      { return ceilf( value );                    }
     inline F32 Math::Lerp( F32 left, F32 right, F32 ratio ) { return left + ( right - left ) * ratio;   }
 
-    inline F32 Pow( F32 value, F32 exponent )               { return powf( value, exponent );           }
     inline F32 Math::Sqrt( F32 value )                      { return sqrtf( value );                    }
     inline F32 Math::Exp( F32 value )                       { return expf( value );                     }
     inline F32 Math::Log( F32 value )                       { return logf( value );                     }

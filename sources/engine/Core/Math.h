@@ -27,7 +27,6 @@ namespace Core
         static F32 Ceil( F32 value );
         static F32 Lerp( F32 left, F32 right, F32 ratio );
 
-        static F32 Pow( F32 value, F32 exponent );
         static F32 Sqrt( F32 value );
         static F32 Exp( F32 value );
         static F32 Log( F32 value );
