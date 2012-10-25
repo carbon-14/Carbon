@@ -21,7 +21,19 @@ void Level2()
     Vector v4 = Swizzle< 3, 2, 1, 0 >( v0 );
 
     Vector v5 = Dot( v1, Swizzle< 2, 1, 0, 3 >( v1 ) );
-    Vector v6 = Cross3( UnitX(), UnitY() );
+    Vector v6 = Cross( UnitX(), UnitY() );
 
-    Matrix m;
+    Matrix m = Identity();
+    F128 b[ 4 ];
+    Store( b, m );
+
+    F32 * it = b[ 0 ];
+    for ( int i=0; i< 16; ++i, ++it )
+    {
+        *it = (F32)i;
+    }
+    m = Load( b );
+
+    Matrix n = Transpose( m );
+    Matrix i = Inverse( m );
 }
