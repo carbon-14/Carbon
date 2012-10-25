@@ -34,12 +34,24 @@ namespace Core
     class _CoreExport DefaultAllocator
     {
     public:
-        static void *   Malloc( SizeT sizeBytes, SizeT align = 1 );
-        static void *   Realloc( void * ptr, SizeT sizeBytes, SizeT align = 1 );
-        static void     Free( void * ptr );
+        static void *   Allocate( SizeT sizeBytes, SizeT align = 1 );
+        static void     Deallocate( void * ptr );
     };
 
     //=================================================================== DefaultAllocator
+
+    //====================================================================================
+    // FrameAllocator
+    //====================================================================================
+
+    class _CoreExport FrameAllocator
+    {
+    public:
+        static void *   Allocate( SizeT sizeBytes, SizeT align = 1 );
+        static void     Deallocate( void * ptr );
+    };
+
+    //===================================================================== FrameAllocator
 }
 
 #endif // _CORE_MEMORYMANAGER_H

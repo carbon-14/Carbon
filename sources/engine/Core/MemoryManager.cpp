@@ -52,20 +52,31 @@ namespace Core
     // DefaultAllocator
     //====================================================================================
 
-    void * DefaultAllocator::Malloc( SizeT sizeBytes, SizeT align )
+    void * DefaultAllocator::Allocate( SizeT sizeBytes, SizeT align )
     {
         return MemoryManager::Malloc( sizeBytes, align );
     }
 
-    void * DefaultAllocator::Realloc( void * ptr, SizeT sizeBytes, SizeT align )
-    {
-        return MemoryManager::Realloc( ptr, sizeBytes, align );
-    }
-
-    void DefaultAllocator::Free( void * ptr )
+    void DefaultAllocator::Deallocate( void * ptr )
     {
         MemoryManager::Free( ptr );
     }
 
     //=================================================================== DefaultAllocator
+
+    //====================================================================================
+    // FrameAllocator
+    //====================================================================================
+
+    void * FrameAllocator::Allocate( SizeT sizeBytes, SizeT align )
+    {
+        return MemoryManager::FrameAlloc( sizeBytes, align );
+    }
+
+    void FrameAllocator::Deallocate( void * ptr )
+    {
+        // Do nothing
+    }
+
+    //===================================================================== FrameAllocator
 }

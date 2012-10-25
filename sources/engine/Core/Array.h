@@ -346,13 +346,13 @@ namespace Core
     template< typename T, typename Alloc >
     typename Array< T, Alloc >::Pointer Array< T, Alloc >::DoAllocate( SizeType capacity )
     {
-        return static_cast< Pointer >( Alloc::Malloc( capacity * sizeof( ValueType ), MemoryUtils::AlignOf< ValueType >() ) );
+        return static_cast< Pointer >( Alloc::Allocate( capacity * sizeof( ValueType ), MemoryUtils::AlignOf< ValueType >() ) );
     }
 
     template< typename T, typename Alloc >
     void Array< T, Alloc >::DoFree( Pointer memory )
     {
-        Alloc::Free( memory );
+        Alloc::Deallocate( memory );
     }
 
     template< typename T, typename Alloc >
