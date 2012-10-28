@@ -57,9 +57,9 @@ namespace Core
 
     inline Vector Cross( Vector l, Vector r )
     {
-        Vector u = Swizzle< 1, 2, 3, 0 >( r );
+        Vector u = Swizzle< 1, 2, 0, 3 >( r );
         u = Mul( l, u );
-        Vector v = Swizzle< 1, 2, 3, 0 >( l );
+        Vector v = Swizzle< 1, 2, 0, 3 >( l );
         v = Mul( r, v );
         u = Sub( u, v );
         return Swizzle< 1, 2, 0, 3 >( u );

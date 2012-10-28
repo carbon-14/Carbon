@@ -12,7 +12,7 @@ namespace Core
     public:
         StackAllocator();
 
-        void Initialize( SizeT sizeBytes );
+        void Initialize( void * buffer, SizeT sizeBytes );
         void Finish();
 
         void Clear();

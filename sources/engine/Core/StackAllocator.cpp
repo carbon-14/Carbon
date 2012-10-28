@@ -1,7 +1,6 @@
 #include "Core/StackAllocator.h"
 
 #include "Core/MemoryUtils.h"
-#include "Core/MemoryManager.h"
 #include "Core/Assert.h"
 
 namespace Core
@@ -11,19 +10,19 @@ namespace Core
     {
     }
 
-    void StackAllocator::Initialize( SizeT sizeBytes )
+    void StackAllocator::Initialize( void * buffer, SizeT sizeBytes )
     {
+        CARBON_ASSERT( buffer != 0 );
         CARBON_ASSERT( sizeBytes > 0 );
         CARBON_ASSERT( mp_buffer == 0 );
 
-        mp_buffer = MemoryManager::Malloc( sizeBytes );
+        mp_buffer = buffer;
         m_head = reinterpret_cast< SizeT >( mp_buffer );
         m_end = m_head + sizeBytes;
     }
 
     void StackAllocator::Finish()
     {
-        MemoryManager::Free( mp_buffer );
         mp_buffer = 0;
         m_head = 0;
     }
