@@ -7,8 +7,8 @@
 
 int main( int argc, char* argv[] )
 {
-    Level0();
-    Level1();
+    //Level0();
+    //Level1();
     Level2();
 
     printf("Press 'Enter' to continue!\n");

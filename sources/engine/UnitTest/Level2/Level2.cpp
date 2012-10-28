@@ -1,4 +1,5 @@
 #include "UnitTest/Level2/Level2.h"
+#include "UnitTest/Utils.h"
 
 #include "Core/Math.h"
 #include "Core/Vector.h"
@@ -8,6 +9,8 @@ using namespace Core;
 
 void Level2()
 {
+    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 2 #\n###########\n\n" )
+
     Vector v0 = Vector4( 1.0f, 2.0f, 3.0f, 4.0f );
     Vector v1 = Vector3( 1.0f, 2.0f, 3.0f );
     Vector v2 = Vector2( 1.0f, 2.0f );
@@ -23,17 +26,36 @@ void Level2()
     Vector v5 = Dot( v1, Swizzle< 2, 1, 0, 3 >( v1 ) );
     Vector v6 = Cross( UnitX(), UnitY() );
 
-    Matrix m = Identity();
-    F128 b[ 4 ];
-    Store( b, m );
+    // ======================================================
 
-    F32 * it = b[ 0 ];
-    for ( int i=0; i< 16; ++i, ++it )
-    {
-        *it = (F32)i;
-    }
-    m = Load( b );
+    Vector cam_pos  = Vector4( 1.0f, 2.0f, 3.0f );
+    Vector cam_at   = Vector4( 6.0f, 5.0f, 4.0f );
+    Vector cam_dist = Length( cam_at - cam_pos );
 
-    Matrix n = Transpose( m );
-    Matrix i = Inverse( m );
+    Vector cam_dir      = Normalize( cam_at - cam_pos );
+    Vector cam_up       = UnitY();
+    Vector cam_right    = Normalize( Cross( cam_dir, cam_up ) );
+    cam_up              = Normalize( Cross( cam_right, cam_dir ) );
+
+    Matrix cam_base;
+    cam_base.m_column[0] = cam_right;
+    cam_base.m_column[1] = cam_up;
+    cam_base.m_column[2] = -cam_dir;
+    cam_base.m_column[3] = cam_pos;
+
+    Matrix view = Inverse( cam_base );
+
+    Vector cam_test = TransformVertex( view, cam_at );
+
+    F128 out_cam_pos, out_cam_at, out_cam_test, out_cam_dist;
+    Store( out_cam_pos, cam_pos );
+    Store( out_cam_at, cam_at );
+    Store( out_cam_test, cam_test );
+    Store( out_cam_dist, cam_dist );
+
+    UNIT_TEST_MESSAGE( "Position Camera : ( %0.2f, %0.2f, %0.2f )\n", out_cam_pos[0], out_cam_pos[1], out_cam_pos[2] );
+    UNIT_TEST_MESSAGE( "Position Look At : ( %0.2f, %0.2f, %0.2f )\n", out_cam_at[0], out_cam_at[1], out_cam_at[2] )
+    UNIT_TEST_MESSAGE( "Position Look At dans le repere de la camera : ( %0.2f, %0.2f, %0.2f )\n", out_cam_test[0], out_cam_test[1], out_cam_test[2] )
+    UNIT_TEST_MESSAGE( "Distance Camera - Look At : %0.2f\n", out_cam_dist[0] )
+
 }
