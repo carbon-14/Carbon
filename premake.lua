@@ -21,6 +21,7 @@ _G.app_dir = "bin/"..platform_name
 _G.config_debug = {
     name    = "Debug",
     suffix  = "_d",
+    kind    = "SharedLib",
     defines = { "DEBUG","CARBON_DEBUG" },
     flags   = { "Symbols" }
 }
@@ -28,7 +29,16 @@ _G.config_debug = {
 _G.config_release = {
     name    = "Release",
     suffix  = "_r",
+    kind    = "SharedLib",
     defines = { "NDEBUG","CARBON_RELEASE" },
+    flags   = { "Optimize" }
+}
+
+_G.config_retail = {
+    name    = "Retail",
+    suffix  = "_s",
+    kind    = "StaticLib",
+    defines = { "NDEBUG","CARBON_RETAIL" },
     flags   = { "Optimize" }
 }
 
@@ -50,7 +60,7 @@ _G.sln.location = sln_location
 -- Prepare Projects in solution directory
 -------------------------------------------------------------------------------------------
 
-configurations  { "Debug", "Release" }
+configurations  { "Debug", "Release", "Retail" }
 defines         { platform_define }
 
 p = os.matchdirs( sln_basedir.."/*" )

@@ -28,3 +28,9 @@ configuration       ( config_release.name )
     defines         ( config_release.defines )
     flags           ( config_release.flags )
     links           { "Core"..config_release.suffix }
+
+configuration       ( config_retail.name )
+    targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_retail.name )
+    defines         ( config_retail.defines )
+    flags           ( config_retail.flags )
+    links           { "Core"..config_retail.suffix }
