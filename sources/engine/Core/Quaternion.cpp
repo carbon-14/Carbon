@@ -11,9 +11,9 @@ namespace Core
         F32 sin = Math::Sin( halfAngle );
         F32 cos = Math::Cos( halfAngle );
 
-        Vector factor = Set( cos, sin, sin, sin );
+        Vector factor = Set( sin, sin, sin, cos );
 
-        return Mul( factor, axis );
+        return Mul( factor, Select( axis, One4(), Mask< 0, 0, 0, 1 >() ) );
     }
 
     // Arithmetic

@@ -227,7 +227,7 @@ namespace Core
     {
         const Vector signPNP    = Vector4( +2.0f, -2.0f, +2.0f, 0.0f );
         const Vector signNPP    = Vector4( -2.0f, +2.0f, +2.0f, 0.0f );
-        const Vector signNNP    = Vector4( -2.0f, -2.0f, +2.0f, 0.0f );
+        const Vector signPPN    = Vector4( +2.0f, +2.0f, -2.0f, 0.0f );
 
         Vector yxw0 = Swizzle< 1, 0, 3, 2 >( rotation );
         yxw0        = Mul( signPNP, yxw0 );
@@ -236,7 +236,7 @@ namespace Core
         zwx0		= Mul( signNPP, zwx0 );
 
         Vector wzy0 = Swizzle< 3, 2, 1, 0 >( rotation );
-        wzy0        = Mul( signNNP, wzy0 );
+        wzy0        = Mul( signPPN, wzy0 );
 
         Vector xxxx = Swizzle< 0, 0, 0, 0 >( rotation );
         Vector yyyy = Swizzle< 1, 1, 1, 1 >( rotation );
@@ -278,8 +278,8 @@ namespace Core
     Matrix& Scale( Matrix& m, const Vector& scale )
     {
         m.m_column[ 0 ] = Mul( m.m_column[ 0 ], Select( scale, One4(), Mask< 0, 1, 1, 1 >() ) );
-        m.m_column[ 1 ] = Mul( m.m_column[ 0 ], Select( scale, One4(), Mask< 1, 0, 1, 1 >() ) );
-        m.m_column[ 2 ] = Mul( m.m_column[ 0 ], Select( scale, One4(), Mask< 1, 1, 0, 1 >() ) );
+        m.m_column[ 1 ] = Mul( m.m_column[ 1 ], Select( scale, One4(), Mask< 1, 0, 1, 1 >() ) );
+        m.m_column[ 2 ] = Mul( m.m_column[ 2 ], Select( scale, One4(), Mask< 1, 1, 0, 1 >() ) );
         return m;
     }
 

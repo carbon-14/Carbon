@@ -62,8 +62,8 @@ namespace Core
 
     inline M128 Select( M128 l, M128 r, M128 mask )
     {
-        l = And( mask, l );
-        r = AndNot( mask, r );
+        l = AndNot( mask, l );
+        r = And( mask, r );
         return Or( l, r );
     }
 }
