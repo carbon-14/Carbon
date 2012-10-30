@@ -24,12 +24,12 @@ void Level2()
     Matrix tmp;
 
     // Creation du triangle
-    // ( triangle equilateral unitaire ) dans le plan Z
+    // ( triangle equilateral unitaire dans le plan Z )
 
     Vector triangle[ 3 ];
     triangle[ 0 ] = Vector4( 1.0f, 0.0f, 0.0f );
-    triangle[ 1 ] = Vector4( -0.5f, 0.5f * Math::Sqrt( 3.0f ), 0.0f );
-    triangle[ 2 ] = Vector4( -0.5f, -0.5f * Math::Sqrt( 3.0f ), 0.0f );
+    triangle[ 1 ] = Vector4( -0.5f, 0.5f * Sqrt( 3.0f ), 0.0f );
+    triangle[ 2 ] = Vector4( -0.5f, -0.5f * Sqrt( 3.0f ), 0.0f );
 
     UNIT_TEST_MESSAGE( "Triangle local :\n" )
     UNIT_TEST_MESSAGE( "A : ( %s )\n", SerializeVector( v_serial, triangle[0] ) )
@@ -38,12 +38,12 @@ void Level2()
 
     // Creation de la matrice de transformation du triangle : local -> world
 
-    Vector orientation  = Quaternion( UnitX(), 0.25f * Math::Pi() );
+    Vector orientation  = Quaternion( UnitX(), 0.25f * Pi() );
     Vector scale        = Vector3( 2.0f, 2.0f, 2.0f );
     Vector translation  = Vector3( 1.0f, 1.0f, 1.0f );
 
     UNIT_TEST_MESSAGE( "Transformation dans le repere monde :\n" )
-    UNIT_TEST_MESSAGE( "Orientation : %0.2f rad sur l'axe ( %s )\n", 0.25f * Math::Pi(), SerializeVector( v_serial, UnitX() ) )
+    UNIT_TEST_MESSAGE( "Orientation : %0.2f rad sur l'axe ( %s )\n", 0.25f * Pi(), SerializeVector( v_serial, UnitX() ) )
     UNIT_TEST_MESSAGE( "Echelle : ( %s )\n", SerializeVector( v_serial, scale )  )
     UNIT_TEST_MESSAGE( "Translation : ( %s )\n\n", SerializeVector( v_serial, translation )  )
 
