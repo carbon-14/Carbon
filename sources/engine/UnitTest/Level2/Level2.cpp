@@ -142,7 +142,7 @@ void Level2()
     F32 fov = HalfPi();         // need more ??? :)
     F32 ratio = 16.0f / 10.0f;
 
-    F32 cotan = 1.0f / ATan( 0.5f * fov ) ;
+    F32 cotan = 1.0f / Tan( 0.5f * fov ) ;
 
     proj.m_column[0] = Vector4( cotan   , 0.0f          , 0.0f                  , 0.0f  );
     proj.m_column[1] = Vector4( 0.0f    , cotan * ratio , 0.0f                  , 0.0f  );
