@@ -2,7 +2,6 @@
 #ifndef _CORE_VECTOR_H
 #define _CORE_VECTOR_H
 
-#include "Core/DLL.h"
 #include "Core/Types.h"
 #include "Core/Intrinsics.h"
 
@@ -13,43 +12,78 @@ namespace Core
     */
     typedef M128 Vector;
 
-    _CoreExport Vector  Vector4( F32 x, F32 y, F32 z, F32 w = 1.0f );
-    _CoreExport Vector  Vector3( F32 x, F32 y, F32 z );
-    _CoreExport Vector  Vector2( F32 x, F32 y );
+    inline Vector Vector4( F32 x, F32 y, F32 z, F32 w = 1.0f )  { return Set( x, y, z   , w    );       }
+    inline Vector Vector3( F32 x, F32 y, F32 z )                { return Set( x, y, z   , 0.0f );       }
+    inline Vector Vector2( F32 x, F32 y )                       { return Set( x, y, 0.0f, 0.0f );       }
 
-    _CoreExport Bool    IsVector( Vector v );   // w = 0
-    _CoreExport Bool    IsVertex( Vector v );   // w = 1
-    _CoreExport Bool    IsScalar( Vector v );   // x = y = z = w
+    inline Bool IsVector( Vector v )
+    {
+        F128 d;
+        Store( d, v );
+        return ( d[ 3 ] == 0.0f );
+    }
 
-    // Arithmetic
-    _CoreExport Vector  operator-( Vector v );
-    _CoreExport Vector  operator+( Vector l, Vector r );
-    _CoreExport Vector  operator-( Vector l, Vector r );
-    _CoreExport Vector  operator*( Vector l, Vector r );
-    _CoreExport Vector  operator/( Vector l, Vector r );
+    inline Bool IsVertex( Vector v )
+    {
+        F128 d;
+        Store( d, v );
+        return ( d[ 3 ] == 1.0f );
+    }
 
-    // Comparison
-    _CoreExport Vector  operator<( Vector l, Vector r );
-    _CoreExport Vector  operator<=( Vector l, Vector r );
-    _CoreExport Vector  operator>( Vector l, Vector r );
-    _CoreExport Vector  operator>=( Vector l, Vector r );
-    _CoreExport Vector  operator==( Vector l, Vector r );
-    _CoreExport Vector  operator!=( Vector l, Vector r );
+    inline Bool IsScalar( Vector v )
+    {
+        F128 d;
+        Store( d, v );
+        return ( d[ 0 ] == d[ 1 ] )
+            && ( d[ 1 ] == d[ 2 ] )
+            && ( d[ 2 ] == d[ 3 ] );
+    }
 
-    // Geometic
-    _CoreExport Vector  Dot( Vector l, Vector r );
-    _CoreExport Vector  Cross( Vector l, Vector r );
-    _CoreExport Vector  SquareLength( Vector v );
-    _CoreExport Vector  Length( Vector v );
-    _CoreExport Vector  Normalize( Vector v );
+    inline Vector operator-( Vector v )                         { return Neg( v );                      }
+    inline Vector operator+( Vector l, Vector r )               { return Add( l, r );                   }
+    inline Vector operator-( Vector l, Vector r )               { return Sub( l, r );                   }
+    inline Vector operator*( Vector l, Vector r )               { return Mul( l, r );                   }
+    inline Vector operator/( Vector l, Vector r )               { return Div( l, r );                   }
+
+    // Logical
+    inline Vector operator<( Vector l, Vector r )               { return LessThan( l, r );              }
+    inline Vector operator<=( Vector l, Vector r )              { return LessEqual( l, r );             }
+    inline Vector operator>( Vector l, Vector r )               { return GreaterThan( l, r );           }
+    inline Vector operator>=( Vector l, Vector r )              { return GreaterEqual( l, r );          }
+    inline Vector operator==( Vector l, Vector r )              { return Equal( l, r );                 }
+    inline Vector operator!=( Vector l, Vector r )              { return NotEqual( l, r );              }
+
+    // Geometric
+    inline Vector Dot( Vector l, Vector r )
+    {
+        l = Mul( l, r );
+        r = Swizzle< 1, 0, 3, 2 >( l );
+        l = Add( l, r );
+        r = Swizzle< 2, 3, 0, 1 >( l );
+        return Add( l, r );
+    }
+
+    inline Vector Cross( Vector l, Vector r )
+    {
+        Vector u = Swizzle< 1, 2, 0, 3 >( r );
+        u = Mul( l, u );
+        Vector v = Swizzle< 1, 2, 0, 3 >( l );
+        v = Mul( r, v );
+        u = Sub( u, v );
+        return Swizzle< 1, 2, 0, 3 >( u );
+    }
+
+    inline Vector SquareLength( Vector v )                      { return Dot( v, v );                   }
+    inline Vector Length( Vector v )                            { return Sqrt( SquareLength( v ) );     }
+    inline Vector Normalize( Vector v )                         { return Div( v, Length( v ) );         }
 
     // Units
-    _CoreExport Vector  Zero4();
-    _CoreExport Vector  One4();
-    _CoreExport Vector  UnitX();
-    _CoreExport Vector  UnitY();
-    _CoreExport Vector  UnitZ();
-    _CoreExport Vector  UnitW();
+    inline Vector Zero4()                                       { return Splat( 0.0f );                 }
+    inline Vector One4()                                        { return Splat( 1.0f );                 }
+    inline Vector UnitX()                                       { return Set( 1.0f, 0.0f, 0.0f, 0.0f ); }
+    inline Vector UnitY()                                       { return Set( 0.0f, 1.0f, 0.0f, 0.0f ); }
+    inline Vector UnitZ()                                       { return Set( 0.0f, 0.0f, 1.0f, 0.0f ); }
+    inline Vector UnitW()                                       { return Set( 0.0f, 0.0f, 0.0f, 1.0f ); }
 }
 
 #endif // _CORE_VECTOR_H

@@ -31,7 +31,7 @@ namespace Core
     // DefaultAllocator
     //====================================================================================
 
-    class _CoreExport DefaultAllocator
+    class DefaultAllocator
     {
     public:
         static void *   Allocate( SizeT sizeBytes, SizeT align = 1 );
@@ -40,16 +40,40 @@ namespace Core
 
     //=================================================================== DefaultAllocator
 
+    inline void * DefaultAllocator::Allocate( SizeT sizeBytes, SizeT align )
+    {
+        return MemoryManager::Malloc( sizeBytes, align );
+    }
+
+    inline void DefaultAllocator::Deallocate( void * ptr )
+    {
+        MemoryManager::Free( ptr );
+    }
+
+    //=================================================================== DefaultAllocator
+
     //====================================================================================
     // FrameAllocator
     //====================================================================================
 
-    class _CoreExport FrameAllocator
+    class FrameAllocator
     {
     public:
         static void *   Allocate( SizeT sizeBytes, SizeT align = 1 );
         static void     Deallocate( void * ptr );
     };
+
+    //===================================================================== FrameAllocator
+
+    inline void * FrameAllocator::Allocate( SizeT sizeBytes, SizeT align )
+    {
+        return MemoryManager::FrameAlloc( sizeBytes, align );
+    }
+
+    inline void FrameAllocator::Deallocate( void * )
+    {
+        // Do nothing
+    }
 
     //===================================================================== FrameAllocator
 }
