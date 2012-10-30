@@ -107,10 +107,10 @@ void Level2()
     UNIT_TEST_MESSAGE( "Near %0.2f, Far %0.2f, Width %0.2f, Height %0.2f\n\n", near, far, width, height );
 
     Matrix proj;
-    proj.m_column[0] = Vector3( 2.0f / width, 0.0f, 0.0f );
-    proj.m_column[1] = Vector3( 0.0f, 2.0f / height, 0.0f );
-    proj.m_column[2] = Vector3( 0.0f, 0.0f, 1.0f / ( near - far ) );
-    proj.m_column[3] = Vector4( 0.0f, 0.0f, near / ( near - far ) );
+    proj.m_column[0] = Vector4( 2.0f / width    , 0.0f          , 0.0f                  , 0.0f  );
+    proj.m_column[1] = Vector4( 0.0f            , 2.0f / height , 0.0f                  , 0.0f  );
+    proj.m_column[2] = Vector4( 0.0f            , 0.0f          , 1.0f / ( near - far ) , 0.0f  );
+    proj.m_column[3] = Vector4( 0.0f            , 0.0f          , near / ( near - far ) , 1.0f  );
 
     tmp = Transpose( proj );
 
