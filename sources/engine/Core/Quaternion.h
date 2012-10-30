@@ -54,7 +54,7 @@ namespace Core
 
     inline Vector InverseQuat( Vector q )
     {
-        const Vector sign = Set( 0.0f, -0.0f, -0.0f, -0.0f );
+        const Vector sign = Set( -0.0f, -0.0f, -0.0f, 0.0f );
         return Xor( q, sign );
     }
 
