@@ -4,33 +4,68 @@
 #include "Core/Math.h"
 #include "Core/Vector.h"
 #include "Core/Matrix.h"
+#include "Core/Quaternion.h"
 
 using namespace Core;
+
+Char * SerializeVector( Char * dest, const Vector& v )
+{
+    F128 s;
+    Store( s, v );
+
+    return StringUtils::FormatString( dest, 32, "%0.2f %0.2f %0.2f %0.2f", s[0], s[1], s[2], s[3] );
+}
 
 void Level2()
 {
     UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 2 #\n###########\n\n" )
 
-    Vector v0 = Vector4( 1.0f, 2.0f, 3.0f, 4.0f );
-    Vector v1 = Vector3( 1.0f, 2.0f, 3.0f );
-    Vector v2 = Vector2( 1.0f, 2.0f );
-    Vector v3 = Splat( Math::Pi() );
+    Char v_serial[32];
+    Matrix tmp;
 
-    F128 a;
-    Store( a, v1 );
-    a[ 1 ] = 42.0f;
-    v1 = Load( a );
+    // Creation du triangle
+    // ( triangle equilateral unitaire ) dans le plan Z
 
-    Vector v4 = Swizzle< 3, 2, 1, 0 >( v0 );
+    Vector triangle[ 3 ];
+    triangle[ 0 ] = Vector4( 1.0f, 0.0f, 0.0f );
+    triangle[ 1 ] = Vector4( -0.5f, 0.5f * Math::Sqrt( 3.0f ), 0.0f );
+    triangle[ 2 ] = Vector4( -0.5f, -0.5f * Math::Sqrt( 3.0f ), 0.0f );
 
-    Vector v5 = Dot( v1, Swizzle< 2, 1, 0, 3 >( v1 ) );
-    Vector v6 = Cross( UnitX(), UnitY() );
+    UNIT_TEST_MESSAGE( "Triangle local :\n" )
+    UNIT_TEST_MESSAGE( "A : ( %s )\n", SerializeVector( v_serial, triangle[0] ) )
+    UNIT_TEST_MESSAGE( "B : ( %s )\n", SerializeVector( v_serial, triangle[1] )  )
+    UNIT_TEST_MESSAGE( "C : ( %s )\n\n", SerializeVector( v_serial, triangle[2] )  )
 
-    // ======================================================
+    // Creation de la matrice de transformation du triangle : local -> world
 
-    Vector cam_pos  = Vector4( 1.0f, 2.0f, 3.0f );
-    Vector cam_at   = Vector4( 6.0f, 5.0f, 4.0f );
-    Vector cam_dist = Length( cam_at - cam_pos );
+    Vector orientation  = Quaternion( UnitX(), 0.25f * Math::Pi() );
+    Vector scale        = Vector3( 2.0f, 2.0f, 2.0f );
+    Vector translation  = Vector3( 1.0f, 1.0f, 1.0f );
+
+    UNIT_TEST_MESSAGE( "Transformation dans le repere monde :\n" )
+    UNIT_TEST_MESSAGE( "Orientation : %0.2f rad sur l'axe ( %s )\n", 0.25f * Math::Pi(), SerializeVector( v_serial, UnitX() ) )
+    UNIT_TEST_MESSAGE( "Echelle : ( %s )\n", SerializeVector( v_serial, scale )  )
+    UNIT_TEST_MESSAGE( "Translation : ( %s )\n\n", SerializeVector( v_serial, translation )  )
+
+    Matrix world = RMatrix( orientation );
+    Scale( world, scale );
+    Translate( world, translation );
+
+    tmp = Transpose( world );
+
+    UNIT_TEST_MESSAGE( "Matrice 'World' obtenue :\n" )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[0] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[1] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[2] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n\n", SerializeVector( v_serial, tmp.m_column[3] ) )
+
+    // Creation de la matrice de vue : world -> camera
+
+    Vector cam_pos  = Vector4( 1.0f, 1.0f, 3.0f );
+    Vector cam_at   = world.m_column[ 3 ];          // triangle position
+
+    UNIT_TEST_MESSAGE( "Position de la camera : ( %s )\n", SerializeVector( v_serial, cam_pos ) )
+    UNIT_TEST_MESSAGE( "La camera 'regarde' a la position du triangle : ( %s )\n\n", SerializeVector( v_serial, cam_at ) )
 
     Vector cam_dir      = Normalize( cam_at - cam_pos );
     Vector cam_up       = UnitY();
@@ -43,19 +78,61 @@ void Level2()
     cam_base.m_column[2] = -cam_dir;
     cam_base.m_column[3] = cam_pos;
 
+    tmp = Transpose( cam_base );
+
+    UNIT_TEST_MESSAGE( "Matrice de base de la camera :\n" )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[0] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[1] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[2] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n\n", SerializeVector( v_serial, tmp.m_column[3] ) )
+
     Matrix view = Inverse( cam_base );
 
-    Vector cam_test = TransformVertex( view, cam_at );
+    tmp = Transpose( view );
 
-    F128 out_cam_pos, out_cam_at, out_cam_test, out_cam_dist;
-    Store( out_cam_pos, cam_pos );
-    Store( out_cam_at, cam_at );
-    Store( out_cam_test, cam_test );
-    Store( out_cam_dist, cam_dist );
+    UNIT_TEST_MESSAGE( "Matrice 'View' obtenue par inversion de la matrice de base :\n" )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[0] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[1] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[2] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n\n", SerializeVector( v_serial, tmp.m_column[3] ) )
 
-    UNIT_TEST_MESSAGE( "Position Camera : ( %0.2f, %0.2f, %0.2f )\n", out_cam_pos[0], out_cam_pos[1], out_cam_pos[2] );
-    UNIT_TEST_MESSAGE( "Position Look At : ( %0.2f, %0.2f, %0.2f )\n", out_cam_at[0], out_cam_at[1], out_cam_at[2] )
-    UNIT_TEST_MESSAGE( "Position Look At dans le repere de la camera : ( %0.2f, %0.2f, %0.2f )\n", out_cam_test[0], out_cam_test[1], out_cam_test[2] )
-    UNIT_TEST_MESSAGE( "Distance Camera - Look At : %0.2f\n", out_cam_dist[0] )
+    // Creation de la matrice de projection de la camera : camera -> screen
 
+    F32 near    = 1.0f;
+    F32 far     = 3.0f;
+    F32 width   = 4.0f;
+    F32 height  = 4.0f;
+
+    UNIT_TEST_MESSAGE( "Parametres de projection orthogonale :\n")
+    UNIT_TEST_MESSAGE( "Near %0.2f, Far %0.2f, Width %0.2f, Height %0.2f\n\n", near, far, width, height );
+
+    Matrix proj;
+    proj.m_column[0] = Vector3( 2.0f / width, 0.0f, 0.0f );
+    proj.m_column[1] = Vector3( 0.0f, 2.0f / height, 0.0f );
+    proj.m_column[2] = Vector3( 0.0f, 0.0f, 1.0f / ( near - far ) );
+    proj.m_column[3] = Vector4( 0.0f, 0.0f, near / ( near - far ) );
+
+    tmp = Transpose( proj );
+
+    UNIT_TEST_MESSAGE( "Matrice 'Proj' obtenue :\n" )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[0] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[1] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n", SerializeVector( v_serial, tmp.m_column[2] ) )
+    UNIT_TEST_MESSAGE( "( %s )\n\n", SerializeVector( v_serial, tmp.m_column[3] ) )
+
+    // Application de la transformation
+    // coordonnees du triangle local -> coordonnees du triangle a l'ecran
+
+    Matrix viewProj         = Mul( proj, view );
+    Matrix worldViewProj    = Mul( viewProj, world );
+
+    Vector screen_triangle[ 3 ];
+    screen_triangle[ 0 ] = Mul( worldViewProj, triangle[ 0 ] );
+    screen_triangle[ 1 ] = Mul( worldViewProj, triangle[ 1 ] );
+    screen_triangle[ 2 ] = Mul( worldViewProj, triangle[ 2 ] );
+
+    UNIT_TEST_MESSAGE( "Application des transformations successives ( World x View x Proj ) au triangle :\n" )
+    UNIT_TEST_MESSAGE( "A en coordonnees ecran : ( %s )\n", SerializeVector( v_serial, screen_triangle[0] ) )
+    UNIT_TEST_MESSAGE( "B en coordonnees ecran : ( %s )\n", SerializeVector( v_serial, screen_triangle[1] )  )
+    UNIT_TEST_MESSAGE( "C en coordonnees ecran : ( %s )\n\n", SerializeVector( v_serial, screen_triangle[2] )  )
 }
