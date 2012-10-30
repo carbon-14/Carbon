@@ -135,4 +135,40 @@ void Level2()
     UNIT_TEST_MESSAGE( "A en coordonnees ecran : ( %s )\n", SerializeVector( v_serial, screen_triangle[0] ) )
     UNIT_TEST_MESSAGE( "B en coordonnees ecran : ( %s )\n", SerializeVector( v_serial, screen_triangle[1] )  )
     UNIT_TEST_MESSAGE( "C en coordonnees ecran : ( %s )\n\n", SerializeVector( v_serial, screen_triangle[2] )  )
+
+    // - Bonus -
+    // Projection perspective
+
+    F32 fov = HalfPi();         // need more ??? :)
+    F32 ratio = 16.0f / 10.0f;
+
+    F32 cotan = 1.0f / ATan( 0.5f * fov ) ;
+
+    proj.m_column[0] = Vector4( cotan   , 0.0f          , 0.0f                  , 0.0f  );
+    proj.m_column[1] = Vector4( 0.0f    , cotan * ratio , 0.0f                  , 0.0f  );
+    proj.m_column[2] = Vector4( 0.0f    , 0.0f          , 1.0f / ( near - far ) , -1.0f );
+    proj.m_column[3] = Vector4( 0.0f    , 0.0f          , near / ( near - far ) , 0.0f  );
+
+    viewProj         = Mul( proj, view );
+    worldViewProj    = Mul( viewProj, world );
+
+    screen_triangle[ 0 ] = Mul( worldViewProj, triangle[ 0 ] );
+    screen_triangle[ 1 ] = Mul( worldViewProj, triangle[ 1 ] );
+    screen_triangle[ 2 ] = Mul( worldViewProj, triangle[ 2 ] );
+
+    // Pour finir on retrouve les valeurs lineaires
+    Vector homogeneous[ 3 ];
+    homogeneous[ 0 ] = Swizzle< 3, 3, 3, 3 >( screen_triangle[ 0 ] );
+    homogeneous[ 1 ] = Swizzle< 3, 3, 3, 3 >( screen_triangle[ 1 ] );
+    homogeneous[ 2 ] = Swizzle< 3, 3, 3, 3 >( screen_triangle[ 2 ] );
+
+    const Vector maskZ = Mask< 0, 0, 1, 0 >();
+
+    homogeneous[ 0 ] = Select( homogeneous[ 0 ], One4(), maskZ );
+    homogeneous[ 1 ] = Select( homogeneous[ 1 ], One4(), maskZ );
+    homogeneous[ 2 ] = Select( homogeneous[ 2 ], One4(), maskZ );
+
+    screen_triangle[ 0 ] = Div( screen_triangle[ 0 ], homogeneous[ 0 ] );
+    screen_triangle[ 1 ] = Div( screen_triangle[ 1 ], homogeneous[ 1 ] );
+    screen_triangle[ 2 ] = Div( screen_triangle[ 2 ], homogeneous[ 2 ] );
 }
