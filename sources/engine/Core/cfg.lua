@@ -14,6 +14,8 @@ for _, ps_dir in ipairs( platform_dirs ) do
     files { ps_dir.."/**.h", ps_dir.."/**.inl", ps_dir.."/**.cpp" }
 end
 
+dllexport_define    = "CARBON_CORE_DLLEXPORT"
+
 targetdir           ( path.getrelative(prj.basedir,lib_dir) )
 
 configuration       ( config_debug.name )

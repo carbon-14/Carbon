@@ -12,20 +12,25 @@ namespace Core
     public:
 
         template< typename T >
-        static SizeT AlignOf()
-        {
-    #if defined( CARBON_PLATFORM_WIN32 )
-            return __alignof( T );
-    #else
-            #error "alignof is not implemented."
-    #endif
-        }
+        static SizeT AlignOf();
 
         static SizeT GetNextAlignedAddress( SizeT ptr, SizeT alignment );
 
         static void * MemCpy( void * dest, const void * src, SizeT sizeBytes );
         static void * MemSet( void * ptr, U8 value, SizeT sizeBytes );
+
+        template < typename T >
+        static void Fill( T * begin, const T * end, const T& value );
+
+        template< typename T >
+        static void Copy( const T * begin, const T * end, T * to );
     };
 }
+
+#if defined( CARBON_PLATFORM_WIN32 )
+    #include "Core/ps/win32/MemoryUtils.inl"
+#else
+    #error Math not defined
+#endif
 
 #endif // _CORE_MEMORYUTILS_H

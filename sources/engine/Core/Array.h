@@ -6,7 +6,6 @@
 
 #include "Core/MemoryManager.h"
 #include "Core/MemoryUtils.h"
-#include "Core/Algorithm.h"
 
 #include "Core/Assert.h"
 
@@ -64,7 +63,6 @@ namespace Core
         void            Reserve( SizeType capacity );
         void            Resize( SizeType size, ConstReference value = ValueType() );
 
-        void            PushBackEmpty();
         void            PushBack( ConstReference value );
         void            PushBack( ConstPointer p, SizeType n );
         void            PushBack( ConstIterator begin, ConstIterator end );
@@ -103,8 +101,8 @@ namespace Core
         if ( size > 0 )
         {
             m_begin	= DoAllocate( size );
-            m_capacity = m_end = m_begin + size;
-            Fill( m_begin, m_end, value );
+            m_end = m_capacity = m_begin + size;
+            MemoryUtils::Fill( m_begin, m_capacity, value );
         }
         else
         {
@@ -119,7 +117,7 @@ namespace Core
         {
             m_begin	= DoAllocate( n );
             m_capacity = m_end = m_begin + n;
-            Copy( v, v+n, m_begin );
+            MemoryUtils::Copy( v, v+n, m_begin );
         }
         else
         {
@@ -135,7 +133,7 @@ namespace Core
         {
             m_begin	= DoAllocate( size );
             m_capacity = m_end = m_begin + size;
-            Copy( begin, end, m_begin );
+            MemoryUtils::Copy( begin, end, m_begin );
         }
         else
         {
@@ -281,20 +279,9 @@ namespace Core
         else
         {
             Reserve( size );
-            Fill( m_end, m_capacity, value );
+            MemoryUtils::Fill( m_end, m_capacity, value );
             m_end = m_capacity;
         }
-    }
-
-    template< typename T, typename Alloc >
-    void Array< T, Alloc >::PushBackEmpty()
-    {
-        if ( m_end == m_capacity )
-        {
-            IncreaseCapacity( ComputeNewCapacity() );
-        }
-        *m_end = ValueType();
-        ++m_end;
     }
 
     template< typename T, typename Alloc >
@@ -304,7 +291,8 @@ namespace Core
         {
             IncreaseCapacity( ComputeNewCapacity() );
         }
-        *m_end = value;
+
+        ::new( m_end ) ValueType( value );
         ++m_end;
     }
 
@@ -322,7 +310,7 @@ namespace Core
         {
             IncreaseCapacity( capacity );
         }
-        Copy( begin, end, m_end );
+        MemoryUtils::Copy( begin, end, m_end );
         m_end = m_begin + capacity;
     }
 
@@ -365,7 +353,8 @@ namespace Core
     void Array< T, Alloc >::IncreaseCapacity( SizeType capacity )
     {
         Pointer ptr = DoAllocate( capacity );
-        Copy( m_begin, m_end, ptr );
+        MemoryUtils::Copy( m_begin, m_end, ptr );
+        for ( Iterator it=m_begin; it!=m_end; ++it ) { it->~ValueType(); }
         DoFree( m_begin );
         m_end = ptr + Size();
         m_begin = ptr;

@@ -4,7 +4,7 @@
 
 #include "Core/IArray.h"
 
-#include "Core/Algorithm.h"
+#include "Core/MemoryUtils.h"
 
 #include "Core/Assert.h"
 
@@ -61,7 +61,6 @@ namespace Core
 
         void            Resize( SizeType size, ConstReference value = ValueType() );
 
-        void            PushBackEmpty();
         void            PushBack( ConstReference value );
         void            PushBack( ConstPointer p, SizeType n );
         void            PushBack( ConstIterator begin, ConstIterator end );
@@ -97,7 +96,7 @@ namespace Core
 
         if ( size > 0 )
         {
-            Fill( m_begin, m_end, value );
+            MemoryUtils::Fill( m_begin, m_end, value ); 
         }
     }
 
@@ -110,7 +109,7 @@ namespace Core
 
         if ( n > 0 )
         {
-            Copy( v, v+n, m_begin );
+            MemoryUtils::Copy( v, v+n, m_begin );
         }
     }
 
@@ -121,11 +120,11 @@ namespace Core
 
         CARBON_ASSERT( size <= C );
 
-        m_end = m_begin + n;
+        m_end = m_begin + size;
 
         if ( size > 0 )
         {
-            Copy( begin, end, m_begin );
+            MemoryUtils::Copy( begin, end, m_begin );
         }
     }
 
@@ -258,18 +257,9 @@ namespace Core
         }
         else
         {
-            Fill( m_end, end, value );
+            MemoryUtils::Fill( m_end, end, value );
             m_end = end;
         }
-    }
-
-    template< typename T, SizeT C >
-    void FixedArray< T, C >::PushBackEmpty()
-    {
-        CARBON_ASSERT( m_end < ( m_begin + C ) );
-
-        *m_end = ValueType();
-        ++m_end;
     }
 
     template< typename T, SizeT C >
@@ -294,7 +284,7 @@ namespace Core
 
         CARBON_ASSERT( capacity <= C );
 
-        Copy( begin, end, m_end );
+        MemoryUtils::Copy( begin, end, m_end );
         m_end = m_begin + capacity;
     }
 

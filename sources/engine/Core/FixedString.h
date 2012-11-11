@@ -2,7 +2,11 @@
 #ifndef _CORE_FIXEDSTRING_H
 #define _CORE_FIXEDSTRING_H
 
+#include "Core/DLL.h"
+
 #include "Core/FixedArray.h"
+#include "Core/MemoryUtils.h"
+#include "Core/StringUtils.h"
 
 namespace Core
 {
@@ -26,14 +30,16 @@ namespace Core
     public:
         FixedString();
         FixedString( ConstPointer str );
+        FixedString( ConstPointer str, SizeType len );
+        FixedString( const FixedString& other );
+
+        FixedString& operator=( const FixedString& other );
 
         FixedString& Append( ConstPointer str );
         FixedString& Append( ConstPointer str, SizeType len );
         FixedString& operator+=( ConstPointer str );
 
-    private:
-        FixedString( const FixedString& other );
-        FixedString& operator=( const FixedString& other );
+        void Copy( Char * dest, SizeT size );        
     };
 
     //============================================================================== FixedString
@@ -42,7 +48,7 @@ namespace Core
     FixedString< N >::FixedString()
     {
         m_end = m_begin;
-        MemoryUtils::MemSet( m_begin, 0, N );
+        *m_end = 0;
     }
 
     template< SizeT N >
@@ -56,13 +62,69 @@ namespace Core
         {
             m_end = m_begin + size;
             MemoryUtils::MemCpy( m_begin, str, size );
-            *m_end = 0;
         }
         else
         {
             m_end = m_begin;
-            MemoryUtils::MemSet( m_begin, 0, N );
         }
+
+        *m_end = 0;
+    }
+
+    template< SizeT N >
+    FixedString< N >::FixedString( ConstPointer str, SizeType len )
+    {
+        CARBON_ASSERT( len < N );
+
+        if ( len > 0 )
+        {
+            m_end = m_begin + len;
+            MemoryUtils::MemCpy( m_begin, str, len );
+        }
+        else
+        {
+            m_end = m_begin;
+        }
+
+        *m_end = 0;
+    }
+
+    template< SizeT N >
+    FixedString< N >::FixedString( const FixedString& other )
+    {
+        const SizeT size = other.Size();
+
+        if ( size > 0 )
+        {
+            m_end = m_begin + size;
+            MemoryUtils::MemCpy( m_begin, other.Begin(), size );
+        }
+        else
+        {
+            m_end = m_begin;
+        }
+
+        *m_end = 0;
+    }
+
+    template< SizeT N >
+    FixedString< N >& FixedString< N >::operator=( const FixedString& other )
+    {
+        const SizeT size = other.Size();
+
+        if ( size > 0 )
+        {
+            m_end = m_begin + size;
+            MemoryUtils::MemCpy( m_begin, other.Begin(), size );
+        }
+        else
+        {
+            m_end = m_begin;
+        }
+
+        *m_end = 0;
+
+        return *this;
     }
 
     template< SizeT N >
@@ -80,7 +142,7 @@ namespace Core
 
             CARBON_ASSERT( size < N );
 
-            MemoryUtils::MemCpy( m_begin, str, len );
+            MemoryUtils::MemCpy( m_end, str, len );
             m_end = m_begin + size;
             *m_end = 0;
         }
@@ -94,7 +156,19 @@ namespace Core
         return Append( str );
     }
 
+    template< typename SizeT N >
+    void FixedString< N >::Copy( Char * dest, SizeT size )
+    {
+        CARBON_ASSERT( Size() < size );
+
+        MemoryUtils::MemCpy( dest, m_begin, Size() );
+        dest[ Size() ] = 0;
+    }
+
     //============================================================================== FixedString
+
+    typedef FixedString< 32 >   FileString;
+    typedef FixedString< 256 >  PathString;
 }
 
 #endif // _CORE_FIXEDSTRING_H
