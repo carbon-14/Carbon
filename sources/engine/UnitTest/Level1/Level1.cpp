@@ -93,10 +93,6 @@ void Test_Array()
 
     UNIT_TEST_MESSAGE( "a.Resize( 10 ), capacite : %d; taille : %d\n", a.Capacity(), a.Size() )
 
-    a.PushBackEmpty();
-
-    UNIT_TEST_MESSAGE( "push back empty sur a, back de a : %d; taille : %d\n", a.Back(), a.Size() )
-
     a.PushBack( 45 );
 
     UNIT_TEST_MESSAGE( "push back 45 sur a, back de a : %d; taille : %d\n", a.Back(), a.Size() )
