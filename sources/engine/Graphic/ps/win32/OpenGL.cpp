@@ -4,7 +4,7 @@ META_GL_FUNCTIONS( DEFINE_GL_FUNCTIONS );
 
 namespace Graphic
 {
-    HGLRC OpenGL::CreateRenderContext( HDC hDC, HGLRC hShareContext, const int *attribList )
+    HGLRC OpenGL::CreateContext( HDC hDC, const int *attribList )
     {
         HGLRC dummyContext = wglCreateContext( hDC );
         if ( !dummyContext )
@@ -25,29 +25,28 @@ namespace Graphic
             return 0;
         }
 
-        HGLRC renderContext = wglCreateContextAttribsARB( hDC, hShareContext, attribList );
+        HGLRC context = wglCreateContextAttribsARB( hDC, 0, attribList );
 
         wglMakeCurrent( 0, 0 );
         wglDeleteContext( dummyContext );
 
-        if ( !renderContext )
+        if ( !context )
         {
             return 0;
         }
 
-        wglMakeCurrent( hDC, renderContext );
+        wglMakeCurrent( hDC, context );
 
-        return renderContext;
-    }
-
-    void OpenGL::DestroyRenderContext( HGLRC renderContext )
-    {
-        wglMakeCurrent( 0, 0 );
-        wglDeleteContext( renderContext );
-    }
-
-    void OpenGL::LoadFunctions()
-    {
         META_GL_FUNCTIONS( LOAD_GL_FUNCTIONS );
+
+        return context;
+    }
+
+    void OpenGL::DestroyContext( HGLRC context )
+    {
+        META_GL_FUNCTIONS( UNLOAD_GL_FUNCTIONS );
+
+        wglMakeCurrent( 0, 0 );
+        wglDeleteContext( context );
     }
 }

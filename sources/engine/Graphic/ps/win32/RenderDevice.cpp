@@ -138,15 +138,13 @@ namespace Graphic
             0 //End
         };
 
-        m_renderContext = OpenGL::CreateRenderContext( m_deviceContext, 0, attribs );
+        m_renderContext = OpenGL::CreateContext( m_deviceContext, attribs );
         if ( !m_renderContext )
         {
             m_deviceContext = 0;
             m_window = 0;
             return false;
         }
-
-        OpenGL::LoadFunctions();
 
         return true;
     }
@@ -155,7 +153,7 @@ namespace Graphic
     {
         if ( m_renderContext )
         {
-            OpenGL::DestroyRenderContext( m_renderContext );
+            OpenGL::DestroyContext( m_renderContext );
             m_renderContext = 0;
         }
 

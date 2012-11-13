@@ -120,6 +120,7 @@ extern "C"
 #define DECLARE_GL_FUNCTIONS( PFunc, Name )     extern PFunc Name
 #define DEFINE_GL_FUNCTIONS( PFunc, Name )      PFunc Name = 0
 #define LOAD_GL_FUNCTIONS( PFunc, Name )        Name = (PFunc)wglGetProcAddress( #Name )
+#define UNLOAD_GL_FUNCTIONS( PFunc, Name )      Name = 0
 
 META_GL_FUNCTIONS( DECLARE_GL_FUNCTIONS );
 
@@ -130,8 +131,7 @@ namespace Graphic
     class _GraphicExport OpenGL
     {
     public:
-        static HGLRC CreateRenderContext( HDC hDC, HGLRC hShareContext, const int *attribList );
-        static void DestroyRenderContext( HGLRC renderContext );
-        static void LoadFunctions();
+        static HGLRC CreateContext( HDC hDC, const int *attribList );
+        static void DestroyContext( HGLRC renderContext );
     };
 }
