@@ -123,6 +123,8 @@ namespace Graphic
     class _GraphicExport OpenGL
     {
     public:
+        static HGLRC CreateRenderContext( HDC hDC, HGLRC hShareContext, const int *attribList );
+        static void DestroyRenderContext( HGLRC renderContext );
         static void LoadFunctions();
     };
 }

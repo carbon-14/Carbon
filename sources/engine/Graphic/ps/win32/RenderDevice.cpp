@@ -130,29 +130,6 @@ namespace Graphic
             return false;
         }
 
-        HGLRC dummyContext = wglCreateContext( m_deviceContext );
-        if ( !dummyContext )
-        {
-            m_deviceContext = 0;
-            m_window = 0;
-            return false;
-        }
-
-        if ( !wglMakeCurrent( m_deviceContext, dummyContext ) )
-        {
-            wglDeleteContext( dummyContext );
-            m_deviceContext = 0;
-            m_window = 0;
-            return false;
-        }
-
-        PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress( "wglCreateContextAttribsARB" );
-
-        if ( !wglCreateContextAttribsARB )
-        {
-            return 0;
-        }
-
         int attribs[] =
         {
             WGL_CONTEXT_MAJOR_VERSION_ARB   , 4,
@@ -161,22 +138,13 @@ namespace Graphic
             0 //End
         };
 
-        m_renderContext = wglCreateContextAttribsARB( m_deviceContext, 0, attribs );
+        m_renderContext = OpenGL::CreateRenderContext( m_deviceContext, 0, attribs );
         if ( !m_renderContext )
         {
-            if ( dummyContext )
-            {
-                wglMakeCurrent( 0, 0 );
-                wglDeleteContext( dummyContext );
-            }
             m_deviceContext = 0;
             m_window = 0;
             return false;
         }
-
-        wglMakeCurrent( 0, 0 );
-        wglDeleteContext( dummyContext );
-        wglMakeCurrent( m_deviceContext, m_renderContext );
 
         OpenGL::LoadFunctions();
 
@@ -187,15 +155,16 @@ namespace Graphic
     {
         if ( m_renderContext )
         {
-            wglMakeCurrent( 0, 0 );
-            wglDeleteContext( m_renderContext );
+            OpenGL::DestroyRenderContext( m_renderContext );
             m_renderContext = 0;
         }
+
         if ( m_deviceContext )
         {
             ReleaseDC( m_window, m_deviceContext );
             m_deviceContext = 0;
         }
+
         m_window = 0;
     }
 

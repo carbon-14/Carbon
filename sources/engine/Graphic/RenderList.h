@@ -40,6 +40,6 @@ namespace Graphic
     }
 }
 
-template< > struct Core::IsPOD< Graphic::RenderElement > : public TrueType { };
+CARBON_DECLARE_POD_TYPE( Graphic::RenderElement );
 
 #endif // _GRAPHIC_RENDERLIST_H

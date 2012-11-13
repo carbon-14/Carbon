@@ -1,7 +1,5 @@
 #include "Graphic/DLL.h"
 
-#include <Windows.h>
-
 #include "Graphic/OpenGL.h"
 
 namespace Graphic
