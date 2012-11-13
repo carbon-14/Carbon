@@ -136,7 +136,8 @@ void DisplayFramerate( HWND hwnd )
 
 WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
 {
-    UNIT_TEST_MESSAGE( "Window Creation\n" )
+    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 3 #\n###########\n\n" );
+    UNIT_TEST_MESSAGE( "Window Creation\n" );
 
     MSG msg;
     HWND hwnd;
@@ -172,7 +173,7 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
-    UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" )
+    UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
     FileSystem::Initialize( "D:\\GitDepot\\Carbon\\" );
@@ -192,7 +193,7 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
 
     fsqRenderer.Initialize();
 
-    UNIT_TEST_MESSAGE( "Carbon Engine : Run\n" )
+    UNIT_TEST_MESSAGE( "Carbon Engine : Run\n" );
 
     while ( 1 )
     {
@@ -215,7 +216,7 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
         DisplayFramerate( hwnd );
     }
 
-    UNIT_TEST_MESSAGE( "Carbon Engine : Destroy\n" )
+    UNIT_TEST_MESSAGE( "Carbon Engine : Destroy\n" );
 
     fsqRenderer.Destroy();
 
