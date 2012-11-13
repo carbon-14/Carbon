@@ -41,4 +41,7 @@ namespace Core
     struct IsPOD : public IntegralConstant< Bool, IsIntegral< T >::value || IsFloating< T >::value > { };
 }
 
+#define CARBON_DECLARE_POD_TYPE( T ) \
+    template< > struct Core::IsPOD< T > : public TrueType { }
+
 #endif // _CORE_TYPETRAITS_H
