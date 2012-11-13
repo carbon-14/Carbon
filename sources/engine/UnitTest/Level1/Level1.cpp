@@ -52,6 +52,8 @@ void Test_Array()
     FixedArray< U32, 21 > c( 21, 42 );
     FixedArray< U32, 16 > d( 12 );
 
+    String f = "f";
+
     UNIT_TEST_MESSAGE( "\n* Array Test\n\n" ) 
     
     UNIT_TEST_MESSAGE( "taille de b : %d\n", b.Size() )
@@ -119,5 +121,5 @@ void Level1()
     Test_MemoryManager();
     Test_Array();
 
-    MemoryManager::Finish();
+    MemoryManager::Destroy();
 }
