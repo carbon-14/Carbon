@@ -2,8 +2,6 @@
 #ifndef _GRAPHIC_PROGRAMCACHE_H
 #define _GRAPHIC_PROGRAMCACHE_H
 
-#include "Graphic/DLL.h"
-
 #include "Graphic/Program.h"
 
 #include "Core/FixedString.h"
@@ -11,18 +9,23 @@
 
 namespace Graphic
 {
+    typedef SizeT ProgramHandle;
+
     class _GraphicExport ProgramCache
     {
     public:
-        static const SizeT ms_InvalidIndex = -1;
+        friend class RenderDevice;
+
+    public:
+        static const ProgramHandle ms_invalidHandle;
 
         Bool            Initialize( const Char * relativePath );
         void            Destroy();
         void            Update();
 
-        SizeT           GetIndex( const Char * name );
+        ProgramHandle   GetProgram( const Char * name ) const;
 
-        U32             GetHandle( SizeT index ) const;
+        void            UseProgram( ProgramHandle handle ) const;
 
         static void     NotifySourceChange();
 
@@ -34,8 +37,8 @@ namespace Graphic
         void            LoadProgramFromSources( Program& program );
         void            LoadProgramFromBinaries( Program& program );
 
-        U32             CreateId( const Char * name );
-        Program *       FindById( U32 id );
+        static U32      CreateId( const Char * name );
+        ProgramHandle   FindById( U32 id ) const;
 
         typedef Core::Array< Graphic::Program > ProgramArray;
 

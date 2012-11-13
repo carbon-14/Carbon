@@ -4,8 +4,6 @@
 #include "Core/Hash.h"
 #include "Core/Trace.h"
 
-#include "Graphic/RenderDevice.h"
-
 using namespace Core;
 
 namespace Graphic
@@ -20,6 +18,8 @@ namespace Graphic
     const Char Extensions[ ST_COUNT ][ 4 ] = { ".vs", ".fs", ".gs" };
 
     Bool dirtyCache = false;
+
+    const ProgramHandle ProgramCache::ms_invalidHandle = -1;
 
     Bool ProgramCache::Initialize( const Char * relativePath )
     {
@@ -50,24 +50,19 @@ namespace Graphic
         }
     }
 
-    SizeT ProgramCache::GetIndex( const Char * name )
+    ProgramHandle ProgramCache::GetProgram( const Char * name ) const
     {
         U32 id = CreateId( name );
 
-        Program * program = FindById( id );
-        if ( program == 0 )
-        {
-            return ms_InvalidIndex;
-        }
-
-        LoadProgram( *program );
-
-        return program - m_cache.Begin();
+        return FindById( id );
     }
 
-    U32 ProgramCache::GetHandle( SizeT index ) const
+    void ProgramCache::UseProgram( ProgramHandle handle ) const
     {
-        return m_cache[ index ].m_handle;
+        CARBON_ASSERT( handle != ms_invalidHandle );
+
+        const Program& p = m_cache[ handle ];
+        RenderDevice::UseProgram( p.m_handle );
     }
 
     void ProgramCache::NotifySourceChange()
@@ -84,11 +79,11 @@ namespace Graphic
         FileSystem::Find( searchStr.ConstPtr(), shaderFileNames, false );
 
         // Collect infos
-        Array< PathString >::Iterator it = shaderFileNames.Begin();
-        Array< PathString >::Iterator end = shaderFileNames.End();
-        for ( ; it != end; ++it )
+        Array< PathString >::Iterator sIt = shaderFileNames.Begin();
+        Array< PathString >::Iterator sEnd = shaderFileNames.End();
+        for ( ; sIt != sEnd; ++sIt )
         {
-            PathString& name = *it;
+            PathString& name = *sIt;
 
             CARBON_ASSERT( name.Size() > 3 );
 
@@ -117,14 +112,28 @@ namespace Graphic
             *(name.End()) = 0;
 
             U32 id = CreateId( name.ConstPtr() );
-            Program * program = FindById( id );
-            if ( ! program )
+            SizeT index = FindById( id );
+
+            Program * program = 0;
+            if ( index == ms_invalidHandle )
             {
                 m_cache.PushBack( Program( id, typeMask, name.ConstPtr() ) );
                 program = m_cache.End() - 1;
             }
+            else
+            {
+                program = &m_cache[ index ];
+            }
 
             program->m_type |= typeMask;
+        }
+
+        ProgramArray::Iterator pIt   = m_cache.Begin();
+        ProgramArray::Iterator pEnd  = m_cache.End();
+        for ( ; pIt != pEnd; ++pIt )
+        {
+            Program& program = *pIt;
+            LoadProgram( program );
         }
     }
 
@@ -193,7 +202,7 @@ namespace Graphic
 
         for ( SizeT i=0; i<count; ++i )
         {
-            MemoryManager::Free( srcBuffers[ i ] );
+            UnknownAllocator::Deallocate( srcBuffers[ i ] );
         }
 
         if ( program.m_handle )
@@ -255,7 +264,7 @@ namespace Graphic
                 if ( FileSystem::Load( binFileName, buffer, size ) )
                 {
                     program.m_handle = RenderDevice::CreateProgramBinary( buffer, size ); 
-                    MemoryManager::Free( buffer );
+                    UnknownAllocator::Deallocate( buffer );
                 }
             }
         }
@@ -266,18 +275,14 @@ namespace Graphic
         return Core::HashString( name );
     }
 
-    Program * ProgramCache::FindById( U32 id )
+    ProgramHandle ProgramCache::FindById( U32 id ) const
     {
-        ProgramArray::Iterator it       = m_cache.Begin();
+        ProgramArray::ConstIterator it  = m_cache.Begin();
         ProgramArray::ConstIterator end = m_cache.End();
         for ( ; it != end; ++it )
         {
-            Program& program = *it;
-            if ( program.m_id == id )
-            {
-                return &program;
-            }
+            return it - m_cache.Begin();
         }
-        return 0;
+        return ms_invalidHandle;
     }
 }

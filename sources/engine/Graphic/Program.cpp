@@ -1,8 +1,6 @@
 #include "Graphic/Program.h"
 
-#include "Graphic/RenderDevice.h"
-
-#include "Core/memoryUtils.h"
+#include "Core/MemoryUtils.h"
 #include "Core/StringUtils.h"
 
 using namespace Core;

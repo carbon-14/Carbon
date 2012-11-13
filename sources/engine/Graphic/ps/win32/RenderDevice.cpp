@@ -34,11 +34,31 @@ namespace Graphic
         GL_DOUBLE           // DT_F64
     };
 
+    const GLenum ToGLPrimitiveType[] =
+    {
+        GL_POINTS,      // PT_POINTS
+        GL_LINES,       // PT_LINES
+        GL_TRIANGLES    // PT_TRIANGLES
+    };
+
+    const GLuint ToVertexSemanticMap[] =
+    {
+        1 << VS_POSITION,
+        1 << VS_NORMAL,
+        1 << VS_TANGENT,
+        1 << VS_BINORMAL,
+        1 << VS_COLOR,
+        1 << VS_TEXCOORD0,
+        1 << VS_TEXCOORD1
+    };
+
     struct VertexArray
     {
         GLuint  m_va;
         GLuint  m_vb;
         GLuint  m_ib;
+        GLuint  m_attribMap;
+        GLsizei m_vertexCount;
         GLenum  m_indexType;
         GLsizei m_indexCount;
     };
@@ -190,7 +210,9 @@ namespace Graphic
         const void * indexData,
         VertexArrayUsage usage )
     {
-        VertexArray * v = (VertexArray*)Core::MemoryManager::Malloc( sizeof( VertexArray ) );
+        VertexArray * v = (VertexArray*)Core::UnknownAllocator::Allocate( sizeof( VertexArray ) );
+
+        v->m_attribMap = 0;
 
         glGenVertexArrays( 1, &v->m_va );
         glBindVertexArray( v->m_va );
@@ -201,20 +223,25 @@ namespace Graphic
         for ( SizeT i=0; i<attribCount; ++i )
         {
             const AttribDeclaration& attrib = attribDecl[ i ];
+            v->m_attribMap |= ToVertexSemanticMap[ attrib.m_semantic ];
             glEnableVertexAttribArray( attrib.m_semantic );
             glVertexAttribPointer( attrib.m_semantic, attrib.m_size, ToGLDataType[ attrib.m_type ], attrib.m_normalized, vertexSize, reinterpret_cast< const void * >( attrib.m_offset ) );
+            glDisableVertexAttribArray( attrib.m_semantic );
         }
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
-        glGenBuffers( 1, &v->m_ib );
-        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, v->m_ib );
-        glBufferData( GL_ELEMENT_ARRAY_BUFFER, indexCount * DataTypeSize[ indexType ], indexData, ToGLVertexArrayUsage[ usage ] );
-        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+        if ( indexData )
+        {
+            glGenBuffers( 1, &v->m_ib );
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, v->m_ib );
+            glBufferData( GL_ELEMENT_ARRAY_BUFFER, indexCount * DataTypeSize[ indexType ], indexData, ToGLVertexArrayUsage[ usage ] );
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+
+            v->m_indexType = ToGLDataType[ indexType ];
+            v->m_indexCount = indexCount;
+        }
 
         glBindVertexArray( 0 );
-
-        v->m_indexType = ToGLDataType[ indexType ];
-        v->m_indexCount = indexCount;
 
         return v;
     }
@@ -227,7 +254,7 @@ namespace Graphic
         glDeleteBuffers( 1, &v->m_vb );
         glDeleteBuffers( 1, &v->m_ib );
 
-        Core::MemoryManager::Free( v );
+        Core::UnknownAllocator::Deallocate( v );
     }
 
     U32 RenderDevice::CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count )
@@ -250,12 +277,17 @@ namespace Graphic
             if ( compileStatus == GL_FALSE )
             {
                 GLint logLength;
-		        glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
-                GLchar * buffer =(GLchar*)Core::MemoryManager::Malloc( logLength + 1 );
-			    glGetShaderInfoLog( shader, logLength, NULL, buffer );
+                GLchar buffer[ 1024 ];
+
+                glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
+                if ( logLength > 1024 )
+                {
+                    logLength = 1024;
+                }
+
+                glGetShaderInfoLog( shader, logLength, NULL, buffer );
                 buffer[ logLength ] = '\n';
 			    CARBON_TRACE( buffer );
-                Core::MemoryManager::Free( buffer );
 
                 return 0;
             }
@@ -277,12 +309,17 @@ namespace Graphic
         if ( linkStatus == GL_FALSE )
         {
             GLint logLength;
-		    glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logLength );
-            GLchar * buffer =(GLchar*)Core::MemoryManager::Malloc( logLength + 1 );
-			glGetProgramInfoLog( program, logLength, NULL, buffer );
+            GLchar buffer[ 1024 ];
+
+            glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
+            if ( logLength > 1024 )
+            {
+                logLength = 1024;
+            }
+
+            glGetProgramInfoLog( program, logLength, NULL, buffer );
             buffer[ logLength ] = '\n';
-			CARBON_TRACE( buffer );
-            Core::MemoryManager::Free( buffer );
+            CARBON_TRACE( buffer );
 
             return 0;
         }
@@ -290,9 +327,9 @@ namespace Graphic
         return program;
     }
 
-    void RenderDevice::DeleteProgram( U32 handle )
+    void RenderDevice::DeleteProgram( U32 program )
     {
-        glDeleteProgram( handle );
+        glDeleteProgram( program );
     }
 
     void RenderDevice::GetProgramBinary( U32 program, void *& binary, SizeT& size )
@@ -302,7 +339,7 @@ namespace Graphic
 
         size = binLength + sizeof(GLenum);
 
-        binary          = Core::MemoryManager::Malloc( size );
+        binary          = Core::UnknownAllocator::Allocate( size );
         GLenum * fmt    = (GLenum*)binary;
         void * buffer   = fmt + 1;
 
@@ -324,17 +361,66 @@ namespace Graphic
 		if ( linkStatus == GL_FALSE )
 		{
             GLint logLength;
-		    glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logLength );
-			GLchar * buffer =(GLchar*)Core::MemoryManager::Malloc( logLength + 1 );
-			glGetProgramInfoLog( program, logLength, NULL, buffer );
+            GLchar buffer[ 1024 ];
+
+            glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
+            if ( logLength > 1024 )
+            {
+                logLength = 1024;
+            }
+
+            glGetProgramInfoLog( program, logLength, NULL, buffer );
             buffer[ logLength ] = '\n';
-			CARBON_TRACE( buffer );
-            Core::MemoryManager::Free( buffer );
+
+            CARBON_TRACE( buffer );
 
             return 0;
 		}
 
         return program;
+    }
+
+    void RenderDevice::UseProgram( Handle program )
+    {
+        glUseProgram( (GLuint)program );
+    }
+
+    void RenderDevice::Draw( PrimitiveType primitive, VertexArray * va )
+    {
+        CARBON_ASSERT( va );
+
+        glBindVertexArray( va->m_va );
+
+        GLuint attribIdxCount = 0;
+        GLuint attribIdx[VS_COUNT];
+        for ( SizeT i=0; i<VS_COUNT; ++i )
+        {
+            attribIdx[attribIdxCount]   = i;
+            attribIdxCount              += ( va->m_attribMap & ToVertexSemanticMap[i] ) >> i;
+        }
+
+        for ( SizeT i=0; i<attribIdxCount; ++i )
+        {
+            glEnableVertexAttribArray( attribIdx[i] );
+        }
+
+        if ( va->m_ib )
+        {
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->m_ib );
+            glDrawElements( ToGLPrimitiveType[ primitive ], va->m_indexCount, va->m_indexType, (GLvoid*)0 );
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+        }
+        else
+        {
+            glDrawArrays( ToGLPrimitiveType[ primitive ], 0, va->m_vertexCount );
+        }
+
+        for ( SizeT i=0; i<attribIdxCount; ++i )
+        {
+            glDisableVertexAttribArray( attribIdx[i] );
+        }
+
+        glBindVertexArray( 0 );
     }
 
     void RenderDevice::SetViewport( U32 x, U32 y, U32 w, U32 h )
