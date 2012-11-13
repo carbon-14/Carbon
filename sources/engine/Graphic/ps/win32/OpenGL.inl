@@ -76,45 +76,52 @@ extern "C"
     GLAPI void              APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures);
     GLAPI void              APIENTRY glGenTextures (GLsizei n, GLuint *textures);
     GLAPI GLboolean         APIENTRY glIsTexture (GLuint texture);
-
-    // GL_VERSION_1_5
-    extern PFNGLBINDBUFFERPROC                  glBindBuffer;
-    extern PFNGLDELETEBUFFERSPROC               glDeleteBuffers;
-    extern PFNGLGENBUFFERSPROC                  glGenBuffers;
-    extern PFNGLBUFFERDATAPROC                  glBufferData;
-    extern PFNGLBUFFERSUBDATAPROC               glBufferSubData;
-
-    // GL_VERSION_2_0
-    extern PFNGLATTACHSHADERPROC                glAttachShader;
-    extern PFNGLCOMPILESHADERPROC               glCompileShader;
-    extern PFNGLCREATEPROGRAMPROC               glCreateProgram;
-    extern PFNGLCREATESHADERPROC                glCreateShader;
-    extern PFNGLDELETEPROGRAMPROC               glDeleteProgram;
-    extern PFNGLDELETESHADERPROC                glDeleteShader;
-    extern PFNGLDETACHSHADERPROC                glDetachShader;
-    extern PFNGLDISABLEVERTEXATTRIBARRAYPROC    glDisableVertexAttribArray;
-    extern PFNGLENABLEVERTEXATTRIBARRAYPROC     glEnableVertexAttribArray;
-    extern PFNGLGETPROGRAMIVPROC                glGetProgramiv;
-    extern PFNGLGETPROGRAMINFOLOGPROC           glGetProgramInfoLog;
-    extern PFNGLGETSHADERIVPROC                 glGetShaderiv;
-    extern PFNGLGETSHADERINFOLOGPROC            glGetShaderInfoLog;
-    extern PFNGLLINKPROGRAMPROC                 glLinkProgram;
-    extern PFNGLSHADERSOURCEPROC                glShaderSource;
-    extern PFNGLUSEPROGRAMPROC                  glUseProgram;
-    extern PFNGLVERTEXATTRIBPOINTERPROC         glVertexAttribPointer;
-
-    // GL_ARB_vertex_array_object
-    extern PFNGLBINDVERTEXARRAYPROC             glBindVertexArray;
-    extern PFNGLDELETEVERTEXARRAYSPROC          glDeleteVertexArrays;
-    extern PFNGLGENVERTEXARRAYSPROC             glGenVertexArrays;
-    extern PFNGLISVERTEXARRAYPROC               glIsVertexArray;
-
-    // GL_ARB_get_program_binary
-    extern PFNGLGETPROGRAMBINARYPROC            glGetProgramBinary;
-    extern PFNGLPROGRAMBINARYPROC               glProgramBinary;
-    extern PFNGLPROGRAMPARAMETERIPROC           glProgramParameteri;
 }
 #endif
+
+#define META_GL_FUNCTIONS( Func )                                                   \
+    /* GL_VERSION_1_5 */                                                            \
+    Func ( PFNGLBINDBUFFERPROC                  , glBindBuffer                  );  \
+    Func ( PFNGLDELETEBUFFERSPROC               , glDeleteBuffers               );  \
+    Func ( PFNGLGENBUFFERSPROC                  , glGenBuffers                  );  \
+    Func ( PFNGLBUFFERDATAPROC                  , glBufferData                  );  \
+    Func ( PFNGLBUFFERSUBDATAPROC               , glBufferSubData               );  \
+                                                                                    \
+    /* GL_VERSION_2_0 */                                                            \
+    Func ( PFNGLATTACHSHADERPROC                , glAttachShader                );  \
+    Func ( PFNGLCOMPILESHADERPROC               , glCompileShader               );  \
+    Func ( PFNGLCREATEPROGRAMPROC               , glCreateProgram               );  \
+    Func ( PFNGLCREATESHADERPROC                , glCreateShader                );  \
+    Func ( PFNGLDELETEPROGRAMPROC               , glDeleteProgram               );  \
+    Func ( PFNGLDELETESHADERPROC                , glDeleteShader                );  \
+    Func ( PFNGLDETACHSHADERPROC                , glDetachShader                );  \
+    Func ( PFNGLDISABLEVERTEXATTRIBARRAYPROC    , glDisableVertexAttribArray    );  \
+    Func ( PFNGLENABLEVERTEXATTRIBARRAYPROC     , glEnableVertexAttribArray     );  \
+    Func ( PFNGLGETPROGRAMIVPROC                , glGetProgramiv                );  \
+    Func ( PFNGLGETPROGRAMINFOLOGPROC           , glGetProgramInfoLog           );  \
+    Func ( PFNGLGETSHADERIVPROC                 , glGetShaderiv                 );  \
+    Func ( PFNGLGETSHADERINFOLOGPROC            , glGetShaderInfoLog            );  \
+    Func ( PFNGLLINKPROGRAMPROC                 , glLinkProgram                 );  \
+    Func ( PFNGLSHADERSOURCEPROC                , glShaderSource                );  \
+    Func ( PFNGLUSEPROGRAMPROC                  , glUseProgram                  );  \
+    Func ( PFNGLVERTEXATTRIBPOINTERPROC         , glVertexAttribPointer         );  \
+                                                                                    \
+    /* GL_ARB_vertex_array_object */                                                \
+    Func ( PFNGLBINDVERTEXARRAYPROC             , glBindVertexArray             );  \
+    Func ( PFNGLDELETEVERTEXARRAYSPROC          , glDeleteVertexArrays          );  \
+    Func ( PFNGLGENVERTEXARRAYSPROC             , glGenVertexArrays             );  \
+    Func ( PFNGLISVERTEXARRAYPROC               , glIsVertexArray               );  \
+                                                                                    \
+    /* GL_ARB_get_program_binary */                                                 \
+    Func ( PFNGLGETPROGRAMBINARYPROC            , glGetProgramBinary            );  \
+    Func ( PFNGLPROGRAMBINARYPROC               , glProgramBinary               );  \
+    Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           )
+
+#define DECLARE_GL_FUNCTIONS( PFunc, Name )     extern PFunc Name
+#define DEFINE_GL_FUNCTIONS( PFunc, Name )      PFunc Name = 0
+#define LOAD_GL_FUNCTIONS( PFunc, Name )        Name = (PFunc)wglGetProcAddress( #Name )
+
+META_GL_FUNCTIONS( DECLARE_GL_FUNCTIONS );
 
 #include "Graphic/DLL.h"
 
