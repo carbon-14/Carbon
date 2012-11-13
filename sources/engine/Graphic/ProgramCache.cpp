@@ -149,9 +149,9 @@ namespace Graphic
             {
                 RenderDevice::DeleteProgram( program.m_handle );
                 program.m_handle = 0;
-
-                LoadProgram( program );
             }
+
+            LoadProgram( program );
         }
     }
 
