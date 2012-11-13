@@ -36,8 +36,6 @@ namespace Core
         StringImpl& Append( ConstPointer str );
         StringImpl& Append( ConstPointer str, SizeType len );
         StringImpl& operator+=( ConstPointer str );
-
-        //void Copy( Char * dest, SizeT size );        
     };
 
     //========================================================================= StringImpl
@@ -78,7 +76,7 @@ namespace Core
         {
             const SizeType capacity = len + 1;
             m_begin = DoAllocate( capacity );
-            m_end = m_begin + size;
+            m_end = m_begin + len;
             m_capacity = m_begin + capacity;
             MemoryUtils::MemCpy( m_begin, str, len );
         }
@@ -115,22 +113,8 @@ namespace Core
     template< typename Alloc >
     StringImpl< Alloc >& StringImpl< Alloc >::operator=( const StringImpl& other )
     {
-        const SizeType size = other.Size();
-        if ( size > 0 )
-        {
-            const SizeType capacity = size + 1;
-            m_begin = DoAllocate( capacity );
-            m_end = m_begin + size;
-            m_capacity = m_begin + capacity;
-            MemoryUtils::MemCpy( m_begin, other.Begin(), size );
-        }
-        else
-        {
-            m_end = m_begin = DoAllocate( ms_MinStringSize );
-            m_capacity = m_begin + ms_MinStringSize;
-        }
-
-        *m_end = 0;
+        Clear();
+        Append( other.m_begin, other.Size() );
 
         return *this;
     }
@@ -166,15 +150,6 @@ namespace Core
     {
         return Append( str );
     }
-
-    /*template< typename Alloc >
-    void StringImpl< Alloc >::Copy( Char * dest, SizeT size )
-    {
-        CARBON_ASSERT( Size() < size );
-
-        MemoryUtils::MemCpy( dest, m_begin, Size() );
-        dest[ Size() ] = 0;
-    }*/
 
     //========================================================================= StringImpl
 

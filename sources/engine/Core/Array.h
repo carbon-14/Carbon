@@ -15,6 +15,8 @@ namespace Core
     // Array
     //====================================================================================
 
+    // TODO : improve POD managment
+
     template < typename T, typename Alloc = DefaultAllocator >
     class Array : public IArray< T >
     {
@@ -33,7 +35,10 @@ namespace Core
         Array( SizeType size, ConstReference value = ValueType() );
         Array( ConstIterator v, SizeType n );
         Array( ConstIterator begin, ConstIterator end );
+        Array( const Array& other );
         ~Array();
+
+        Array&          operator=( const Array& other );
 
         ConstPointer    ConstPtr() const;
         Pointer         Ptr();
@@ -80,11 +85,6 @@ namespace Core
         ValueType *	    m_begin;
         ValueType *	    m_end;
         ValueType *	    m_capacity;
-
-    private:
-        // forbidden
-        Array( const Array& other );
-        Array&          operator=( const Array& other );
     };
 
     //============================================================================== Array
@@ -142,10 +142,35 @@ namespace Core
     }
 
     template< typename T, typename Alloc >
+    Array< T, Alloc >::Array( const Array& other )
+    {
+        const SizeType size = other.Size();
+        if ( size > 0 )
+        {
+            m_begin	= DoAllocate( size );
+            m_capacity = m_end = m_begin + size;
+            MemoryUtils::Copy( other.Begin(), other.End(), m_begin );
+        }
+        else
+        {
+            m_begin = m_end = m_capacity = 0;
+        }
+    }
+
+    template< typename T, typename Alloc >
     Array< T, Alloc >::~Array()
     {
         Clear();
         DoFree( m_begin );
+    }
+
+    template< typename T, typename Alloc >
+    Array< T, Alloc >& Array< T, Alloc >::operator=( const Array& other )
+    {
+        Clear();
+        PushBack( other.Begin(), other.End() );
+
+        return *this;
     }
 
     template< typename T, typename Alloc >
@@ -271,9 +296,16 @@ namespace Core
         Iterator end = m_begin + size;
         if ( size < Size() )
         {
-            while ( m_end != end )
+            if ( IsPOD< T >::value )
             {
-                PopBack();
+                m_end = end;
+            }
+            else
+            {
+                while ( m_begin != m_end )
+                {
+                    PopBack();
+                }
             }
         }
         else
@@ -291,8 +323,14 @@ namespace Core
         {
             IncreaseCapacity( ComputeNewCapacity() );
         }
-
-        ::new( m_end ) ValueType( value );
+        if ( IsPOD< T >::value )
+        {
+            *m_end = value;
+        }
+        else
+        {
+            ::new( m_end ) ValueType( value );
+        }
         ++m_end;
     }
 
@@ -319,15 +357,25 @@ namespace Core
     {
         CARBON_ASSERT( m_begin < m_end );
         --m_end;
-        m_end->~ValueType();
+        if ( ! IsPOD< T >::value )
+        {
+            m_end->~ValueType();
+        }
     }
 
     template< typename T, typename Alloc >
     void Array< T, Alloc >::Clear()
     {
-        while ( m_begin != m_end )
+        if ( IsPOD< T >::value )
         {
-            PopBack();
+            m_end = m_begin;
+        }
+        else
+        {
+            while ( m_begin != m_end )
+            {
+                PopBack();
+            }
         }
     }
 
@@ -354,7 +402,10 @@ namespace Core
     {
         Pointer ptr = DoAllocate( capacity );
         MemoryUtils::Copy( m_begin, m_end, ptr );
-        for ( Iterator it=m_begin; it!=m_end; ++it ) { it->~ValueType(); }
+        if ( ! IsPOD< T >::value )
+        {
+            for ( Iterator it=m_begin; it!=m_end; ++it ) { it->~ValueType(); }
+        }
         DoFree( m_begin );
         m_end = ptr + Size();
         m_begin = ptr;

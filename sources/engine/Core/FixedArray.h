@@ -32,7 +32,9 @@ namespace Core
         FixedArray( SizeType size, ConstReference value = ValueType() );
         FixedArray( ConstIterator v, SizeType n );
         FixedArray( ConstIterator begin, ConstIterator end );
-        ~FixedArray();
+        FixedArray( const FixedArray& other );
+
+        FixedArray&     operator=( const FixedArray& other );
 
         ConstPointer    ConstPtr() const;
         Pointer         Ptr();
@@ -71,12 +73,6 @@ namespace Core
     protected:
         ValueType 	    m_begin[ C ];
         ValueType *	    m_end;
-
-    private:
-        // forbidden
-        FixedArray( const FixedArray& other );
-        FixedArray&     operator=( const FixedArray& other );
-
     };
 
     //======================================================================== FixedArray
@@ -129,9 +125,25 @@ namespace Core
     }
 
     template< typename T, SizeT C >
-    FixedArray< T, C >::~FixedArray()
+    FixedArray< T, C >::FixedArray( const FixedArray& other )
+    {
+        const SizeT size = other.Size();
+
+        m_end = m_begin + size;
+
+        if ( size > 0 )
+        {
+            MemoryUtils::Copy( other.Begin(), other.End(), m_begin );
+        }
+    }
+
+    template< typename T, SizeT C >
+    FixedArray< T, C >& FixedArray< T, C >::operator=( const FixedArray& other )
     {
         Clear();
+        PushBack( other.Begin(), other.End() );
+
+        return *this;
     }
 
     template< typename T, SizeT C >
@@ -248,18 +260,11 @@ namespace Core
         CARBON_ASSERT( size <= C );
 
         Iterator end = m_begin + size;
-        if ( size < Size() )
-        {
-            while ( m_end != end )
-            {
-                PopBack();
-            }
-        }
-        else
+        if ( size >= Size() )
         {
             MemoryUtils::Fill( m_end, end, value );
-            m_end = end;
         }
+        m_end = end;
     }
 
     template< typename T, SizeT C >
@@ -293,16 +298,12 @@ namespace Core
     {
         CARBON_ASSERT( m_begin < m_end );
         --m_end;
-        m_end->~ValueType();
     }
 
     template< typename T, SizeT C >
     void FixedArray< T, C >::Clear()
     {
-        while ( m_begin != m_end )
-        {
-            PopBack();
-        }
+        m_end = m_begin;
     }
 
     //======================================================================== FixedArray

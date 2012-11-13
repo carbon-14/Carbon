@@ -15,7 +15,7 @@ namespace Core
     {
     public:
         static void Initialize( SizeT frameAllocatorSize );
-        static void Finish();
+        static void Destroy();
 
         static void * Malloc( SizeT sizeBytes, SizeT align = 1 );
         static void * Realloc( void * ptr, SizeT sizeBytes, SizeT align = 1 );
@@ -76,6 +76,31 @@ namespace Core
     }
 
     //===================================================================== FrameAllocator
+
+    //====================================================================================
+    // UnknownAllocator
+    //====================================================================================
+
+    class UnknownAllocator
+    {
+    public:
+        static void *   Allocate( SizeT sizeBytes, SizeT align = 1 );
+        static void     Deallocate( void * ptr );
+    };
+
+    //==================================================================== UnknownAllocator
+
+    inline void * UnknownAllocator::Allocate( SizeT sizeBytes, SizeT align )
+    {
+        return MemoryManager::Malloc( sizeBytes, align );
+    }
+
+    inline void UnknownAllocator::Deallocate( void * ptr )
+    {
+        MemoryManager::Free( ptr );
+    }
+
+    //==================================================================== UnknownAllocator
 }
 
 #endif // _CORE_MEMORYMANAGER_H

@@ -105,11 +105,11 @@ namespace Core
 
         rewind( pFile );
 
-        buffer = MemoryManager::Malloc( size );
+        buffer = UnknownAllocator::Allocate( size );
 
         if ( fread( buffer, 1, size, pFile ) != size )
         {
-            MemoryManager::Free( buffer );
+            UnknownAllocator::Deallocate( buffer );
             size = 0;
             fclose( pFile );
             return false;

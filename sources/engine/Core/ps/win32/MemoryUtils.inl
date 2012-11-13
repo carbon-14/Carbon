@@ -1,5 +1,7 @@
 #include <new>
 
+#include "Core/TypeTraits.h"
+
 namespace Core
 {
     template< typename T >
@@ -11,18 +13,35 @@ namespace Core
     template < typename T >
     void MemoryUtils::Fill( T * begin, const T * end, const T& value )
     {
-        for ( ; begin != end; ++begin )
+        if ( IsPOD< T >::value )
         {
-            new( begin ) T( value );
+            for ( ; begin != end; ++begin )
+            {
+                *begin = value;
+            }
+        }
+        else
+        {
+            for ( ; begin != end; ++begin )
+            {
+                new( begin ) T( value );
+            }
         }
     }
 
     template< typename T >
     void MemoryUtils::Copy( const T * begin, const T * end, T * to )
     {
-        for ( ; begin != end; ++begin, ++to )
+        if ( IsPOD< T >::value )
         {
-            new( to ) T( *begin );
+            MemoryUtils::MemCpy( to, begin, sizeof(T) * ( end - begin ) );
+        }
+        else
+        {
+            for ( ; begin != end; ++begin, ++to )
+            {
+                new( to ) T( *begin );
+            }
         }
     }
 }
