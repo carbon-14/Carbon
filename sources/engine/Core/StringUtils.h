@@ -15,6 +15,8 @@ namespace Core
         static Char *   StrCpy( Char * dest, SizeT size, const Char * src );
 
         static SizeT    StrLen( const Char * str );
+
+        static SizeT    StrCmp( const Char * left, const Char * right );
     };
 }
 

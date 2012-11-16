@@ -1,18 +1,16 @@
-#include <cstdlib>
-#include <cstdio>
+#include <Windows.h>
 
 #include "UnitTest/Level0/Level0.h"
 #include "UnitTest/Level1/Level1.h"
 #include "UnitTest/Level2/Level2.h"
+#include "UnitTest/Level3/Level3.h"
 
-int main( int argc, char* argv[] )
+int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
     //Level0();
     //Level1();
-    Level2();
+    //Level2();
 
-    printf("Press 'Enter' to continue!\n");
-    getchar();
-
-    return EXIT_SUCCESS;
+    return Level3( hInstance, nCmdShow );
 }
+

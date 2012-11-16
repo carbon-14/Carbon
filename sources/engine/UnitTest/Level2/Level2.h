@@ -1,6 +1,6 @@
 #pragma once
 #ifndef _UNITTEST_LEVEL2_H
-#define _UNITTEST_LEVEL1_H
+#define _UNITTEST_LEVEL2_H
 
 void Level2();
 

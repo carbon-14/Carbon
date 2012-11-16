@@ -15,6 +15,7 @@ end
 
 _G.bld_dir = "build"
 _G.src_dir = "sources"
+_G.ext_dir = "ext"
 _G.lib_dir = "lib/"..platform_name
 _G.app_dir = "bin/"..platform_name
 
@@ -41,8 +42,6 @@ _G.config_retail = {
     defines = { "NDEBUG","CARBON_RETAIL" },
     flags   = { "Optimize" }
 }
-
-_G.dllexport_define	= "CARBON_CORE_DLLEXPORT"
 
 -------------------------------------------------------------------------------------------
 -- Prepare solution 'engine'
@@ -76,7 +75,7 @@ for _, prj_basedir in ipairs( p ) do
     _G.prj.objdir   = prj_location.."/obj/"..platform_name
 	
     vpaths          { [""] = prj_basedir }
-    includedirs     { sln_basedir }
+    includedirs     { sln_basedir, ext_dir }
     libdirs         { lib_dir }
 
     dofile( prj_basedir.."/cfg.lua" )

@@ -10,6 +10,8 @@
     #else
         #define _CoreExport __declspec( dllimport )
     #endif
+
+    #pragma warning( disable: 4251 )    // disable warning of non-exported templates instances used as members in exported classes
 #else
     #define _CoreExport
 #endif
