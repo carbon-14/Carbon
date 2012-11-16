@@ -21,9 +21,9 @@ namespace Core
         frameAllocator.Initialize( frameAllocatorBuffer, frameAllocatorSize );
     }
 
-    void MemoryManager::Finish()
+    void MemoryManager::Destroy()
     {
-        frameAllocator.Finish();
+        frameAllocator.Destroy();
         Free( frameAllocatorBuffer );
         frameAllocatorBuffer = 0;
     }

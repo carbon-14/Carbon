@@ -52,7 +52,6 @@ namespace Core
 
         virtual void            Resize( SizeType size, ConstReference value = ValueType() ) = 0;
 
-        virtual void            PushBackEmpty() = 0;
         virtual void            PushBack( ConstReference value ) = 0;
         virtual void            PushBack( ConstPointer p, SizeType n ) = 0;
         virtual void            PushBack( ConstIterator begin, ConstIterator end ) = 0;

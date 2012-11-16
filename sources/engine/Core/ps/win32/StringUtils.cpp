@@ -24,4 +24,9 @@ namespace Core
     {
         return strlen( str );
     }
+
+    SizeT StringUtils::StrCmp( const Char * left, const Char * right )
+    {
+        return strcmp( left, right );
+    }
 }

@@ -7,8 +7,8 @@ using namespace Core;
 
 void Level0()
 {
-    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 0 #\n###########\n\n" )
+    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 0 #\n###########\n\n" );
 
-    UNIT_TEST_MESSAGE( "Hello World !!!\n" )
-    UNIT_TEST_MESSAGE( "Your platform is : %s\n", Platform::GetName() )
+    UNIT_TEST_MESSAGE( "Hello World !!!\n" );
+    UNIT_TEST_MESSAGE( "Your platform is : %s\n", Platform::GetName() );
 }

@@ -21,7 +21,7 @@ namespace Core
         m_end = m_head + sizeBytes;
     }
 
-    void StackAllocator::Finish()
+    void StackAllocator::Destroy()
     {
         mp_buffer = 0;
         m_head = 0;

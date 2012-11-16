@@ -28,14 +28,14 @@ namespace Core
     public:
         StringImpl();
         StringImpl( ConstPointer str );
+        StringImpl( ConstPointer str, SizeType len );
+        StringImpl( const StringImpl& other );
+
+        StringImpl& operator=( const StringImpl& other );
 
         StringImpl& Append( ConstPointer str );
         StringImpl& Append( ConstPointer str, SizeType len );
         StringImpl& operator+=( ConstPointer str );
-
-    private:
-        StringImpl( const StringImpl& other );
-        StringImpl& operator=( const StringImpl& other );
     };
 
     //========================================================================= StringImpl
@@ -43,9 +43,9 @@ namespace Core
     template< typename Alloc >
     StringImpl< Alloc >::StringImpl()
     {
-        m_begin = m_end = DoAllocate( ms_MinStringSize );
+        m_end = m_begin = DoAllocate( ms_MinStringSize );
         m_capacity = m_begin + ms_MinStringSize;
-        MemoryUtils::MemSet( m_begin, 0, ms_MinStringSize );
+        *m_end = 0;
     }
 
     template< typename Alloc >
@@ -59,14 +59,64 @@ namespace Core
             m_end = m_begin + size;
             m_capacity = m_begin + capacity;
             MemoryUtils::MemCpy( m_begin, str, size );
-            *m_end = 0;
         }
         else
         {
-            m_begin = m_end = DoAllocate( ms_MinStringSize );
+            m_end = m_begin = DoAllocate( ms_MinStringSize );
             m_capacity = m_begin + ms_MinStringSize;
-            MemoryUtils::MemSet( m_begin, 0, ms_MinStringSize );
         }
+
+        *m_end = 0;
+    }
+
+    template< typename Alloc >
+    StringImpl< Alloc >::StringImpl( ConstPointer str, SizeType len )
+    {
+        if ( len > 0 )
+        {
+            const SizeType capacity = len + 1;
+            m_begin = DoAllocate( capacity );
+            m_end = m_begin + len;
+            m_capacity = m_begin + capacity;
+            MemoryUtils::MemCpy( m_begin, str, len );
+        }
+        else
+        {
+            m_end = m_begin = DoAllocate( ms_MinStringSize );
+            m_capacity = m_begin + ms_MinStringSize;
+        }
+
+        *m_end = 0;
+    }
+
+    template< typename Alloc >
+    StringImpl< Alloc >::StringImpl( const StringImpl& other )
+    {
+        const SizeType size = other.Size();
+        if ( size > 0 )
+        {
+            const SizeType capacity = size + 1;
+            m_begin = DoAllocate( capacity );
+            m_end = m_begin + size;
+            m_capacity = m_begin + capacity;
+            MemoryUtils::MemCpy( m_begin, other.Begin(), size );
+        }
+        else
+        {
+            m_end = m_begin = DoAllocate( ms_MinStringSize );
+            m_capacity = m_begin + ms_MinStringSize;
+        }
+
+        *m_end = 0;
+    }
+
+    template< typename Alloc >
+    StringImpl< Alloc >& StringImpl< Alloc >::operator=( const StringImpl& other )
+    {
+        Clear();
+        Append( other.m_begin, other.Size() );
+
+        return *this;
     }
 
     template< typename Alloc >
@@ -86,7 +136,7 @@ namespace Core
             {
                 IncreaseCapacity( capacity );
             }
-            MemoryUtils::MemCpy( m_begin, str, len );
+            MemoryUtils::MemCpy( m_end, str, len );
             m_end = m_begin + size;
             *m_end = 0;
         }
