@@ -27,7 +27,7 @@ if %v%==9 set a=codelite
 if "%a%"=="" goto end
 
 echo [ building %a% - windows - x32 ]
-utilities\\premake\\premake4  --file=premake.lua --os=windows --platform=x32 %a%
+utilities\\premake\\premake4  --file=sources\\premake.lua --os=windows --platform=x32 %a%
 
 :end
 pause
