@@ -80,6 +80,17 @@ extern "C"
 #endif
 
 #define META_GL_FUNCTIONS( Func )                                                   \
+    /* GL_VERSION_1_3 */                                                            \
+    Func ( PFNGLACTIVETEXTUREPROC               , glActiveTexture               );  \
+    Func ( PFNGLSAMPLECOVERAGEPROC              , glSampleCoverage              );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE3DPROC        , glCompressedTexImage3D        );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE2DPROC        , glCompressedTexImage2D        );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE1DPROC        , glCompressedTexImage1D        );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC     , glCompressedTexSubImage3D     );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC     , glCompressedTexSubImage2D     );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC     , glCompressedTexSubImage1D     );  \
+    Func ( PFNGLGETCOMPRESSEDTEXIMAGEPROC       , glGetCompressedTexImage       );  \
+                                                                                    \
     /* GL_VERSION_1_5 */                                                            \
     Func ( PFNGLBINDBUFFERPROC                  , glBindBuffer                  );  \
     Func ( PFNGLDELETEBUFFERSPROC               , glDeleteBuffers               );  \
@@ -117,12 +128,12 @@ extern "C"
     Func ( PFNGLPROGRAMBINARYPROC               , glProgramBinary               );  \
     Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           )
 
-#define DECLARE_GL_FUNCTIONS( PFunc, Name )     extern PFunc Name
-#define DEFINE_GL_FUNCTIONS( PFunc, Name )      PFunc Name = 0
-#define LOAD_GL_FUNCTIONS( PFunc, Name )        Name = (PFunc)wglGetProcAddress( #Name )
-#define UNLOAD_GL_FUNCTIONS( PFunc, Name )      Name = 0
+#define DECLARE_GL_FUNCTION( PFunc, Name )     extern PFunc Name
+#define DEFINE_GL_FUNCTION( PFunc, Name )      PFunc Name = 0
+#define LOAD_GL_FUNCTION( PFunc, Name )        Name = (PFunc)wglGetProcAddress( #Name )
+#define UNLOAD_GL_FUNCTION( PFunc, Name )      Name = 0
 
-META_GL_FUNCTIONS( DECLARE_GL_FUNCTIONS );
+META_GL_FUNCTIONS( DECLARE_GL_FUNCTION );
 
 #include "Graphic/DLL.h"
 
