@@ -227,5 +227,8 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
     FileSystem::Destroy();
     MemoryManager::Destroy();
 
+    DestroyWindow( hwnd );
+    UnregisterClass( "CarbonWndClass", hInstance );
+
     return msg.wParam;
 }
