@@ -9,12 +9,17 @@
 
 #include "Core/Timer.h"
 
+using namespace Core;
+
 #define ALLOC_TYPE  char
 #define ALLOC_COUNT 500000
 
-void * allocs[ ALLOC_COUNT ];
+namespace Level1_NS
+{
+    void * allocs[ ALLOC_COUNT ];
+}
 
-using namespace Core;
+using namespace Level1_NS;
 
 void Test_MemoryManager()
 {

@@ -1,4 +1,4 @@
-#include "UnitTest/Level3/Level3.h"
+#include "UnitTest/Level4/Level4.h"
 #include "UnitTest/Utils.h"
 
 #include "Core/FileSystem.h"
@@ -12,7 +12,7 @@
 using namespace Core;
 using namespace Graphic;
 
-namespace Level3_NS
+namespace Level4_NS
 {
     const U32 FRAME_MAX_COUNT = 60;
     U64 clockTicks = 0;
@@ -23,6 +23,60 @@ namespace Level3_NS
     RenderDevice device3d;
     ProgramCache programCache;
     RenderList renderList;
+
+    struct TextureHeader
+    {
+        unsigned int format;
+        unsigned int mipMapCount;
+    };
+
+    struct LevelDesc
+    {
+        unsigned int    size;
+        unsigned int    width;
+        unsigned int    height;
+    };
+
+    Handle LoadTexture( const Char * filename )
+    {
+        PathString path;
+        FileSystem::BuildPathName( filename, path, FileSystem::PT_CACHE );
+
+        void * data;
+        SizeT size;
+        FileSystem::Load( path, data, size );
+
+        U8 * ptr = (U8*)data;
+
+        TextureHeader * header = (TextureHeader*)ptr;
+
+        ptr += sizeof(TextureHeader);
+
+        const SizeT maxMipMapCount = 16;
+        SizeT sizes[ maxMipMapCount ];
+        SizeT widths[ maxMipMapCount ];
+        SizeT heights[ maxMipMapCount ];
+        void * datas[ maxMipMapCount ];
+
+        SizeT count = ( header->mipMapCount < maxMipMapCount ) ? header->mipMapCount : maxMipMapCount;
+        for ( SizeT i=0; i<count; ++i )
+        {
+            LevelDesc * desc = (LevelDesc*)ptr;
+            ptr += sizeof(LevelDesc);
+
+            sizes[ i ]      = desc->size;
+            widths[ i ]     = desc->width;
+            heights[ i ]    = desc->height;
+            datas[ i ]      = ptr;
+            ptr += desc->size;
+        }
+
+        Handle texture = RenderDevice::CreateTexture( header->format, count, sizes, widths, heights, datas );
+
+        UnknownAllocator::Deallocate( data );
+
+        return texture;
+    }
 
     class FullScreenQuadRenderer
     {
@@ -54,6 +108,13 @@ namespace Level3_NS
             };
 
             m_renderElement.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, 1, 16, 4, (const void*)vb, DT_U8, 6, (const void*)ib, VAU_STATIC );
+
+            m_renderElement.m_samplers = &m_sampler;
+            m_sampler = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, FT_LINEAR, WT_REPEAT );
+
+            m_texture = LoadTexture( "carbon.btx" );
+            m_renderElement.m_textures = &m_texture;
+            m_renderElement.m_unitCount = 1;
         }
 
         void Render()
@@ -63,11 +124,15 @@ namespace Level3_NS
 
         void Destroy()
         {
+            RenderDevice::DestroySampler( m_sampler );
+            RenderDevice::DestroyTexture( m_texture );
             RenderDevice::DestroyVertexArray( m_renderElement.m_vertexArray );
         }
 
     private:
-        RenderElement m_renderElement;
+        RenderElement   m_renderElement;
+        Handle          m_texture;
+        Handle          m_sampler;
     };
 
 
@@ -132,17 +197,16 @@ namespace Level3_NS
             frameCount          = 0;
 
             Char text[ 32 ];
-            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level3 - [ %0.0f fps ]", fps ) );
+            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level4 - [ %0.0f fps ]", fps ) );
         }
     }
-
 }
 
-using namespace Level3_NS;
+using namespace Level4_NS;
 
-WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
+WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
 {
-    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 3 #\n###########\n\n" );
+    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 4 #\n###########\n\n" );
     UNIT_TEST_MESSAGE( "Window Creation\n" );
 
     MSG msg;
@@ -163,7 +227,7 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
     if ( !RegisterClass(&wc) ) return FALSE;
 
     hwnd = CreateWindow( "CarbonWndClass"
-                        ,"Level3"
+                        ,"Level4"
                         ,WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
                         ,CW_USEDEFAULT
                         ,CW_USEDEFAULT
