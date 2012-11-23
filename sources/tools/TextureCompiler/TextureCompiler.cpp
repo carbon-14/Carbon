@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 
 #if defined( CARBON_PLATFORM_WIN32 )
 #include <Windows.h>
@@ -12,6 +13,8 @@ HDC hdc;
 
 HGLRC glContext;
 
+PFNGLGENERATEMIPMAPPROC              glGenerateMipmap           = 0;
+
 PFNGLCOMPRESSEDTEXIMAGE3DPROC        glCompressedTexImage3D     = 0;
 PFNGLCOMPRESSEDTEXIMAGE2DPROC        glCompressedTexImage2D     = 0;
 PFNGLCOMPRESSEDTEXIMAGE1DPROC        glCompressedTexImage1D     = 0;
@@ -19,6 +22,13 @@ PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC     glCompressedTexSubImage3D  = 0;
 PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC     glCompressedTexSubImage2D  = 0;
 PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC     glCompressedTexSubImage1D  = 0;
 PFNGLGETCOMPRESSEDTEXIMAGEPROC       glGetCompressedTexImage    = 0;
+
+PFNGLTEXSTORAGE1DPROC                glTexStorage1D             = 0;
+PFNGLTEXSTORAGE2DPROC                glTexStorage2D             = 0;
+PFNGLTEXSTORAGE3DPROC                glTexStorage3D             = 0;
+PFNGLTEXTURESTORAGE1DEXTPROC         glTextureStorage1DEXT      = 0;
+PFNGLTEXTURESTORAGE2DEXTPROC         glTextureStorage2DEXT      = 0;
+PFNGLTEXTURESTORAGE3DEXTPROC         glTextureStorage3DEXT      = 0;
 
 LRESULT CALLBACK WndProc(HWND p_hWnd, UINT p_uiMessage, WPARAM p_wParam, LPARAM p_lParam)
 {
@@ -28,7 +38,7 @@ LRESULT CALLBACK WndProc(HWND p_hWnd, UINT p_uiMessage, WPARAM p_wParam, LPARAM 
 
 #include "libpng/inc/png.h"
 
-size_t width, height;
+unsigned int width, height;
 int bit_depth, channels;
 unsigned char * data;
 
@@ -128,6 +138,8 @@ bool InitializeOpenGL()
     wglMakeCurrent( hdc, glContext );
 
     // Load functions
+    glGenerateMipmap            = (PFNGLGENERATEMIPMAPPROC)wglGetProcAddress("glGenerateMipmap");
+
     glCompressedTexImage3D      = (PFNGLCOMPRESSEDTEXIMAGE3DPROC)wglGetProcAddress("glCompressedTexImage3D");
     glCompressedTexImage2D      = (PFNGLCOMPRESSEDTEXIMAGE2DPROC)wglGetProcAddress("glCompressedTexImage2D");
     glCompressedTexImage1D      = (PFNGLCOMPRESSEDTEXIMAGE1DPROC)wglGetProcAddress("glCompressedTexImage1D");
@@ -135,6 +147,13 @@ bool InitializeOpenGL()
     glCompressedTexSubImage2D   = (PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC)wglGetProcAddress("glCompressedTexSubImage2D");
     glCompressedTexSubImage1D   = (PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC)wglGetProcAddress("glCompressedTexSubImage1D");
     glGetCompressedTexImage     = (PFNGLGETCOMPRESSEDTEXIMAGEPROC)wglGetProcAddress("glGetCompressedTexImage");
+
+    glTexStorage1D              = (PFNGLTEXSTORAGE1DPROC)wglGetProcAddress("glTexStorage1D");
+    glTexStorage2D              = (PFNGLTEXSTORAGE2DPROC)wglGetProcAddress("glTexStorage2D");
+    glTexStorage3D              = (PFNGLTEXSTORAGE3DPROC)wglGetProcAddress("glTexStorage3D");
+    glTextureStorage1DEXT       = (PFNGLTEXTURESTORAGE1DEXTPROC)wglGetProcAddress("glTextureStorage1DEXT");
+    glTextureStorage2DEXT       = (PFNGLTEXTURESTORAGE2DEXTPROC)wglGetProcAddress("glTextureStorage2DEXT");
+    glTextureStorage3DEXT       = (PFNGLTEXTURESTORAGE3DEXTPROC)wglGetProcAddress("glTextureStorage3DEXT");
 
 #endif
     return true;
@@ -401,16 +420,88 @@ bool LoadPNG( const char * file_name )
     return true;
 }
 
-bool CompressImage( const char * outFilename, CompressionFormat compression )
+const int colorMask[ 5 ] = { -1, 0, -1, 1, 2 };
+
+const GLenum storageFormatTable[ TP_COUNT ] [ 3 ] =
+{
+    { GL_RGBA8                  , GL_RGB8               , GL_R8             },   // TP_RAW
+    { GL_COMPRESSED_SRGB_ALPHA  , GL_COMPRESSED_SRGB    , 0                 },   // TP_COLOR
+    { GL_COMPRESSED_RGBA        , GL_COMPRESSED_RGB     , GL_COMPRESSED_RED },   // TP_LINEAR
+    { GL_COMPRESSED_RG          , GL_COMPRESSED_RG      , 0                 }    // TP_NORMAL
+};
+
+const GLenum textureFormatTable[ TP_COUNT ] [ 3 ] =
+{
+    { GL_RGBA   , GL_RGB    , GL_RED    },   // TP_RAW
+    { GL_RGBA   , GL_RGB    , 0         },   // TP_COLOR
+    { GL_RGBA   , GL_RGB    , GL_RED    },   // TP_LINEAR
+    { GL_RG     , GL_RG     , 0         }    // TP_NORMAL
+};
+
+struct CompressedTexHeader
+{
+    unsigned int    size;
+    unsigned int    width;
+    unsigned int    height;
+    unsigned int    level;  // mip-map count
+    unsigned int    format;
+};
+
+bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMapGen )
 {
     GLuint compressed_map;
-    glGenTextures( 1, &compressed_map );
+    glGenTextures(1, &compressed_map);
     glBindTexture(GL_TEXTURE_2D, compressed_map);
+    
+    if ( channels < 0 || channels > 4 )
+        return false;
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGB, width, height,
-        0, GL_BGR, GL_UNSIGNED_BYTE, data);
+    int mask = colorMask[ channels ];
+
+    if ( mask < 0 )
+        return false;
+
+    GLenum storage_format = storageFormatTable[ profile ] [ mask ];
+    GLenum texture_format = textureFormatTable[ profile ] [ mask ];
+
+    if ( storage_format == 0 )
+        return false;
+    
+    if ( profile == TP_NORMAL )
+    {
+        // rearrange data
+        const size_t offset = channels;
+        unsigned char * in = data;
+        unsigned char * out = data;
+        const unsigned char * end = in + channels*width*height;
+        while ( in != end )
+        {
+            *out = *in;
+
+            in += channels;
+            out += 2;
+        }
+    }
+
+    glTexImage2D(GL_TEXTURE_2D, 0, storage_format, width, height, 0, texture_format, GL_UNSIGNED_BYTE, data);
+    /*glTexStorage2D(GL_TEXTURE_2D, level, storage_format, width, height);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, texture_format, GL_UNSIGNED_BYTE, data);*/
 
     free( data );
+
+    unsigned int level = 1;
+    
+    if ( mipMapGen )
+    {
+        level = ( width < height ) ? height : width;
+        level = (unsigned int)( std::log( (double)level ) / std::log( 2.0 ) ) + 1;
+
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    }
 
     GLint compressed;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
@@ -430,6 +521,27 @@ bool CompressImage( const char * outFilename, CompressionFormat compression )
 
     glGetCompressedTexImage(GL_TEXTURE_2D, 0, img);
 
+    CompressedTexHeader header;
+    header.size     = compressed_size;
+    header.width    = width;
+    header.height   = height;
+    header.level    = level;
+    header.format   = internal_format;
+
+    FILE *fp;
+
+    if (fopen_s(&fp,outFilename, "wb"))
+    {
+        free( img );
+        glDeleteTextures( 1, &compressed_map );
+        return false;
+    }
+
+    fwrite(&header,1,sizeof(header),fp);
+    fwrite(img,1,compressed_size,fp);
+
+    fclose(fp);
+
     free( img );
 
     glDeleteTextures( 1, &compressed_map );
@@ -437,7 +549,7 @@ bool CompressImage( const char * outFilename, CompressionFormat compression )
     return true;
 }
 
-bool CompileTexture( const char * inFilename, const char * outFilename, CompressionFormat compression )
+bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, bool mipMapGen )
 {
     size_t len = strlen( inFilename );
 
@@ -446,7 +558,6 @@ bool CompileTexture( const char * inFilename, const char * outFilename, Compress
 
     const char * ext = inFilename - 3 + len;
     
-
     if ( strcmp( ext, "png" ) == 0 || strcmp( ext, "PNG" ) == 0 )
     {
          if ( ! LoadPNG( inFilename ) )
@@ -457,13 +568,19 @@ bool CompileTexture( const char * inFilename, const char * outFilename, Compress
         return false;
     }
 
+    // only 8-bits per channel for now
+    if ( bit_depth != 8 )
+    {
+        return false;
+    }
+
     if ( ! InitializeOpenGL() )
     {
         free( data );
         return false;
     }
 
-    bool success = CompressImage( outFilename, compression );
+    bool success = CompressImage( outFilename, profile, mipMapGen );
 
     DestroyOpenGL();
 
