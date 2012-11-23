@@ -112,6 +112,8 @@ extern "C"
     Func ( PFNGLGETPROGRAMINFOLOGPROC           , glGetProgramInfoLog           );  \
     Func ( PFNGLGETSHADERIVPROC                 , glGetShaderiv                 );  \
     Func ( PFNGLGETSHADERINFOLOGPROC            , glGetShaderInfoLog            );  \
+    Func ( PFNGLISPROGRAMPROC                   , glIsProgram                   );  \
+    Func ( PFNGLISSHADERPROC                    , glIsShader                    );  \
     Func ( PFNGLLINKPROGRAMPROC                 , glLinkProgram                 );  \
     Func ( PFNGLSHADERSOURCEPROC                , glShaderSource                );  \
     Func ( PFNGLUSEPROGRAMPROC                  , glUseProgram                  );  \
@@ -125,6 +127,22 @@ extern "C"
     Func ( PFNGLDELETEVERTEXARRAYSPROC          , glDeleteVertexArrays          );  \
     Func ( PFNGLGENVERTEXARRAYSPROC             , glGenVertexArrays             );  \
     Func ( PFNGLISVERTEXARRAYPROC               , glIsVertexArray               );  \
+                                                                                    \
+    /* GL_ARB_sampler_objects */                                                    \
+    Func ( PFNGLGENSAMPLERSPROC                 , glGenSamplers                 );  \
+    Func ( PFNGLDELETESAMPLERSPROC              , glDeleteSamplers              );  \
+    Func ( PFNGLISSAMPLERPROC                   , glIsSampler                   );  \
+    Func ( PFNGLBINDSAMPLERPROC                 , glBindSampler                 );  \
+    Func ( PFNGLSAMPLERPARAMETERIPROC           , glSamplerParameteri           );  \
+    Func ( PFNGLSAMPLERPARAMETERIVPROC          , glSamplerParameteriv          );  \
+    Func ( PFNGLSAMPLERPARAMETERFPROC           , glSamplerParameterf           );  \
+    Func ( PFNGLSAMPLERPARAMETERFVPROC          , glSamplerParameterfv          );  \
+    Func ( PFNGLSAMPLERPARAMETERIIVPROC         , glSamplerParameterIiv         );  \
+    Func ( PFNGLSAMPLERPARAMETERIUIVPROC        , glSamplerParameterIuiv        );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIVPROC       , glGetSamplerParameteriv       );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIIVPROC      , glGetSamplerParameterIiv      );  \
+    Func ( PFNGLGETSAMPLERPARAMETERFVPROC       , glGetSamplerParameterfv       );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIUIVPROC     , glGetSamplerParameterIuiv     );  \
                                                                                     \
     /* GL_ARB_get_program_binary */                                                 \
     Func ( PFNGLGETPROGRAMBINARYPROC            , glGetProgramBinary            );  \

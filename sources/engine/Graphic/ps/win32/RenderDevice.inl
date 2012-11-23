@@ -23,6 +23,12 @@ namespace Graphic
         static Handle           CreateProgramBinary( const void * binary, SizeT size );
         static void             UseProgram( Handle program );
 
+        static Handle           CreateTexture( SizeT format, SizeT levelCount, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
+        static void             DestroyTexture( Handle texture );
+        static Handle           CreateSampler( TextureFilteringType min, TextureFilteringType mag, TextureFilteringType mip, TextureWrapType wrap );
+        static void             DestroySampler( Handle sampler );
+        static void             SampleTexture( Handle texture, Handle sampler, SizeT unit );
+
         static void             Draw( PrimitiveType primitive, VertexArray * va );
 
         static void             SetViewport( U32 x, U32 y, U32 w, U32 h );

@@ -63,6 +63,19 @@ namespace Graphic
         PT_TRIANGLES
     };
 
+    enum TextureFilteringType
+    {
+        FT_POINT,
+        FT_LINEAR
+    };
+
+    enum TextureWrapType
+    {
+        WT_REPEAT,
+        WT_CLAMP,
+        WT_MIRROR
+    };
+
     struct VertexArray;
 
     typedef U32 Handle;

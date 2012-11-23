@@ -41,6 +41,25 @@ namespace Graphic
         GL_TRIANGLES    // PT_TRIANGLES
     };
 
+    const GLenum ToGLMinFilterType[2][2] =  // [ mip ] [ min ]
+    {
+        { GL_NEAREST_MIPMAP_NEAREST , GL_LINEAR_MIPMAP_NEAREST  },  // min : FT_POINT mip FT_POINT  , min : FT_LINEAR mip FT_POINT
+        { GL_NEAREST_MIPMAP_LINEAR  , GL_LINEAR_MIPMAP_LINEAR   }   // min : FT_POINT mip FT_LINEAR , min : FT_LINEAR mip FT_LINEAR
+    };
+
+    const GLenum ToGLMagFilterType[] =
+    {
+        GL_NEAREST, // FT_POINT
+        GL_LINEAR   // FT_LINEAR
+    };
+
+    const GLenum ToGLWrapType[] =
+    {
+        GL_REPEAT,          // WT_REPEAT
+        GL_CLAMP_TO_BORDER, // WT_CLAMP
+        GL_MIRRORED_REPEAT  // WT_MIRROR
+    };
+
     const GLuint ToVertexSemanticMap[] =
     {
         1 << VS_POSITION,
@@ -350,6 +369,53 @@ namespace Graphic
     void RenderDevice::UseProgram( Handle program )
     {
         glUseProgram( (GLuint)program );
+    }
+
+    Handle RenderDevice::CreateTexture( SizeT format, SizeT levelCount, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
+    {
+        GLuint texture;
+        glGenTextures( 1, &texture );
+        glBindTexture( GL_TEXTURE_2D, texture );
+
+        for ( SizeT i=0; i<levelCount; ++i )
+        {
+            glCompressedTexImage2D( GL_TEXTURE_2D, i, format, width[i], height[i], 0, size[i], data[i] );
+        }
+
+        glBindTexture( GL_TEXTURE_2D, 0 );
+
+        return texture;
+    }
+
+    void RenderDevice::DestroyTexture( Handle texture )
+    {
+        GLuint t = texture;
+        glDeleteTextures( 1, &t );
+    }
+
+    Handle RenderDevice::CreateSampler( TextureFilteringType min, TextureFilteringType mag, TextureFilteringType mip, TextureWrapType wrap )
+    {
+        GLuint sampler;
+        glGenSamplers( 1, &sampler );
+        glSamplerParameteri( sampler    , GL_TEXTURE_MIN_FILTER , ToGLMinFilterType[ mip ][ min ]   );
+        glSamplerParameteri( sampler    , GL_TEXTURE_MAG_FILTER , ToGLMagFilterType[ mag ]          );
+        glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_S     , ToGLWrapType[ wrap ]              );
+        glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_S     , ToGLWrapType[ wrap ]              );
+
+        return sampler;
+    }
+
+    void RenderDevice::DestroySampler( Handle sampler )
+    {
+        GLuint s = sampler;
+        glDeleteSamplers( 1, &s );
+    }
+
+    void RenderDevice::SampleTexture( Handle texture, Handle sampler, SizeT unit )
+    {
+        glActiveTexture( GL_TEXTURE0 + unit );
+        glBindTexture( GL_TEXTURE_2D, texture );
+        glBindSampler( unit, sampler );
     }
 
     void RenderDevice::Draw( PrimitiveType primitive, VertexArray * va )
