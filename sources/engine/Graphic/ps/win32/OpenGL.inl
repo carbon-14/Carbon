@@ -117,6 +117,9 @@ extern "C"
     Func ( PFNGLUSEPROGRAMPROC                  , glUseProgram                  );  \
     Func ( PFNGLVERTEXATTRIBPOINTERPROC         , glVertexAttribPointer         );  \
                                                                                     \
+    /* GL_ARB_framebuffer_object */                                                 \
+    Func ( PFNGLGENERATEMIPMAPPROC              , glGenerateMipmap              );  \
+                                                                                    \
     /* GL_ARB_vertex_array_object */                                                \
     Func ( PFNGLBINDVERTEXARRAYPROC             , glBindVertexArray             );  \
     Func ( PFNGLDELETEVERTEXARRAYSPROC          , glDeleteVertexArrays          );  \
@@ -126,7 +129,15 @@ extern "C"
     /* GL_ARB_get_program_binary */                                                 \
     Func ( PFNGLGETPROGRAMBINARYPROC            , glGetProgramBinary            );  \
     Func ( PFNGLPROGRAMBINARYPROC               , glProgramBinary               );  \
-    Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           )
+    Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           );  \
+                                                                                    \
+    /* GL_ARB_texture_storage */                                                    \
+    Func ( PFNGLTEXSTORAGE1DPROC                , glTexStorage1D                );  \
+    Func ( PFNGLTEXSTORAGE2DPROC                , glTexStorage2D                );  \
+    Func ( PFNGLTEXSTORAGE3DPROC                , glTexStorage3D                );  \
+    Func ( PFNGLTEXTURESTORAGE1DEXTPROC         , glTextureStorage1DEXT         );  \
+    Func ( PFNGLTEXTURESTORAGE2DEXTPROC         , glTextureStorage2DEXT         );  \
+    Func ( PFNGLTEXTURESTORAGE3DEXTPROC         , glTextureStorage3DEXT         )
 
 #define DECLARE_GL_FUNCTION( PFunc, Name )     extern PFunc Name
 #define DEFINE_GL_FUNCTION( PFunc, Name )      PFunc Name = 0
