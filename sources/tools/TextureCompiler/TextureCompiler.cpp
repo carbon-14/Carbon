@@ -463,13 +463,9 @@ bool CompileTexture( const char * inFilename, const char * outFilename, Compress
         return false;
     }
 
-    if ( ! CompressImage( outFilename, compression ) )
-    {
-        DestroyOpenGL();
-        return false;
-    }
+    bool success = CompressImage( outFilename, compression );
 
     DestroyOpenGL();
 
-    return true;
+    return success;
 }
