@@ -4,11 +4,152 @@
 #include <cstdio>
 #include <cstring>
 
+#if defined( CARBON_PLATFORM_WIN32 )
+#include <Windows.h>
+
+HWND hwnd;
+HDC hdc;
+
+HGLRC glContext;
+
+PFNGLCOMPRESSEDTEXIMAGE3DPROC        glCompressedTexImage3D     = 0;
+PFNGLCOMPRESSEDTEXIMAGE2DPROC        glCompressedTexImage2D     = 0;
+PFNGLCOMPRESSEDTEXIMAGE1DPROC        glCompressedTexImage1D     = 0;
+PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC     glCompressedTexSubImage3D  = 0;
+PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC     glCompressedTexSubImage2D  = 0;
+PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC     glCompressedTexSubImage1D  = 0;
+PFNGLGETCOMPRESSEDTEXIMAGEPROC       glGetCompressedTexImage    = 0;
+
+LRESULT CALLBACK WndProc(HWND p_hWnd, UINT p_uiMessage, WPARAM p_wParam, LPARAM p_lParam)
+{
+    return DefWindowProc(p_hWnd, p_uiMessage, p_wParam, p_lParam);
+}
+#endif
+
 #include "libpng/inc/png.h"
 
 size_t width, height;
 int bit_depth, channels;
 unsigned char * data;
+
+bool InitializeOpenGL()
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    WNDCLASS wc;
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+
+    wc.style = 0;
+    wc.lpfnWndProc = WndProc;
+    wc.cbClsExtra = 0;
+    wc.cbWndExtra = 0;
+    wc.hInstance = hInstance;
+    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(1 + COLOR_BTNFACE);
+    wc.lpszMenuName =  NULL;
+    wc.lpszClassName = "CarbonWndClass";
+
+    if ( !RegisterClass(&wc) ) return false;
+
+    hwnd = CreateWindow( "CarbonWndClass"
+                        ,"TextureCompiler"
+                        ,WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
+                        ,CW_USEDEFAULT
+                        ,CW_USEDEFAULT
+                        ,1280
+                        ,720
+                        ,NULL
+                        ,NULL
+                        ,hInstance
+                        ,NULL );
+
+    if ( !hwnd ) return false;
+
+    hdc = GetDC( hwnd );
+    if ( !hdc ) return false;
+
+    PIXELFORMATDESCRIPTOR pfd =
+    {
+        sizeof(PIXELFORMATDESCRIPTOR),
+        1,
+        PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, //Flags
+        PFD_TYPE_RGBA,                                              //The kind of framebuffer. RGBA or palette.
+        24,                                                         //Colordepth of the framebuffer.
+        0, 0, 0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0, 0, 0, 0,
+        24,                                                         //Number of bits for the depthbuffer
+        8,                                                          //Number of bits for the stencilbuffer
+        0,                                                          //Number of Aux buffers in the framebuffer.
+        PFD_MAIN_PLANE,
+        0,
+        0, 0, 0
+    };
+
+    int pixelFormat = ChoosePixelFormat( hdc, &pfd );
+    if ( !pixelFormat ) return false;
+
+    if ( !SetPixelFormat( hdc, pixelFormat, &pfd ) ) return false;
+
+    int attribs[] =
+    {
+        WGL_CONTEXT_MAJOR_VERSION_ARB   , 4,
+        WGL_CONTEXT_MINOR_VERSION_ARB   , 2,
+        WGL_CONTEXT_PROFILE_MASK_ARB    , WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+        0 //End
+    };
+
+    HGLRC dummyContext = wglCreateContext( hdc );
+    if ( !dummyContext ) return false;
+
+    if ( !wglMakeCurrent( hdc, dummyContext ) )
+    {
+        wglDeleteContext( dummyContext );
+        return false;
+    }
+
+    PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress( "wglCreateContextAttribsARB" );
+
+    if ( !wglCreateContextAttribsARB )
+    {
+        wglDeleteContext( dummyContext );
+        return false;
+    }
+
+    glContext = wglCreateContextAttribsARB( hdc, 0, attribs );
+
+    wglMakeCurrent( 0, 0 );
+    wglDeleteContext( dummyContext );
+
+    if ( !glContext ) return false;
+
+    wglMakeCurrent( hdc, glContext );
+
+    // Load functions
+    glCompressedTexImage3D      = (PFNGLCOMPRESSEDTEXIMAGE3DPROC)wglGetProcAddress("glCompressedTexImage3D");
+    glCompressedTexImage2D      = (PFNGLCOMPRESSEDTEXIMAGE2DPROC)wglGetProcAddress("glCompressedTexImage2D");
+    glCompressedTexImage1D      = (PFNGLCOMPRESSEDTEXIMAGE1DPROC)wglGetProcAddress("glCompressedTexImage1D");
+    glCompressedTexSubImage3D   = (PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC)wglGetProcAddress("glCompressedTexSubImage3D");
+    glCompressedTexSubImage2D   = (PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC)wglGetProcAddress("glCompressedTexSubImage2D");
+    glCompressedTexSubImage1D   = (PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC)wglGetProcAddress("glCompressedTexSubImage1D");
+    glGetCompressedTexImage     = (PFNGLGETCOMPRESSEDTEXIMAGEPROC)wglGetProcAddress("glGetCompressedTexImage");
+
+#endif
+    return true;
+}
+
+void DestroyOpenGL()
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    wglMakeCurrent( 0, 0 );
+    wglDeleteContext( glContext );
+
+    DestroyWindow(hwnd);
+    UnregisterClass("CarbonWndClass", GetModuleHandle(NULL));
+#endif
+}
 
 bool LoadPNG( const char * file_name )
 {
@@ -262,8 +403,38 @@ bool LoadPNG( const char * file_name )
 
 bool CompressImage( const char * outFilename, CompressionFormat compression )
 {
+    GLuint compressed_map;
+    glGenTextures( 1, &compressed_map );
+    glBindTexture(GL_TEXTURE_2D, compressed_map);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGB, width, height,
+        0, GL_BGR, GL_UNSIGNED_BYTE, data);
+
     free( data );
-    return false;
+
+    GLint compressed;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+    if ( compressed == GL_FALSE )
+    {
+        glDeleteTextures( 1, &compressed_map );
+        return false;
+    }
+
+    GLint internal_format;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal_format);
+
+    GLint compressed_size;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressed_size);
+
+    unsigned char * img = (unsigned char *)malloc(compressed_size * sizeof(unsigned char));
+
+    glGetCompressedTexImage(GL_TEXTURE_2D, 0, img);
+
+    free( img );
+
+    glDeleteTextures( 1, &compressed_map );
+
+    return true;
 }
 
 bool CompileTexture( const char * inFilename, const char * outFilename, CompressionFormat compression )
@@ -276,10 +447,29 @@ bool CompileTexture( const char * inFilename, const char * outFilename, Compress
     const char * ext = inFilename - 3 + len;
     
 
-    if ( strcmp( ext, "png" ) == 0 || strcmp( ext, "PNG" ) == 0 || ! LoadPNG( inFilename ) )
+    if ( strcmp( ext, "png" ) == 0 || strcmp( ext, "PNG" ) == 0 )
+    {
+         if ( ! LoadPNG( inFilename ) )
+             return false;
+    }
+    else
     {
         return false;
     }
 
-    return CompressImage( outFilename, compression );
+    if ( ! InitializeOpenGL() )
+    {
+        free( data );
+        return false;
+    }
+
+    if ( ! CompressImage( outFilename, compression ) )
+    {
+        DestroyOpenGL();
+        return false;
+    }
+
+    DestroyOpenGL();
+
+    return true;
 }

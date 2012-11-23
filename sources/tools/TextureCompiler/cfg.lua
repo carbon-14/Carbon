@@ -16,6 +16,8 @@ end
 
 libdirs             { path.getrelative(prj.basedir,ext_dir).."/libpng/lib" }
 
+links               { "OpenGL32" }
+
 configuration       ( config_debug.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
     defines         ( config_debug.defines )
