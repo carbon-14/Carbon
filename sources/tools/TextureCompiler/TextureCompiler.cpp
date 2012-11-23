@@ -42,6 +42,59 @@ unsigned int width, height;
 int bit_depth, channels;
 unsigned char * data;
 
+bool RecursiveCreateDirectory( const char * dir )
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    if ( ! CreateDirectory( dir, NULL ) )
+    {
+        DWORD err = GetLastError();
+        if ( err == ERROR_ALREADY_EXISTS )
+        {
+            return true;
+        }
+        if ( err == ERROR_PATH_NOT_FOUND )
+        {
+            char * fileStart;
+            char parentDir[ 256 ];
+            if ( GetFullPathName( dir, 256, parentDir, &fileStart ) == 0 )
+            {
+                return false;
+            }
+            *(fileStart - 1 ) = 0;
+
+            if ( RecursiveCreateDirectory( parentDir ) )
+            {
+                return ( CreateDirectory( dir, NULL ) != 0 );
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+#endif
+    return true;
+}
+
+bool BuildDirectory( const char * path )
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    char dir[ 256 ];
+    char * fileStart;
+    if ( GetFullPathName( path, 256, dir, &fileStart ) == 0 )
+    {
+        return false;
+    }
+    *( fileStart - 1 ) = 0;
+
+    if ( ! RecursiveCreateDirectory( dir ) )
+    {
+        return false;
+    }
+#endif
+    return true;
+}
+
 bool InitializeOpenGL()
 {
 #if defined( CARBON_PLATFORM_WIN32 )
@@ -438,13 +491,17 @@ const GLenum textureFormatTable[ TP_COUNT ] [ 3 ] =
     { GL_RG     , GL_RG     , 0         }    // TP_NORMAL
 };
 
-struct CompressedTexHeader
+struct TextureHeader
+{
+    unsigned int format;
+    unsigned int mipMapCount;
+};
+
+struct LevelDesc
 {
     unsigned int    size;
     unsigned int    width;
     unsigned int    height;
-    unsigned int    level;  // mip-map count
-    unsigned int    format;
 };
 
 bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMapGen )
@@ -484,17 +541,22 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
     }
 
     glTexImage2D(GL_TEXTURE_2D, 0, storage_format, width, height, 0, texture_format, GL_UNSIGNED_BYTE, data);
-    /*glTexStorage2D(GL_TEXTURE_2D, level, storage_format, width, height);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, texture_format, GL_UNSIGNED_BYTE, data);*/
 
     free( data );
 
-    unsigned int level = 1;
-    
+    GLint compressed;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+    if ( !TP_RAW && compressed == GL_FALSE )
+    {
+        glDeleteTextures( 1, &compressed_map );
+        return false;
+    }
+
+    unsigned int levelCount = 1;
     if ( mipMapGen )
     {
-        level = ( width < height ) ? height : width;
-        level = (unsigned int)( std::log( (double)level ) / std::log( 2.0 ) ) + 1;
+        levelCount = ( width < height ) ? height : width;
+        levelCount = (unsigned int)( std::log( (double)levelCount ) / std::log( 2.0 ) ) + 1;
 
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -503,47 +565,70 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     }
 
-    GLint compressed;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
-    if ( compressed == GL_FALSE )
+    if ( ! BuildDirectory( outFilename ) )
     {
         glDeleteTextures( 1, &compressed_map );
         return false;
     }
+
+    FILE *fp;
+
+    if (fopen_s(&fp, outFilename, "wb"))
+    {
+        glDeleteTextures( 1, &compressed_map );
+        return false;
+    }
+
+    // TODO raw formats
 
     GLint internal_format;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal_format);
 
-    GLint compressed_size;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressed_size);
-
-    unsigned char * img = (unsigned char *)malloc(compressed_size * sizeof(unsigned char));
-
-    glGetCompressedTexImage(GL_TEXTURE_2D, 0, img);
-
-    CompressedTexHeader header;
-    header.size     = compressed_size;
-    header.width    = width;
-    header.height   = height;
-    header.level    = level;
-    header.format   = internal_format;
-
-    FILE *fp;
-
-    if (fopen_s(&fp,outFilename, "wb"))
-    {
-        free( img );
-        glDeleteTextures( 1, &compressed_map );
-        return false;
-    }
+    TextureHeader header;
+    header.format       = internal_format;
+    header.mipMapCount  = levelCount;
 
     fwrite(&header,1,sizeof(header),fp);
-    fwrite(img,1,compressed_size,fp);
+
+    // level 0
+    GLint img_size;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &img_size);
+
+    GLint img_width     = width;
+    GLint img_height    = height;
+
+    LevelDesc levelDesc;
+    levelDesc.size      = img_size;
+    levelDesc.width     = img_width;
+    levelDesc.height    = img_height;
+
+    unsigned char * img = (unsigned char *)malloc(img_size * sizeof(unsigned char));
+
+    glGetCompressedTexImage(GL_TEXTURE_2D, 0, img );
+
+    fwrite(&levelDesc,1,sizeof(levelDesc),fp);
+    fwrite(img,1,img_size,fp);
+
+    // mip maps
+    for ( unsigned int i=1; i<levelCount; ++i )
+    {
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_COMPRESSED_IMAGE_SIZE , &img_size);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_WIDTH                 , &img_width);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_HEIGHT                , &img_height);
+
+        levelDesc.size      = img_size;
+        levelDesc.width     = img_width;
+        levelDesc.height    = img_height;
+
+        glGetCompressedTexImage(GL_TEXTURE_2D, i, img );
+
+        fwrite(&levelDesc,1,sizeof(levelDesc),fp);
+        fwrite(img,1,img_size,fp);
+    }
 
     fclose(fp);
 
     free( img );
-
     glDeleteTextures( 1, &compressed_map );
 
     return true;
