@@ -477,18 +477,18 @@ const int colorMask[ 5 ] = { -1, 0, -1, 1, 2 };
 
 const GLenum storageFormatTable[ TP_COUNT ] [ 3 ] =
 {
-    { GL_RGBA8                  , GL_RGB8               , GL_R8             },   // TP_RAW
-    { GL_COMPRESSED_SRGB_ALPHA  , GL_COMPRESSED_SRGB    , 0                 },   // TP_COLOR
-    { GL_COMPRESSED_RGBA        , GL_COMPRESSED_RGB     , GL_COMPRESSED_RED },   // TP_LINEAR
-    { GL_COMPRESSED_RG          , GL_COMPRESSED_RG      , 0                 }    // TP_NORMAL
+    { GL_R8             , GL_RGB8               , GL_RGBA8                  },   // TP_RAW
+    { 0                 , GL_COMPRESSED_SRGB    , GL_COMPRESSED_SRGB_ALPHA  },   // TP_COLOR
+    { GL_COMPRESSED_RED , GL_COMPRESSED_RGB     , GL_COMPRESSED_RGBA        },   // TP_LINEAR
+    { 0                 , GL_COMPRESSED_RG      , GL_COMPRESSED_RG          }    // TP_NORMAL
 };
 
 const GLenum textureFormatTable[ TP_COUNT ] [ 3 ] =
 {
-    { GL_RGBA   , GL_RGB    , GL_RED    },   // TP_RAW
-    { GL_RGBA   , GL_RGB    , 0         },   // TP_COLOR
-    { GL_RGBA   , GL_RGB    , GL_RED    },   // TP_LINEAR
-    { GL_RG     , GL_RG     , 0         }    // TP_NORMAL
+    { GL_RED    , GL_RGB    , GL_RGBA   },   // TP_RAW
+    { 0         , GL_RGB    , GL_RGBA   },   // TP_COLOR
+    { GL_RED    , GL_RGB    , GL_RGBA   },   // TP_LINEAR
+    { 0         , GL_RG     , GL_RG     }    // TP_NORMAL
 };
 
 struct TextureHeader
