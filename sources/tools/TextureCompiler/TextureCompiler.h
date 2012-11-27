@@ -18,6 +18,7 @@ extern "C"
     GLAPI void              APIENTRY glTexParameteri (GLenum target, GLenum pname, GLint param);
     GLAPI void              APIENTRY glGetTexLevelParameteriv (GLenum target, GLint level, GLenum pname, GLint *params);
 
+    GLAPI void              APIENTRY glGetTexImage (GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels);
     GLAPI void              APIENTRY glTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels);
     GLAPI void              APIENTRY glBindTexture (GLenum target, GLuint texture);
     GLAPI void              APIENTRY glDeleteTextures (GLsizei n, const GLuint *textures);
@@ -47,13 +48,18 @@ extern PFNGLTEXTURESTORAGE3DEXTPROC         glTextureStorage3DEXT;
 
 enum TextureProfile
 {
-    TP_RAW,
     TP_COLOR,
     TP_LINEAR,
     TP_NORMAL,
     TP_COUNT
 };
 
-bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, bool mipMapGen );
+enum OptionType
+{
+    OT_COMPRESS     = 1,
+    OT_MIPMAPGEN    = 1 << 1
+};
+
+bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, int options );
 
 #endif // _TEXTURECOMPILER_TEXTURECOMPILER_H

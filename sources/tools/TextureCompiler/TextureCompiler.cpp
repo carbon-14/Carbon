@@ -473,28 +473,31 @@ bool LoadPNG( const char * file_name )
     return true;
 }
 
-const int colorMask[ 5 ] = { -1, 0, -1, 1, 2 };
+const int colorMask[ 5 ] = { -1, 0, -1, 1, 2 }; // greyscale, rgb, rgba selector
 
-const GLenum storageFormatTable[ TP_COUNT ] [ 3 ] =
+const GLint internalFormatTable[ 2 * TP_COUNT ] [ 3 ] =
 {
-    { GL_R8             , GL_RGB8               , GL_RGBA8                  },   // TP_RAW
-    { 0                 , GL_COMPRESSED_SRGB    , GL_COMPRESSED_SRGB_ALPHA  },   // TP_COLOR
-    { GL_COMPRESSED_RED , GL_COMPRESSED_RGB     , GL_COMPRESSED_RGBA        },   // TP_LINEAR
-    { 0                 , GL_COMPRESSED_RG      , GL_COMPRESSED_RG          }    // TP_NORMAL
+    { GL_R8             , GL_SRGB8              , GL_SRGB8_ALPHA8               },   // TP_COLOR
+    { GL_R8             , GL_RGB8               , GL_RGBA8                      },   // TP_LINEAR
+    { 0                 , GL_RG8                , GL_RG8                        },   // TP_NORMAL
+    { GL_COMPRESSED_RED , GL_COMPRESSED_SRGB    , GL_COMPRESSED_SRGB_ALPHA      },   // TP_COLOR    - COMPRESSED -
+    { GL_COMPRESSED_RED , GL_COMPRESSED_RGB     , GL_COMPRESSED_RGBA            },   // TP_LINEAR   - COMPRESSED -
+    { 0                 , GL_COMPRESSED_RG      , GL_COMPRESSED_RG              },   // TP_NORMAL   - COMPRESSED -
 };
 
-const GLenum textureFormatTable[ TP_COUNT ] [ 3 ] =
+const GLint externalFormatTable[ TP_COUNT ] [ 3 ] =
 {
-    { GL_RED    , GL_RGB    , GL_RGBA   },   // TP_RAW
-    { 0         , GL_RGB    , GL_RGBA   },   // TP_COLOR
-    { GL_RED    , GL_RGB    , GL_RGBA   },   // TP_LINEAR
+    { 0         , GL_BGR    , GL_BGRA   },   // TP_COLOR
+    { GL_RED    , GL_BGR    , GL_BGRA   },   // TP_LINEAR
     { 0         , GL_RG     , GL_RG     }    // TP_NORMAL
 };
 
 struct TextureHeader
 {
-    unsigned int format;
-    unsigned int mipMapCount;
+    unsigned int    internalFormat;
+    unsigned int    externalFormat;
+    unsigned int    mipMapCount;
+    bool            compressed;
 };
 
 struct LevelDesc
@@ -504,11 +507,11 @@ struct LevelDesc
     unsigned int    height;
 };
 
-bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMapGen )
+bool BuildImage( const char * outFilename, TextureProfile profile, int options )
 {
-    GLuint compressed_map;
-    glGenTextures(1, &compressed_map);
-    glBindTexture(GL_TEXTURE_2D, compressed_map);
+    GLuint map;
+    glGenTextures(1, &map);
+    glBindTexture(GL_TEXTURE_2D, map);
     
     if ( channels < 0 || channels > 4 )
         return false;
@@ -518,10 +521,15 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
     if ( mask < 0 )
         return false;
 
-    GLenum storage_format = storageFormatTable[ profile ] [ mask ];
-    GLenum texture_format = textureFormatTable[ profile ] [ mask ];
+    bool compress = (options & OT_COMPRESS) != 0;
+    bool mipmap = (options & OT_MIPMAPGEN) != 0;
 
-    if ( storage_format == 0 )
+    GLint internal_format = internalFormatTable[ profile + (compress ? TP_COUNT : 0) ] [ mask ];
+    GLint external_format = externalFormatTable[ profile ] [ mask ];
+
+    GLint testFormat = GL_COMPRESSED_RG;
+
+    if ( internal_format == 0 )
         return false;
     
     if ( profile == TP_NORMAL )
@@ -533,31 +541,66 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
         const unsigned char * end = in + channels*width*height;
         while ( in != end )
         {
-            *out = *in;
+            // normalize
+            double x = (double)in[0] * 2.0 / 255.0 - 1.0;
+            double y = (double)in[1] * 2.0 / 255.0 - 1.0;
+            double z = (double)in[2] * 2.0 / 255.0 - 1.0;
+
+            double n = sqrt( x * x + y * y + z * z );
+
+            x = 255.0 * ( 0.5 * x / n + 0.5 );
+            y = 255.0 * ( 0.5 * y / n + 0.5 );
+
+            out[0] = (unsigned char)x;
+            out[1] = (unsigned char)y;
 
             in += channels;
             out += 2;
         }
     }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, storage_format, width, height, 0, texture_format, GL_UNSIGNED_BYTE, data);
-
-    free( data );
-
-    GLint compressed;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
-    if ( !TP_RAW && compressed == GL_FALSE )
+    else if ( channels != 1 )
     {
-        glDeleteTextures( 1, &compressed_map );
-        return false;
+        // swap red & blue channels
+        const size_t offset = channels;
+        unsigned char * pix = data;
+        const unsigned char * end = pix + channels*width*height;
+        while ( pix != end )
+        {
+            pix[0] = pix[2] - pix[0];
+            pix[2] = pix[2] - pix[0];
+            pix[0] = pix[2] + pix[0];
+            pix += channels;
+        }
     }
 
     unsigned int levelCount = 1;
-    if ( mipMapGen )
+    if ( mipmap )
     {
         levelCount = ( width < height ) ? height : width;
         levelCount = (unsigned int)( std::log( (double)levelCount ) / std::log( 2.0 ) ) + 1;
+    }
 
+    if ( compress )
+    {
+        glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, external_format, GL_UNSIGNED_BYTE, data);        
+
+        GLint compressed;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
+        if ( compressed == GL_FALSE )
+        {
+            free( data );
+            glDeleteTextures( 1, &map );
+            return false;
+        }
+    }
+    else
+    {
+        glTexStorage2D( GL_TEXTURE_2D, levelCount, internal_format, width, height );
+        glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, width, height, external_format, GL_UNSIGNED_BYTE, data );
+    }
+
+    if ( mipmap )
+    {
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -567,7 +610,7 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
 
     if ( ! BuildDirectory( outFilename ) )
     {
-        glDeleteTextures( 1, &compressed_map );
+        glDeleteTextures( 1, &map );
         return false;
     }
 
@@ -575,27 +618,29 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
 
     if (fopen_s(&fp, outFilename, "wb"))
     {
-        glDeleteTextures( 1, &compressed_map );
+        glDeleteTextures( 1, &map );
         return false;
     }
 
-    // TODO raw formats
-
-    GLint internal_format;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internal_format);
 
     TextureHeader header;
-    header.format       = internal_format;
-    header.mipMapCount  = levelCount;
+    header.internalFormat   = internal_format;
+    header.externalFormat   = external_format;
+    header.mipMapCount      = levelCount;
+    header.compressed       = compress;
 
     fwrite(&header,1,sizeof(header),fp);
 
     // level 0
-    GLint img_size;
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &img_size);
-
     GLint img_width     = width;
     GLint img_height    = height;
+
+    GLint img_size;
+    if ( compress )
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &img_size);
+    else
+        img_size = img_width * img_height * channels * ( bit_depth / 8 );
 
     LevelDesc levelDesc;
     levelDesc.size      = img_size;
@@ -604,7 +649,10 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
 
     unsigned char * img = (unsigned char *)malloc(img_size * sizeof(unsigned char));
 
-    glGetCompressedTexImage(GL_TEXTURE_2D, 0, img );
+    if ( compress )
+        glGetCompressedTexImage(GL_TEXTURE_2D, 0, img );
+    else
+        glGetTexImage(GL_TEXTURE_2D, 0, external_format, GL_UNSIGNED_BYTE, img );
 
     fwrite(&levelDesc,1,sizeof(levelDesc),fp);
     fwrite(img,1,img_size,fp);
@@ -612,15 +660,22 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
     // mip maps
     for ( unsigned int i=1; i<levelCount; ++i )
     {
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_COMPRESSED_IMAGE_SIZE , &img_size);
         glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_WIDTH                 , &img_width);
         glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_HEIGHT                , &img_height);
+
+        if ( compress )
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &img_size);
+        else
+            img_size = img_width * img_height * channels * ( bit_depth / 8 );
 
         levelDesc.size      = img_size;
         levelDesc.width     = img_width;
         levelDesc.height    = img_height;
 
-        glGetCompressedTexImage(GL_TEXTURE_2D, i, img );
+        if ( compress )
+            glGetCompressedTexImage(GL_TEXTURE_2D, i, img );
+        else
+            glGetTexImage(GL_TEXTURE_2D, i, external_format, GL_UNSIGNED_BYTE, img );
 
         fwrite(&levelDesc,1,sizeof(levelDesc),fp);
         fwrite(img,1,img_size,fp);
@@ -629,12 +684,12 @@ bool CompressImage( const char * outFilename, TextureProfile profile, bool mipMa
     fclose(fp);
 
     free( img );
-    glDeleteTextures( 1, &compressed_map );
+    glDeleteTextures( 1, &map );
 
     return true;
 }
 
-bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, bool mipMapGen )
+bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, int options )
 {
     size_t len = strlen( inFilename );
 
@@ -643,6 +698,7 @@ bool CompileTexture( const char * inFilename, const char * outFilename, TextureP
 
     const char * ext = inFilename - 3 + len;
     
+    // only png files for now
     if ( strcmp( ext, "png" ) == 0 || strcmp( ext, "PNG" ) == 0 )
     {
          if ( ! LoadPNG( inFilename ) )
@@ -665,7 +721,7 @@ bool CompileTexture( const char * inFilename, const char * outFilename, TextureP
         return false;
     }
 
-    bool success = CompressImage( outFilename, profile, mipMapGen );
+    bool success = BuildImage( outFilename, profile, options );
 
     DestroyOpenGL();
 
