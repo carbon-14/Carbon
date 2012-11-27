@@ -63,13 +63,20 @@ namespace Graphic
         PT_TRIANGLES
     };
 
-    enum TextureFilteringType
+    enum FilterType
     {
         FT_POINT,
         FT_LINEAR
     };
 
-    enum TextureWrapType
+    enum MipType
+    {
+        MT_NONE,
+        MT_POINT,
+        MT_LINEAR
+    };
+
+    enum WrapType
     {
         WT_REPEAT,
         WT_CLAMP,

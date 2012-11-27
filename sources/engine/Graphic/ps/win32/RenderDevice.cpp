@@ -41,8 +41,9 @@ namespace Graphic
         GL_TRIANGLES    // PT_TRIANGLES
     };
 
-    const GLenum ToGLMinFilterType[2][2] =  // [ mip ] [ min ]
+    const GLenum ToGLMinFilterType[3][2] =  // [ mip ] [ min ]
     {
+        { GL_NEAREST                , GL_LINEAR                 },  // min : FT_POINT mip FT_NONE   , min : FT_LINEAR mip FT_NONE
         { GL_NEAREST_MIPMAP_NEAREST , GL_LINEAR_MIPMAP_NEAREST  },  // min : FT_POINT mip FT_POINT  , min : FT_LINEAR mip FT_POINT
         { GL_NEAREST_MIPMAP_LINEAR  , GL_LINEAR_MIPMAP_LINEAR   }   // min : FT_POINT mip FT_LINEAR , min : FT_LINEAR mip FT_LINEAR
     };
@@ -371,15 +372,26 @@ namespace Graphic
         glUseProgram( (GLuint)program );
     }
 
-    Handle RenderDevice::CreateTexture( SizeT format, SizeT levelCount, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
+    Handle RenderDevice::CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
     {
         GLuint texture;
         glGenTextures( 1, &texture );
         glBindTexture( GL_TEXTURE_2D, texture );
 
-        for ( SizeT i=0; i<levelCount; ++i )
+        if ( compressed )
         {
-            glCompressedTexImage2D( GL_TEXTURE_2D, i, format, width[i], height[i], 0, size[i], data[i] );
+            for ( SizeT i=0; i<levelCount; ++i )
+            {
+                glCompressedTexImage2D( GL_TEXTURE_2D, i, internalFormat, width[i], height[i], 0, size[i], data[i] );
+            }
+        }
+        else
+        {
+            glTexStorage2D( GL_TEXTURE_2D, levelCount, internalFormat, width[0], height[0] );
+            for ( SizeT i=0; i<levelCount; ++i )
+            {
+                glTexSubImage2D( GL_TEXTURE_2D, i, 0, 0, width[i], height[i], externalFormat, GL_UNSIGNED_BYTE, data[i] );
+            }
         }
 
         glBindTexture( GL_TEXTURE_2D, 0 );
@@ -393,14 +405,14 @@ namespace Graphic
         glDeleteTextures( 1, &t );
     }
 
-    Handle RenderDevice::CreateSampler( TextureFilteringType min, TextureFilteringType mag, TextureFilteringType mip, TextureWrapType wrap )
+    Handle RenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
     {
         GLuint sampler;
         glGenSamplers( 1, &sampler );
         glSamplerParameteri( sampler    , GL_TEXTURE_MIN_FILTER , ToGLMinFilterType[ mip ][ min ]   );
         glSamplerParameteri( sampler    , GL_TEXTURE_MAG_FILTER , ToGLMagFilterType[ mag ]          );
         glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_S     , ToGLWrapType[ wrap ]              );
-        glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_S     , ToGLWrapType[ wrap ]              );
+        glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_T     , ToGLWrapType[ wrap ]              );
 
         return sampler;
     }
