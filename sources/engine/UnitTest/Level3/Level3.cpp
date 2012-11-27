@@ -34,7 +34,7 @@ namespace Level3_NS
         void Initialize()
         {
             m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "fullScreenQuad" );
+            m_renderElement.m_program   = programCache.GetProgram( "level3" );
 
             const AttribDeclaration vDecl[] =
             {
