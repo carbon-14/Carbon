@@ -4,7 +4,6 @@
 
 #include "Core/Assert.h"
 #include "Core/Trace.h"
-#include "Core/String.h"
 
 namespace Graphic
 {
@@ -85,108 +84,7 @@ namespace Graphic
 
     //===================================================================================
 
-    RenderDevice::RenderDevice()
-    : m_window( 0 )
-    , m_deviceContext( 0 )
-    , m_renderContext( 0 )
-    {
-
-    }
-
-    RenderDevice::~RenderDevice()
-    {
-        CARBON_ASSERT( m_window == 0 );
-        CARBON_ASSERT( m_deviceContext == 0 );
-        CARBON_ASSERT( m_renderContext == 0 );
-    }
-
-    Bool RenderDevice::Initialize( HWND window )
-    {
-        CARBON_ASSERT( m_window == 0 );
-        CARBON_ASSERT( m_deviceContext == 0 );
-        CARBON_ASSERT( m_renderContext == 0 );
-
-        m_window = window;
-
-        m_deviceContext = GetDC( m_window );
-        if ( !m_deviceContext )
-        {
-            m_window = 0;
-            return false;
-        }
-
-        PIXELFORMATDESCRIPTOR pfd =
-        {
-            sizeof(PIXELFORMATDESCRIPTOR),
-            1,
-            PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, //Flags
-            PFD_TYPE_RGBA,                                              //The kind of framebuffer. RGBA or palette.
-            24,                                                         //Colordepth of the framebuffer.
-            0, 0, 0, 0, 0, 0,
-            0,
-            0,
-            0,
-            0, 0, 0, 0,
-            24,                                                         //Number of bits for the depthbuffer
-            8,                                                          //Number of bits for the stencilbuffer
-            0,                                                          //Number of Aux buffers in the framebuffer.
-            PFD_MAIN_PLANE,
-            0,
-            0, 0, 0
-        };
-
-        U32 pixelFormat = ChoosePixelFormat( m_deviceContext, &pfd );
-        if ( !pixelFormat )
-        {
-            m_deviceContext = 0;
-            m_window = 0;
-            return false;
-        }
-
-        if ( !SetPixelFormat( m_deviceContext, pixelFormat, &pfd ) )
-        {
-            m_deviceContext = 0;
-            m_window = 0;
-            return false;
-        }
-
-        int attribs[] =
-        {
-            WGL_CONTEXT_MAJOR_VERSION_ARB   , 4,
-            WGL_CONTEXT_MINOR_VERSION_ARB   , 2,
-            WGL_CONTEXT_PROFILE_MASK_ARB    , WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-            0 //End
-        };
-
-        m_renderContext = OpenGL::CreateContext( m_deviceContext, attribs );
-        if ( !m_renderContext )
-        {
-            m_deviceContext = 0;
-            m_window = 0;
-            return false;
-        }
-
-        return true;
-    }
-
-    void RenderDevice::Destroy()
-    {
-        if ( m_renderContext )
-        {
-            OpenGL::DestroyContext( m_renderContext );
-            m_renderContext = 0;
-        }
-
-        if ( m_deviceContext )
-        {
-            ReleaseDC( m_window, m_deviceContext );
-            m_deviceContext = 0;
-        }
-
-        m_window = 0;
-    }
-
-    VertexArray * RenderDevice::CreateVertexArray(
+    VertexArray * IRenderDevice::CreateVertexArray(
         const AttribDeclaration attribDecl[],
         SizeT attribCount,
         SizeT vertexSize,
@@ -233,7 +131,7 @@ namespace Graphic
         return v;
     }
 
-    void RenderDevice::DestroyVertexArray( VertexArray * v )
+    void IRenderDevice::DestroyVertexArray( VertexArray * v )
     {
         CARBON_ASSERT( v );
 
@@ -244,7 +142,7 @@ namespace Graphic
         Core::UnknownAllocator::Deallocate( v );
     }
 
-    U32 RenderDevice::CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count )
+    U32 IRenderDevice::CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count )
     {
         CARBON_ASSERT( count > 0 );
 
@@ -314,12 +212,12 @@ namespace Graphic
         return program;
     }
 
-    void RenderDevice::DeleteProgram( U32 program )
+    void IRenderDevice::DeleteProgram( U32 program )
     {
         glDeleteProgram( program );
     }
 
-    void RenderDevice::GetProgramBinary( U32 program, void *& binary, SizeT& size )
+    void IRenderDevice::GetProgramBinary( U32 program, void *& binary, SizeT& size )
     {
         GLint binLength;
         glGetProgramiv( program, GL_PROGRAM_BINARY_LENGTH, &binLength );
@@ -333,7 +231,7 @@ namespace Graphic
         glGetProgramBinary( program, binLength, NULL, fmt, buffer );
     }
 
-    U32 RenderDevice::CreateProgramBinary( const void * binary, SizeT size )
+    U32 IRenderDevice::CreateProgramBinary( const void * binary, SizeT size )
     {
         const GLenum * fmt  = (GLenum*)binary;
         const void * buffer = fmt + 1;
@@ -367,12 +265,12 @@ namespace Graphic
         return program;
     }
 
-    void RenderDevice::UseProgram( Handle program )
+    void IRenderDevice::UseProgram( Handle program )
     {
         glUseProgram( (GLuint)program );
     }
 
-    Handle RenderDevice::CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
+    Handle IRenderDevice::CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
     {
         GLuint texture;
         glGenTextures( 1, &texture );
@@ -399,13 +297,13 @@ namespace Graphic
         return texture;
     }
 
-    void RenderDevice::DestroyTexture( Handle texture )
+    void IRenderDevice::DestroyTexture( Handle texture )
     {
         GLuint t = texture;
         glDeleteTextures( 1, &t );
     }
 
-    Handle RenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
+    Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
     {
         GLuint sampler;
         glGenSamplers( 1, &sampler );
@@ -417,20 +315,20 @@ namespace Graphic
         return sampler;
     }
 
-    void RenderDevice::DestroySampler( Handle sampler )
+    void IRenderDevice::DestroySampler( Handle sampler )
     {
         GLuint s = sampler;
         glDeleteSamplers( 1, &s );
     }
 
-    void RenderDevice::SampleTexture( Handle texture, Handle sampler, SizeT unit )
+    void IRenderDevice::SampleTexture( Handle texture, Handle sampler, SizeT unit )
     {
         glActiveTexture( GL_TEXTURE0 + unit );
         glBindTexture( GL_TEXTURE_2D, texture );
         glBindSampler( unit, sampler );
     }
 
-    void RenderDevice::Draw( PrimitiveType primitive, VertexArray * va )
+    void IRenderDevice::Draw( PrimitiveType primitive, VertexArray * va )
     {
         CARBON_ASSERT( va );
 
@@ -468,19 +366,14 @@ namespace Graphic
         glBindVertexArray( 0 );
     }
 
-    void RenderDevice::SetViewport( U32 x, U32 y, U32 w, U32 h )
+    void IRenderDevice::SetViewport( U32 x, U32 y, U32 w, U32 h )
     {
         glViewport( x, y, w, h );
     }
 
-    void RenderDevice::ClearColor( F32 r, F32 g, F32 b, F32 a )
+    void IRenderDevice::ClearColor( F32 r, F32 g, F32 b, F32 a )
     {
         glClearColor( r, g, b, a );
         glClear( GL_COLOR_BUFFER_BIT );
-    }
-
-    void RenderDevice::Swap()
-    {
-        SwapBuffers(m_deviceContext);
     }
 }
