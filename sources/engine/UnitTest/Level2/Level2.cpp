@@ -8,13 +8,19 @@
 
 using namespace Core;
 
-Char * SerializeVector( Char * dest, const Vector& v )
+namespace Level2_NS
 {
-    F128 s;
-    Store( s, v );
 
-    return StringUtils::FormatString( dest, 32, "%0.2f %0.2f %0.2f %0.2f", s[0], s[1], s[2], s[3] );
+    Char * SerializeVector( Char * dest, const Vector& v )
+    {
+        F128 s;
+        Store( s, v );
+
+        return StringUtils::FormatString( dest, 32, "%0.2f %0.2f %0.2f %0.2f", s[0], s[1], s[2], s[3] );
+    }
 }
+
+using namespace Level2_NS;
 
 void Level2()
 {

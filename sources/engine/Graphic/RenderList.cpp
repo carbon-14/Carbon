@@ -28,7 +28,18 @@ namespace Graphic
             RenderElement& e = *it;
 
             programCache.UseProgram( e.m_program );
+
+            for ( SizeT i=0; i<e.m_unitCount; ++i )
+            {
+                RenderDevice::SampleTexture( e.m_textures[ i ], e.m_samplers[ i ], i );
+            }
+
             RenderDevice::Draw( e.m_primitive, e.m_vertexArray );
+
+            for ( SizeT i=0; i<e.m_unitCount; ++i )
+            {
+                RenderDevice::SampleTexture( 0, 0, i );
+            }
         }
 
         // END

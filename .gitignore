@@ -1,9 +1,9 @@
 # Compiled sources #
 ####################
-bin/
-build/
-lib/
-cache/
+bin/*
+build/*
+lib/*
+cache/*
 
 # Utilities #
 #############

@@ -14,6 +14,10 @@ namespace Graphic
         PrimitiveType   m_primitive;
         ProgramHandle   m_program;
         VertexArray *   m_vertexArray;
+
+        Handle *        m_samplers;
+        Handle *        m_textures;
+        SizeT           m_unitCount;
     };
 
     class _GraphicExport RenderList

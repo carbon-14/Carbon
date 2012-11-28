@@ -1,6 +1,6 @@
 #include "Graphic/OpenGL.h"
 
-META_GL_FUNCTIONS( DEFINE_GL_FUNCTIONS );
+META_GL_FUNCTIONS( DEFINE_GL_FUNCTION );
 
 namespace Graphic
 {
@@ -22,6 +22,7 @@ namespace Graphic
 
         if ( !wglCreateContextAttribsARB )
         {
+            wglDeleteContext( dummyContext );
             return 0;
         }
 
@@ -37,14 +38,14 @@ namespace Graphic
 
         wglMakeCurrent( hDC, context );
 
-        META_GL_FUNCTIONS( LOAD_GL_FUNCTIONS );
+        META_GL_FUNCTIONS( LOAD_GL_FUNCTION );
 
         return context;
     }
 
     void OpenGL::DestroyContext( HGLRC context )
     {
-        META_GL_FUNCTIONS( UNLOAD_GL_FUNCTIONS );
+        META_GL_FUNCTIONS( UNLOAD_GL_FUNCTION );
 
         wglMakeCurrent( 0, 0 );
         wglDeleteContext( context );
