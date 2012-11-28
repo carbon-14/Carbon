@@ -11,6 +11,8 @@ out vec4 outColor;
 layout(binding=0) uniform sampler2D carbonColor;
 layout(binding=1) uniform sampler2D carbonNormal;
 
+const vec3 bgColor = vec3( 162.0, 14.0, 2.0 ) / 255.0;
+
 const float lightIntensity = 8.0;
 const float lightRadius = 1.25;
 const vec3 lightPos = vec3( 0.0, 0.0, -0.75 );
@@ -24,14 +26,14 @@ void main()
 
     // color
     vec3 color = texture2D( carbonColor, DataIn.uv ).rgb;
-    vec3 gradiant = pow( clamp( vec3( uv, 1.0-uv.x ), vec3(0.0), vec3(1.0) ), vec3(gamma) );    // level3 gradiant with sRGB manual decode
+    vec3 colorize = pow( bgColor, vec3(gamma) );            // sRGB manual decode
     
-    color = mix( color, gradiant, 0.75 );                                                        // mix
+    color = mix( color, colorize, 0.5 );                    // mix
 
     // normal
     vec3 normal = texture2D( carbonNormal, DataIn.uv ).rgb;
 
-    normal.xy = 2.0 * normal.xy - 1.0;                                                          // decode normal map
+    normal.xy = 2.0 * normal.xy - 1.0;                      // decode normal map
     normal.z = sqrt( 1.0 - dot( normal.xy, normal.xy ) );
 
     // lighting compute
