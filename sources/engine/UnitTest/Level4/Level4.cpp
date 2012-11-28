@@ -1,4 +1,4 @@
-#include "UnitTest/Level3/Level3.h"
+#include "UnitTest/Level4/Level4.h"
 #include "UnitTest/Utils.h"
 
 #include "Core/FileSystem.h"
@@ -12,7 +12,7 @@
 using namespace Core;
 using namespace Graphic;
 
-namespace Level3_NS
+namespace Level4_NS
 {
     const U32 FRAME_MAX_COUNT = 60;
     U64 clockTicks = 0;
@@ -20,9 +20,69 @@ namespace Level3_NS
 
     const SizeT frameAllocatorSize = 10 * 1024;
 
+    const U32 frameWidth    = 1280;
+    const U32 frameHeight   = 720;
+    const F32 frameRatio    = (F32)frameWidth/(F32)frameHeight;
+
     RenderDevice device3d;
     ProgramCache programCache;
     RenderList renderList;
+
+    struct TextureHeader
+    {
+        unsigned int    internalFormat;
+        unsigned int    externalFormat;
+        unsigned int    mipMapCount;
+        bool            compressed;
+    };
+
+    struct LevelDesc
+    {
+        unsigned int    size;
+        unsigned int    width;
+        unsigned int    height;
+    };
+
+    Handle LoadTexture( const Char * filename )
+    {
+        PathString path;
+        FileSystem::BuildPathName( filename, path, FileSystem::PT_CACHE );
+
+        void * data;
+        SizeT size;
+        FileSystem::Load( path, data, size );
+
+        U8 * ptr = (U8*)data;
+
+        TextureHeader * header = (TextureHeader*)ptr;
+
+        ptr += sizeof(TextureHeader);
+
+        const SizeT maxMipMapCount = 16;
+        SizeT sizes[ maxMipMapCount ];
+        SizeT widths[ maxMipMapCount ];
+        SizeT heights[ maxMipMapCount ];
+        void * datas[ maxMipMapCount ];
+
+        SizeT count = ( header->mipMapCount < maxMipMapCount ) ? header->mipMapCount : maxMipMapCount;
+        for ( SizeT i=0; i<count; ++i )
+        {
+            LevelDesc * desc = (LevelDesc*)ptr;
+            ptr += sizeof(LevelDesc);
+
+            sizes[ i ]      = desc->size;
+            widths[ i ]     = desc->width;
+            heights[ i ]    = desc->height;
+            datas[ i ]      = ptr;
+            ptr += desc->size;
+        }
+
+        Handle texture = RenderDevice::CreateTexture( header->internalFormat, header->externalFormat, count, header->compressed, sizes, widths, heights, datas );
+
+        UnknownAllocator::Deallocate( data );
+
+        return texture;
+    }
 
     class FullScreenQuadRenderer
     {
@@ -34,7 +94,7 @@ namespace Level3_NS
         void Initialize()
         {
             m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "level3" );
+            m_renderElement.m_program   = programCache.GetProgram( "level4" );
 
             const AttribDeclaration vDecl[] =
             {
@@ -42,10 +102,10 @@ namespace Level3_NS
             };
             const F32 vb[4][4] =
             {
-                { -1.0f, -1.0f, 0.0f, 1.0f },
-                { +1.0f, -1.0f, 1.0f, 1.0f },
-                { -1.0f, +1.0f, 0.0f, 0.0f },
-                { +1.0f, +1.0f, 1.0f, 0.0f }
+                { -1.0f, -1.0f, -frameRatio, -1.0f },
+                { +1.0f, -1.0f, +frameRatio, -1.0f },
+                { -1.0f, +1.0f, -frameRatio, +1.0f },
+                { +1.0f, +1.0f, +frameRatio, +1.0f }
             };
             const U8 ib[2][3] =
             {
@@ -54,6 +114,15 @@ namespace Level3_NS
             };
 
             m_renderElement.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, 1, 16, 4, (const void*)vb, DT_U8, 6, (const void*)ib, VAU_STATIC );
+
+            m_renderElement.m_samplers = m_samplers;
+            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_NONE, WT_CLAMP );
+            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_NONE, WT_CLAMP );
+
+            m_renderElement.m_textures = m_textures;
+            m_textures[0] = LoadTexture( "carbon_c.btx" );
+            m_textures[1] = LoadTexture( "carbon_n.btx" );
+            m_renderElement.m_unitCount = 2;
         }
 
         void Render()
@@ -63,11 +132,17 @@ namespace Level3_NS
 
         void Destroy()
         {
+            RenderDevice::DestroySampler( m_samplers[0] );
+            RenderDevice::DestroySampler( m_samplers[1] );
+            RenderDevice::DestroyTexture( m_textures[0] );
+            RenderDevice::DestroyTexture( m_textures[1] );
             RenderDevice::DestroyVertexArray( m_renderElement.m_vertexArray );
         }
 
     private:
-        RenderElement m_renderElement;
+        RenderElement   m_renderElement;
+        Handle          m_textures[2];
+        Handle          m_samplers[2];
     };
 
 
@@ -132,17 +207,16 @@ namespace Level3_NS
             frameCount          = 0;
 
             Char text[ 32 ];
-            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level3 - [ %0.0f fps ]", fps ) );
+            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level4 - [ %0.0f fps ]", fps ) );
         }
     }
-
 }
 
-using namespace Level3_NS;
+using namespace Level4_NS;
 
-WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
+WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
 {
-    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 3 #\n###########\n\n" );
+    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 4 #\n###########\n\n" );
     UNIT_TEST_MESSAGE( "Window Creation\n" );
 
     MSG msg;
@@ -163,12 +237,12 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
     if ( !RegisterClass(&wc) ) return FALSE;
 
     hwnd = CreateWindow( "CarbonWndClass"
-                        ,"Level3"
+                        ,"Level4"
                         ,WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
                         ,CW_USEDEFAULT
                         ,CW_USEDEFAULT
-                        ,1280
-                        ,720
+                        ,frameWidth
+                        ,frameHeight
                         ,NULL
                         ,NULL
                         ,hInstance

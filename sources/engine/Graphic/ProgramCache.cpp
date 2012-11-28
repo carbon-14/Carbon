@@ -207,11 +207,8 @@ namespace Graphic
 
         if ( program.m_handle )
         {
-            Char id[9];
-            StringUtils::FormatString( id, 9, "%08x", program.m_id );
-
             PathString fileName = m_cachePath;
-            fileName += id;
+            fileName += program.m_name;
             fileName += ".bin";
 
             SizeT size;
@@ -281,7 +278,8 @@ namespace Graphic
         ProgramArray::ConstIterator end = m_cache.End();
         for ( ; it != end; ++it )
         {
-            return it - m_cache.Begin();
+            if ( it->m_id == id )
+                return it - m_cache.Begin();
         }
         return ms_invalidHandle;
     }

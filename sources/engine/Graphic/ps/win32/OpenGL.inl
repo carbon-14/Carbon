@@ -80,6 +80,17 @@ extern "C"
 #endif
 
 #define META_GL_FUNCTIONS( Func )                                                   \
+    /* GL_VERSION_1_3 */                                                            \
+    Func ( PFNGLACTIVETEXTUREPROC               , glActiveTexture               );  \
+    Func ( PFNGLSAMPLECOVERAGEPROC              , glSampleCoverage              );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE3DPROC        , glCompressedTexImage3D        );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE2DPROC        , glCompressedTexImage2D        );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE1DPROC        , glCompressedTexImage1D        );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC     , glCompressedTexSubImage3D     );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC     , glCompressedTexSubImage2D     );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC     , glCompressedTexSubImage1D     );  \
+    Func ( PFNGLGETCOMPRESSEDTEXIMAGEPROC       , glGetCompressedTexImage       );  \
+                                                                                    \
     /* GL_VERSION_1_5 */                                                            \
     Func ( PFNGLBINDBUFFERPROC                  , glBindBuffer                  );  \
     Func ( PFNGLDELETEBUFFERSPROC               , glDeleteBuffers               );  \
@@ -101,10 +112,15 @@ extern "C"
     Func ( PFNGLGETPROGRAMINFOLOGPROC           , glGetProgramInfoLog           );  \
     Func ( PFNGLGETSHADERIVPROC                 , glGetShaderiv                 );  \
     Func ( PFNGLGETSHADERINFOLOGPROC            , glGetShaderInfoLog            );  \
+    Func ( PFNGLISPROGRAMPROC                   , glIsProgram                   );  \
+    Func ( PFNGLISSHADERPROC                    , glIsShader                    );  \
     Func ( PFNGLLINKPROGRAMPROC                 , glLinkProgram                 );  \
     Func ( PFNGLSHADERSOURCEPROC                , glShaderSource                );  \
     Func ( PFNGLUSEPROGRAMPROC                  , glUseProgram                  );  \
     Func ( PFNGLVERTEXATTRIBPOINTERPROC         , glVertexAttribPointer         );  \
+                                                                                    \
+    /* GL_ARB_framebuffer_object */                                                 \
+    Func ( PFNGLGENERATEMIPMAPPROC              , glGenerateMipmap              );  \
                                                                                     \
     /* GL_ARB_vertex_array_object */                                                \
     Func ( PFNGLBINDVERTEXARRAYPROC             , glBindVertexArray             );  \
@@ -112,17 +128,41 @@ extern "C"
     Func ( PFNGLGENVERTEXARRAYSPROC             , glGenVertexArrays             );  \
     Func ( PFNGLISVERTEXARRAYPROC               , glIsVertexArray               );  \
                                                                                     \
+    /* GL_ARB_sampler_objects */                                                    \
+    Func ( PFNGLGENSAMPLERSPROC                 , glGenSamplers                 );  \
+    Func ( PFNGLDELETESAMPLERSPROC              , glDeleteSamplers              );  \
+    Func ( PFNGLISSAMPLERPROC                   , glIsSampler                   );  \
+    Func ( PFNGLBINDSAMPLERPROC                 , glBindSampler                 );  \
+    Func ( PFNGLSAMPLERPARAMETERIPROC           , glSamplerParameteri           );  \
+    Func ( PFNGLSAMPLERPARAMETERIVPROC          , glSamplerParameteriv          );  \
+    Func ( PFNGLSAMPLERPARAMETERFPROC           , glSamplerParameterf           );  \
+    Func ( PFNGLSAMPLERPARAMETERFVPROC          , glSamplerParameterfv          );  \
+    Func ( PFNGLSAMPLERPARAMETERIIVPROC         , glSamplerParameterIiv         );  \
+    Func ( PFNGLSAMPLERPARAMETERIUIVPROC        , glSamplerParameterIuiv        );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIVPROC       , glGetSamplerParameteriv       );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIIVPROC      , glGetSamplerParameterIiv      );  \
+    Func ( PFNGLGETSAMPLERPARAMETERFVPROC       , glGetSamplerParameterfv       );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIUIVPROC     , glGetSamplerParameterIuiv     );  \
+                                                                                    \
     /* GL_ARB_get_program_binary */                                                 \
     Func ( PFNGLGETPROGRAMBINARYPROC            , glGetProgramBinary            );  \
     Func ( PFNGLPROGRAMBINARYPROC               , glProgramBinary               );  \
-    Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           )
+    Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           );  \
+                                                                                    \
+    /* GL_ARB_texture_storage */                                                    \
+    Func ( PFNGLTEXSTORAGE1DPROC                , glTexStorage1D                );  \
+    Func ( PFNGLTEXSTORAGE2DPROC                , glTexStorage2D                );  \
+    Func ( PFNGLTEXSTORAGE3DPROC                , glTexStorage3D                );  \
+    Func ( PFNGLTEXTURESTORAGE1DEXTPROC         , glTextureStorage1DEXT         );  \
+    Func ( PFNGLTEXTURESTORAGE2DEXTPROC         , glTextureStorage2DEXT         );  \
+    Func ( PFNGLTEXTURESTORAGE3DEXTPROC         , glTextureStorage3DEXT         )
 
-#define DECLARE_GL_FUNCTIONS( PFunc, Name )     extern PFunc Name
-#define DEFINE_GL_FUNCTIONS( PFunc, Name )      PFunc Name = 0
-#define LOAD_GL_FUNCTIONS( PFunc, Name )        Name = (PFunc)wglGetProcAddress( #Name )
-#define UNLOAD_GL_FUNCTIONS( PFunc, Name )      Name = 0
+#define DECLARE_GL_FUNCTION( PFunc, Name )     extern PFunc Name
+#define DEFINE_GL_FUNCTION( PFunc, Name )      PFunc Name = 0
+#define LOAD_GL_FUNCTION( PFunc, Name )        Name = (PFunc)wglGetProcAddress( #Name )
+#define UNLOAD_GL_FUNCTION( PFunc, Name )      Name = 0
 
-META_GL_FUNCTIONS( DECLARE_GL_FUNCTIONS );
+META_GL_FUNCTIONS( DECLARE_GL_FUNCTION );
 
 #include "Graphic/DLL.h"
 
