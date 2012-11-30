@@ -4,6 +4,7 @@ bin/*
 build/*
 lib/*
 cache/*
+ext/install/*
 
 # Utilities #
 #############

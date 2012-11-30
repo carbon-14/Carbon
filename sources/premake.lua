@@ -58,8 +58,12 @@ for _, sln_basedir in ipairs( s ) do
     _G.sln.basedir  = src_dir.."/"..sln_basedir
     _G.sln.location = sln_location
 
-    includedirs     { "../"..ext_dir }
-    libdirs         { "../"..lib_dir }
+    includedirs     { "../"..ext_dir.."/inc" }
+    for _, ps_dir in ipairs( platform_dirs ) do
+        includedirs { "../"..ext_dir.."/inc/"..ps_dir }
+    end
+
+    libdirs         { "../"..lib_dir, "../"..ext_dir.."/"..lib_dir }
 
     dofile( sln_basedir.."/cfg.lua" )
 end

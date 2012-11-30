@@ -36,7 +36,7 @@ LRESULT CALLBACK WndProc(HWND p_hWnd, UINT p_uiMessage, WPARAM p_wParam, LPARAM 
 }
 #endif
 
-#include "libpng/inc/png.h"
+#include "libpng/png.h"
 
 unsigned int width, height;
 int bit_depth, channels;

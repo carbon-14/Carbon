@@ -14,8 +14,6 @@ for _, ps_dir in ipairs( platform_dirs ) do
     files { ps_dir.."/**.h", ps_dir.."/**.inl", ps_dir.."/**.cpp" }
 end
 
-libdirs             { path.getrelative(prj.basedir,ext_dir).."/libpng/lib" }
-
 links               { "OpenGL32" }
 
 configuration       ( config_debug.name )
