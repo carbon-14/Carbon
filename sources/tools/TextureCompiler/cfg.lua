@@ -14,16 +14,17 @@ for _, ps_dir in ipairs( platform_dirs ) do
     files { ps_dir.."/**.h", ps_dir.."/**.inl", ps_dir.."/**.cpp" }
 end
 
+external_libs =     { "zlib", "libpng" }
 links               { "OpenGL32" }
 
 configuration       ( config_debug.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
     defines         ( config_debug.defines )
     flags           ( config_debug.flags )
-    links           { "zlib"..config_debug.suffix, "libpng"..config_debug.suffix }
+    addExternalLibs ( config_debug, external_libs )
 
 configuration       ( config_release.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_release.name )
     defines         ( config_release.defines )
     flags           ( config_release.flags )
-    links           { "zlib"..config_release.suffix, "libpng"..config_release.suffix }
+    addExternalLibs ( config_release, external_libs )
