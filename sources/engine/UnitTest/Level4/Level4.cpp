@@ -269,8 +269,9 @@ WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
-    FullScreenQuadRenderer fsqRenderer;
+    renderList.SetSRGBWrite( true );
 
+    FullScreenQuadRenderer fsqRenderer;
     fsqRenderer.Initialize();
 
     UNIT_TEST_MESSAGE( "Carbon Engine : Run\n" );
