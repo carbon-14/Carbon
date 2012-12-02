@@ -11,13 +11,11 @@ out vec4 outColor;
 layout(binding=0) uniform sampler2D carbonColor;
 layout(binding=1) uniform sampler2D carbonNormal;
 
-const vec3 bgColor = vec3( 162.0, 14.0, 2.0 ) / 255.0;
+const vec3 bgColor = vec3( 0.336, 0.001, 0.0 );
 
 const float lightIntensity = 8.0;
 const float lightRadius = 1.25;
 const vec3 lightPos = vec3( 0.0, 0.0, 0.75 );
-
-const float gamma = 2.4;
 
 void main()
 {
@@ -26,9 +24,8 @@ void main()
 
     // color
     vec3 color = texture2D( carbonColor, DataIn.uv ).rgb;
-    vec3 colorize = pow( bgColor, vec3(gamma) );                    // sRGB manual decode
     
-    color = mix( color, colorize, 0.5 );                            // mix
+    color = mix( color, bgColor, 0.5 );                             // mix
 
     // normal
     vec3 normal = texture2D( carbonNormal, DataIn.uv ).rgb;
