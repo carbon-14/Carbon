@@ -28,13 +28,16 @@ namespace Graphic
 
         void Push( const RenderElement& element );
 
+        void SetSRGBWrite( Bool enable );
+
         template < typename Pred >
         void Sort();
         void Draw( const ProgramCache& programCache );
         void Clear();
 
     private:
-        Core::Array< RenderElement > m_list;
+        Core::Array< RenderElement >    m_list;
+        Bool                            m_sRGBWrite;
     };
 
     template< typename Pred >

@@ -111,6 +111,7 @@ namespace Graphic
 
         static void             SetViewport( U32 x, U32 y, U32 w, U32 h );
         static void             ClearColor( F32 r, F32 g, F32 b, F32 a );
+        static void             SetSRGBWrite( Bool enable );
     };
 }
 

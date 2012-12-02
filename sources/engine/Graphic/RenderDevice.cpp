@@ -376,4 +376,12 @@ namespace Graphic
         glClearColor( r, g, b, a );
         glClear( GL_COLOR_BUFFER_BIT );
     }
+
+    void IRenderDevice::SetSRGBWrite( Bool enable )
+    {
+        if ( enable )
+            glEnable( GL_FRAMEBUFFER_SRGB );
+        else
+            glDisable( GL_FRAMEBUFFER_SRGB );
+    }
 }

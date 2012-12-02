@@ -3,6 +3,7 @@
 namespace Graphic
 {
     RenderList::RenderList()
+        : m_sRGBWrite( false )
     {
     }
 
@@ -16,9 +17,15 @@ namespace Graphic
         m_list.PushBack( element );
     }
 
+    void RenderList::SetSRGBWrite( Bool enable )
+    {
+        m_sRGBWrite = enable;
+    }
+
     void RenderList::Draw( const ProgramCache& programCache )
     {
         // BEGIN
+        RenderDevice::SetSRGBWrite( m_sRGBWrite );
 
         // DRAW
         Core::Array< RenderElement >::Iterator it = m_list.Begin();
@@ -45,6 +52,7 @@ namespace Graphic
         // END
         m_list.Clear();
         RenderDevice::UseProgram( 0 );
+        RenderDevice::SetSRGBWrite( !m_sRGBWrite );
     }
 
     void RenderList::Clear()
