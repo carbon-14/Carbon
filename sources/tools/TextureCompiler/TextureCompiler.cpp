@@ -507,7 +507,7 @@ struct LevelDesc
     unsigned int    height;
 };
 
-bool BuildImage( const char * outFilename, TextureProfile profile, int options )
+bool BuildTexture( const char * outFilename, TextureProfile profile, int options )
 {
     GLuint map;
     glGenTextures(1, &map);
@@ -721,7 +721,7 @@ bool CompileTexture( const char * inFilename, const char * outFilename, TextureP
         return false;
     }
 
-    bool success = BuildImage( outFilename, profile, options );
+    bool success = BuildTexture( outFilename, profile, options );
 
     DestroyOpenGL();
 
