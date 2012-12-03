@@ -5,7 +5,7 @@
 
 #include <vector>
 
-enum StatesEnum
+enum ParseState
 {
     START,
         GEOMETRY,
@@ -21,9 +21,9 @@ enum StatesEnum
 
 enum Semantic
 {
-    POSITION,
-    NORMAL,
-    TEXCOORD
+    POSITION    = 0,
+    NORMAL      = 1,
+    TEXCOORD    = 2
 };
 
 struct ColladaAccessor
@@ -35,14 +35,15 @@ struct ColladaAccessor
 struct ColladaSource
 {
     char                    id[32];
+    int                     stride;
     std::vector< float >    array;
 };
 
 struct ColladaInput
 {
     Semantic    semantic;
-    char        source[32];
     int         offset;
+    char        source[32];
 };
 
 struct ColladaVertices
@@ -77,16 +78,11 @@ struct ColladaGeometry
 
 ColladaGeometry geometry;
 
-struct ParseData
-{
-    StatesEnum      state;
-};
-
 void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** atts )
 {
-    ParseData * data = reinterpret_cast< ParseData * >( ctx );
+    ParseState& state = *reinterpret_cast< ParseState * >( ctx );
 
-    switch ( data->state )
+    switch ( state )
     {
     case START :
         if ( strcmp( (const char*)name, "geometry" ) == 0 )
@@ -111,13 +107,13 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 }
                 ++a;
             }
-            data->state = GEOMETRY;
+            state = GEOMETRY;
         }
         break;
     case GEOMETRY :
         if ( strcmp( (const char*)name, "mesh" ) == 0 )
         {
-            data->state = MESH;
+            state = MESH;
         }
         break;
     case MESH :
@@ -125,6 +121,7 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         {
             ColladaSource source;
             *source.id = 0;
+            source.stride = 0;
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -142,7 +139,7 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
 
             geometry.mesh.sources.push_back( source );
 
-            data->state = SOURCE;
+            state = SOURCE;
         }
         else if ( strcmp( (const char*)name, "vertices" ) == 0 )
         {
@@ -163,7 +160,7 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 ++a;
             }
             
-            data->state = VERTICES;
+            state = VERTICES;
         }
         else if ( strcmp( (const char*)name, "polylist" ) == 0 )
         {
@@ -186,13 +183,29 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
 
             geometry.mesh.polylists.push_back( polylist );
 
-            data->state = POLYLIST;
+            state = POLYLIST;
         }
         break;
     case SOURCE :
         if ( strcmp( (const char*)name, "float_array" ) == 0 )
         {
-            data->state = ARRAY;
+            state = ARRAY;
+        }
+        else if ( strcmp( (const char*)name, "accessor" ) == 0 )
+        {
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "stride" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%d", &(geometry.mesh.sources.back().stride) );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
         }
         break;
     case VERTICES :
@@ -200,8 +213,8 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         {
             ColladaInput input;
             input.semantic = POSITION;
-            *input.source = 0;
             input.offset = 0;
+            *input.source = 0;
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -238,8 +251,8 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         {
             ColladaInput input;
             input.semantic = POSITION;
-            *input.source = 0;
             input.offset = 0;
+            *input.source = 0;
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -247,11 +260,11 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 if ( strcmp( (const char *)*a, "semantic" ) == 0 )
                 {
                     const char * semantic = (const char *)*(++a);
-                    if ( strcmp( semantic, "POSITION" ) ) {
+                    if ( strcmp( semantic, "POSITION" ) == 0 ) {
                         input.semantic = POSITION;
-                    } else if ( strcmp( semantic, "NORMAL" ) ) {
+                    } else if ( strcmp( semantic, "NORMAL" ) == 0 ) {
                         input.semantic = NORMAL;
-                    } else if ( strcmp( semantic, "TEXCOORD" ) ) {
+                    } else if ( strcmp( semantic, "TEXCOORD" ) == 0 ) {
                         input.semantic = TEXCOORD;
                     }
                 }
@@ -276,92 +289,140 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         }
         else if ( strcmp( (const char*)name, "p" ) == 0 )
         {
-            data->state = PRIMITIVES;
+            state = PRIMITIVES;
         }
         break;
     case FINISH :
         if ( strcmp( (const char*)name, "library_geometries" ) == 0 )
         {
-            data->state = START;
+            state = START;
         }
         break;
     default :
-        data->state = ERROR;
+        state = ERROR;
     }
 }
 
 void endElementCollada( void * ctx, const xmlChar * name )
 {
-    ParseData * data = reinterpret_cast< ParseData * >( ctx );
+    ParseState& state = *reinterpret_cast< ParseState * >( ctx );
 
-    switch ( data->state )
+    switch ( state )
     {
     case START :
         if ( strcmp( (const char*)name, "library_geometries" ) == 0 )
         {
-            data->state = FINISH;
+            state = FINISH;
         }
         break;
     case GEOMETRY :
         if ( strcmp( (const char*)name, "geometry" ) == 0 )
         {
-            data->state = START;
+            state = START;
         }
         break;
     case MESH :
         if ( strcmp( (const char*)name, "mesh" ) == 0 )
         {
-            data->state = GEOMETRY;
+            state = GEOMETRY;
         }
         break;
     case SOURCE :
         if ( strcmp( (const char*)name, "source" ) == 0 )
         {
-            data->state = MESH;
+            state = MESH;
         }
         break;
     case ARRAY :
         if ( strcmp( (const char*)name, "float_array" ) == 0 )
         {
-            data->state = SOURCE;
+            state = SOURCE;
         }
         break;
     case VERTICES :
         if ( strcmp( (const char*)name, "vertices" ) == 0 )
         {
-            data->state = MESH;
+            state = MESH;
         }
         break;
     case POLYLIST :
         if ( strcmp( (const char*)name, "polylist" ) == 0 )
         {
-            data->state = MESH;
+            state = MESH;
         }
         break;
     case PRIMITIVES :
         if ( strcmp( (const char*)name, "p" ) == 0 )
         {
-            data->state = POLYLIST;
+            state = POLYLIST;
         }
         break;
     case FINISH :
         break;
     default :
-        data->state = ERROR;
+        state = ERROR;
     }
 }
 
 void charactersCollada( void * ctx, const xmlChar * name, int len )
 {
-    ParseData * data = reinterpret_cast< ParseData * >( ctx );
+    ParseState& state = *reinterpret_cast< ParseState * >( ctx );
 
-    switch ( data->state )
+    switch ( state )
     {
     case ARRAY :
-        // read float array data
+        {
+            ColladaSource& source = geometry.mesh.sources.back();
+
+            char * str = new char[len+1];
+
+            memcpy( str, name, len+1 );
+
+            char * it = str;
+            const char * last = it + len;
+            const char * end = last + 1;
+
+            while ( it != end )
+            {
+                const char * begin = it;
+                while ( *it != ' ' && it != last ) { ++it; }
+                *it = 0;
+
+                float v;
+                sscanf( begin, "%f", &v );
+                source.array.push_back( v );
+                ++it;
+            }
+
+            delete str;
+        }
         break;
     case PRIMITIVES :
-        // read primitives data
+        {
+            ColladaPolylist& polylist = geometry.mesh.polylists.back();
+
+            char * str = new char[len+1];
+
+            memcpy( str, name, len+1 );
+
+            char * it = str;
+            const char * last = it + len;
+            const char * end = last + 1;
+
+            while ( it != end )
+            {
+                const char * begin = it;
+                while ( *it != ' ' && it != last ) { ++it; }
+                *it = 0;
+
+                int v;
+                sscanf( begin, "%d", &v );
+                polylist.primitives.push_back( v );
+                ++it;
+            }
+
+            delete str;
+        }
         break;
     }
 }
@@ -393,27 +454,103 @@ xmlSAXHandler SAXHandler = {
     NULL                    //fatalErrorSAXFunc fatalError;
 };
 
-int ParseXMLFile( const char * filename )
+int LoadCollada( const char * filename )
 {
-    ParseData data;
-    data.state = FINISH;
+    ParseState state = FINISH;
 
-    if ( xmlSAXUserParseFile( &SAXHandler, &data, filename ) )
+    int success = xmlSAXUserParseFile( &SAXHandler, &state, filename );
+
+    xmlCleanupParser();
+    xmlMemoryDump();
+    
+    return success;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+struct MeshHeader
+{
+    unsigned int vertexDataSize;
+    unsigned int subMeshCount;
+    unsigned int inputCount;
+};
+
+struct MeshInputDesc
+{
+    int semantic;
+    int size;
+    int offset;
+};
+
+struct SubMeshDesc
+{
+    int type;
+    int count;
+};
+
+bool BuildMesh()
+{
+    MeshHeader header;
+
+    const ColladaMesh mesh = geometry.mesh;
+    const std::vector< ColladaSource > sources = mesh.sources;
+    const ColladaVertices& vertices = mesh.vertices;
+    const ColladaInput& v_input = vertices.inputs.front();
+    const std::vector< ColladaPolylist > polylists = mesh.polylists;
+
+    header.inputCount = sources.size();
+    header.subMeshCount = polylists.size();
+
+    const ColladaSource * v_source = NULL;
+    for ( size_t i=0; i< sources.size(); ++i )
     {
-        return 0;
+        const ColladaSource& source = sources[ i ];
+        if ( strcmp( source.id, v_input.source + 1 ) == 0 )
+        {
+            v_source = &source;
+        }
     }
-    else
+
+    if ( ! v_source )
+        return false;
+
+    std::vector< MeshInputDesc > layout;
+    unsigned int vertex_size = 0;
+    const std::vector< ColladaInput >& inputs = polylists.front().inputs;
+    for ( size_t i=0; i<inputs.size(); ++i )
     {
-        return 1;
+        MeshInputDesc input;
+
+        input.semantic  = inputs[ i ].semantic;
+        input.size      = 4;                        // 4-bytes float no compressed for now
+        input.offset    = vertex_size;
+
+        if ( strcmp( vertices.id, inputs[ i ].source + 1 ) == 0 )
+        {
+            vertex_size += v_source->stride * input.size;
+        }
+        else
+        {
+            for ( size_t j=0; j<sources.size(); ++j )
+            {
+                if ( strcmp( sources[ j ].id, inputs[ i ].source + 1 ) == 0 )
+                {
+                    vertex_size += sources[ j ].stride * 4;
+                }
+            }
+        }
+
+        layout.push_back( input );
     }
+
+    return true;
 }
 
 bool CompileMesh()
 {
-    ParseXMLFile( "../../../data/sibenik.dae" );
+    LoadCollada( "../../../data/sibenik.dae" );
 
-    xmlCleanupParser();
-    xmlMemoryDump();
+    BuildMesh();
 
     return true;
 }
