@@ -55,6 +55,7 @@ struct ColladaVertices
 struct ColladaPolylist
 {
     char                        material[32];   // not used yet
+    int                         count;
     std::vector< ColladaInput > inputs;
     std::vector< int >          primitives;     // indicies
 };
@@ -113,6 +114,8 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
     case GEOMETRY :
         if ( strcmp( (const char*)name, "mesh" ) == 0 )
         {
+            geometry.mesh.sources.clear();
+            geometry.mesh.polylists.clear();
             state = MESH;
         }
         break;
@@ -122,6 +125,7 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
             ColladaSource source;
             *source.id = 0;
             source.stride = 0;
+            source.array.clear();
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -145,6 +149,7 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         {
             ColladaMesh& mesh = geometry.mesh;
             *mesh.vertices.id = 0;
+            mesh.vertices.inputs.clear();
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -166,6 +171,9 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         {
             ColladaPolylist polylist;
             *polylist.material = 0;
+            polylist.count = 0;
+            polylist.inputs.clear();
+            polylist.primitives.clear();
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -173,6 +181,10 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 if ( strcmp( (const char *)*a, "material" ) == 0 )
                 {
                     strcpy( (char*)polylist.material, (const char *)*(++a) );
+                }
+                else if ( strcmp( (const char *)*a, "count" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%d", &polylist.count );
                 }
                 else
                 {
@@ -303,6 +315,21 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
     }
 }
 
+std::string collada_characters;
+
+void charactersCollada( void * ctx, const xmlChar * name, int len )
+{
+    ParseState& state = *reinterpret_cast< ParseState * >( ctx );
+
+    switch ( state )
+    {
+    case ARRAY :
+    case PRIMITIVES :
+        collada_characters.append( (const char*)name, len );
+        break;
+    }
+}
+
 void endElementCollada( void * ctx, const xmlChar * name )
 {
     ParseState& state = *reinterpret_cast< ParseState * >( ctx );
@@ -336,6 +363,30 @@ void endElementCollada( void * ctx, const xmlChar * name )
     case ARRAY :
         if ( strcmp( (const char*)name, "float_array" ) == 0 )
         {
+            ColladaSource& source = geometry.mesh.sources.back();
+
+            std::string::iterator it = collada_characters.begin();
+            std::string::iterator end = collada_characters.end();
+            while ( it != end )
+            {
+                if ( *it < 48 || *it > 57 ) { *it = 0; }
+                ++it;
+            }
+
+            it = collada_characters.begin();
+            while ( it != end && *it == 0 ) { ++it; }
+
+            while ( it != end )
+            {
+                float v;
+                sscanf( &*it, "%f", &v );
+                source.array.push_back( v );
+
+                while ( it != end && *it != 0 ) { ++it; }
+                while ( it != end && *it == 0 ) { ++it; }
+            }
+
+            collada_characters.clear();
             state = SOURCE;
         }
         break;
@@ -354,6 +405,30 @@ void endElementCollada( void * ctx, const xmlChar * name )
     case PRIMITIVES :
         if ( strcmp( (const char*)name, "p" ) == 0 )
         {
+            ColladaPolylist& polylist = geometry.mesh.polylists.back();
+
+            std::string::iterator it = collada_characters.begin();
+            std::string::iterator end = collada_characters.end();
+            while ( it != end )
+            {
+                if ( *it < 48 || *it > 57 ) { *it = 0; }
+                ++it;
+            }
+
+            it = collada_characters.begin();
+            while ( it != end && *it == 0 ) { ++it; }
+
+            while ( it != end )
+            {
+                int v;
+                sscanf( &*it, "%d", &v );
+                polylist.primitives.push_back( v );
+
+                while ( it != end && *it != 0 ) { ++it; }
+                while ( it != end && *it == 0 ) { ++it; }
+            }
+
+            collada_characters.clear();
             state = POLYLIST;
         }
         break;
@@ -361,69 +436,6 @@ void endElementCollada( void * ctx, const xmlChar * name )
         break;
     default :
         state = ERROR;
-    }
-}
-
-void charactersCollada( void * ctx, const xmlChar * name, int len )
-{
-    ParseState& state = *reinterpret_cast< ParseState * >( ctx );
-
-    switch ( state )
-    {
-    case ARRAY :
-        {
-            ColladaSource& source = geometry.mesh.sources.back();
-
-            char * str = new char[len+1];
-
-            memcpy( str, name, len+1 );
-
-            char * it = str;
-            const char * last = it + len;
-            const char * end = last + 1;
-
-            while ( it != end )
-            {
-                const char * begin = it;
-                while ( *it != ' ' && it != last ) { ++it; }
-                *it = 0;
-
-                float v;
-                sscanf( begin, "%f", &v );
-                source.array.push_back( v );
-                ++it;
-            }
-
-            delete str;
-        }
-        break;
-    case PRIMITIVES :
-        {
-            ColladaPolylist& polylist = geometry.mesh.polylists.back();
-
-            char * str = new char[len+1];
-
-            memcpy( str, name, len+1 );
-
-            char * it = str;
-            const char * last = it + len;
-            const char * end = last + 1;
-
-            while ( it != end )
-            {
-                const char * begin = it;
-                while ( *it != ' ' && it != last ) { ++it; }
-                *it = 0;
-
-                int v;
-                sscanf( begin, "%d", &v );
-                polylist.primitives.push_back( v );
-                ++it;
-            }
-
-            delete str;
-        }
-        break;
     }
 }
 
@@ -492,56 +504,148 @@ bool BuildMesh()
 {
     MeshHeader header;
 
-    const ColladaMesh mesh = geometry.mesh;
-    const std::vector< ColladaSource > sources = mesh.sources;
-    const ColladaVertices& vertices = mesh.vertices;
-    const ColladaInput& v_input = vertices.inputs.front();
-    const std::vector< ColladaPolylist > polylists = mesh.polylists;
+    ColladaMesh mesh = geometry.mesh;
+    std::vector< ColladaSource > sources = mesh.sources;
+    ColladaVertices& vertices = mesh.vertices;
+    ColladaInput& v_input = vertices.inputs.front();
+    std::vector< ColladaPolylist > polylists = mesh.polylists;
 
     header.inputCount = sources.size();
     header.subMeshCount = polylists.size();
 
-    const ColladaSource * v_source = NULL;
+    ColladaSource * v_source = NULL;
     for ( size_t i=0; i< sources.size(); ++i )
     {
-        const ColladaSource& source = sources[ i ];
+        ColladaSource& source = sources[ i ];
         if ( strcmp( source.id, v_input.source + 1 ) == 0 )
         {
             v_source = &source;
+            break;
         }
     }
 
-    if ( ! v_source )
+    if ( v_source == NULL )
         return false;
 
-    std::vector< MeshInputDesc > layout;
+    std::vector< MeshInputDesc >    input_layout;
+    std::vector< ColladaSource * >  source_layout;
     unsigned int vertex_size = 0;
-    const std::vector< ColladaInput >& inputs = polylists.front().inputs;
-    for ( size_t i=0; i<inputs.size(); ++i )
+    unsigned int vertex_count = 0;
+
+    std::vector< ColladaPolylist >::iterator poly_it = polylists.begin();
+    std::vector< ColladaPolylist >::iterator poly_end = polylists.end();
+    for ( ; poly_it != poly_end; ++poly_it )
     {
-        MeshInputDesc input;
+        vertex_count += poly_it->count * 3; // only triangles
 
-        input.semantic  = inputs[ i ].semantic;
-        input.size      = 4;                        // 4-bytes float no compressed for now
-        input.offset    = vertex_size;
+        std::vector< ColladaInput >& inputs = poly_it->inputs;
+        for ( size_t i=0; i<inputs.size(); ++i )
+        {
+            int offset = inputs[ i ].offset;
+            while ( offset != i )
+            {
+                if ( offset >= inputs.size() )
+                    return false;
 
-        if ( strcmp( vertices.id, inputs[ i ].source + 1 ) == 0 )
-        {
-            vertex_size += v_source->stride * input.size;
-        }
-        else
-        {
+                std::swap( inputs[ i ], inputs[ offset ] );
+            }
+
+            ColladaSource * source = NULL;
             for ( size_t j=0; j<sources.size(); ++j )
             {
-                if ( strcmp( sources[ j ].id, inputs[ i ].source + 1 ) == 0 )
+                if ( strcmp( vertices.id, inputs[ i ].source + 1 ) == 0 )
                 {
-                    vertex_size += sources[ j ].stride * 4;
+                    source = v_source;
+                    break;
+                }
+                else if ( strcmp( sources[ j ].id, inputs[ i ].source + 1 ) == 0 )
+                {
+                    source = &sources[ j ];
+                    break;
                 }
             }
+
+            if ( source == NULL )
+                return false;
+
+            if ( input_layout.size() <= i )             // Create layout on first inputs
+            {
+                MeshInputDesc input;
+                input.semantic = inputs[ i ].semantic;
+                input.offset = vertex_size;
+                input.size = source->stride * 4;        // 4-byte floats
+                vertex_size += input.size;
+
+                input_layout.push_back( input );
+                source_layout.push_back( source );
+            }
+            else if ( source_layout[ i ] != source )    // check layout
+            {
+                return false;
+            }
+        }
+    }
+
+    std::vector< void * > sub_meshes;
+
+    void * vertex_data = malloc( vertex_size * vertex_count );
+    unsigned char * ptr = (unsigned char*)vertex_data;
+
+    unsigned int buffer_size = vertex_size * vertex_count;
+    
+    poly_it = polylists.begin();
+    for ( ; poly_it != poly_end; ++poly_it )
+    {
+        sub_meshes.push_back( ptr );
+
+        int * index = poly_it->primitives.data();
+        int * index_end = index + poly_it->primitives.size();
+        int count = 0;
+
+        while ( index != index_end )
+        {
+            for ( size_t i=0; i<source_layout.size(); ++i, ++index, ++count )
+            {
+                const ColladaSource * source = source_layout[ i ];
+                const MeshInputDesc& input = input_layout[ i ];
+            
+                assert( index < index_end );
+                assert( *index >= 0 );
+                assert( count < poly_it->primitives.size() );
+                memcpy( ptr + input.offset, source->array.data() + *index * source->stride, input.size );
+            }
+
+            ptr += vertex_size;
+        } 
+    }
+
+    // remove duplicated vertices
+    unsigned char * vertex_end = (unsigned char *)vertex_data;
+    std::vector< unsigned int > indices;
+    indices.reserve( vertex_count );
+    for ( unsigned int i=0; i<vertex_count; ++i )
+    {
+        unsigned char * vertex = (unsigned char *)vertex_data + i * vertex_size;
+
+        unsigned char * d = (unsigned char *)vertex_data;
+        while ( d != vertex_end )
+        {
+            if ( memcmp( d, vertex, vertex_size ) == 0 ) { break; }
+            d += vertex_size;
         }
 
-        layout.push_back( input );
+        indices.push_back( ( d - (unsigned char *)vertex_data ) / vertex_size );
+
+        if ( d == vertex_end )
+        {
+            memcpy( vertex_end, vertex, vertex_size );
+            vertex_end += vertex_size;
+        }
     }
+
+    unsigned int new_buffer_size = vertex_end - (unsigned char *)vertex_data;
+
+    free( vertex_data );
 
     return true;
 }
