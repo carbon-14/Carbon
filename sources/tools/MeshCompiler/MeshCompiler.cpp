@@ -5,6 +5,8 @@
 
 #include <vector>
 
+#include <cassert>
+
 enum ParseState
 {
     START,
@@ -21,9 +23,14 @@ enum ParseState
 
 enum Semantic
 {
-    POSITION    = 0,
-    NORMAL      = 1,
-    TEXCOORD    = 2
+    POSITION = 0,
+    NORMAL,
+    TANGENT,
+    BINORMAL,
+    COLOR,
+    TEXCOORD0,
+    TEXCOORD1,
+    COUNT
 };
 
 struct ColladaAccessor
@@ -57,7 +64,7 @@ struct ColladaPolylist
     char                        material[32];   // not used yet
     int                         count;
     std::vector< ColladaInput > inputs;
-    std::vector< int >          primitives;     // indicies
+    std::vector< int >          primitives;     // indices
 };
 
 struct ColladaMesh
@@ -78,6 +85,8 @@ struct ColladaGeometry
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 ColladaGeometry geometry;
+
+
 
 void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** atts )
 {
@@ -221,43 +230,6 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         }
         break;
     case VERTICES :
-        if ( strcmp( (const char*)name, "input" ) == 0 )
-        {
-            ColladaInput input;
-            input.semantic = POSITION;
-            input.offset = 0;
-            *input.source = 0;
-
-            const xmlChar ** a = atts;
-            while ( *a != NULL )
-            {
-                if ( strcmp( (const char *)*a, "semantic" ) == 0 )
-                {
-                    const char * semantic = (const char *)*(++a);
-                    if ( strcmp( semantic, "POSITION" ) == 0 ) {
-                        input.semantic = POSITION;
-                    } else if ( strcmp( semantic, "NORMAL" ) == 0 ) {
-                        input.semantic = NORMAL;
-                    } else if ( strcmp( semantic, "TEXCOORD" ) == 0 ) {
-                        input.semantic = TEXCOORD;
-                    }
-                }
-                else if ( strcmp( (const char *)*a, "source" ) == 0 )
-                {
-                    strcpy( (char *)input.source, (const char *)*(++a) );
-                }
-                else
-                {
-                    ++a;
-                }
-                ++a;
-            }
-
-            ColladaMesh& mesh = geometry.mesh;
-            ColladaVertices& vertices = mesh.vertices;
-            vertices.inputs.push_back( input );
-        }
-        break;
     case POLYLIST :
         if ( strcmp( (const char*)name, "input" ) == 0 )
         {
@@ -266,27 +238,23 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
             input.offset = 0;
             *input.source = 0;
 
+            char semantic[32] = "";
+            int set = 0;
+
             const xmlChar ** a = atts;
             while ( *a != NULL )
             {
                 if ( strcmp( (const char *)*a, "semantic" ) == 0 )
                 {
-                    const char * semantic = (const char *)*(++a);
-                    if ( strcmp( semantic, "POSITION" ) == 0 ) {
-                        input.semantic = POSITION;
-                    } else if ( strcmp( semantic, "NORMAL" ) == 0 ) {
-                        input.semantic = NORMAL;
-                    } else if ( strcmp( semantic, "TEXCOORD" ) == 0 ) {
-                        input.semantic = TEXCOORD;
-                    }
+                    strcpy( semantic, (const char *)*(++a) );
                 }
                 else if ( strcmp( (const char *)*a, "source" ) == 0 )
                 {
                     strcpy( (char *)input.source, (const char *)*(++a) );
                 }
-                else if ( strcmp( (const char *)*a, "offset" ) == 0 )
+                else if ( strcmp( (const char *)*a, "set" ) == 0 )
                 {
-                    sscanf( (const char *)*(++a), "%d", &input.offset );
+                    sscanf( (const char *)*(++a), "%d", &set );
                 }
                 else
                 {
@@ -295,11 +263,31 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 ++a;
             }
 
+            if ( strcmp( semantic, "POSITION" ) == 0 ) {
+                input.semantic = POSITION;
+            } else if ( strcmp( semantic, "NORMAL" ) == 0 ) {
+                input.semantic = NORMAL;
+            } else if ( strcmp( semantic, "TEXCOORD" ) == 0 ) {
+                if ( set == 0 )
+                    input.semantic = TEXCOORD0;
+                else if ( set == 1 )
+                    input.semantic = TEXCOORD1;
+            }
+
             ColladaMesh& mesh = geometry.mesh;
-            ColladaPolylist& polylist = mesh.polylists.back();
-            polylist.inputs.push_back( input );
+
+            if ( state == VERTICES )
+            {
+                ColladaVertices& vertices = mesh.vertices;
+                vertices.inputs.push_back( input );
+            }
+            else
+            {
+                ColladaPolylist& polylist = mesh.polylists.back();
+                polylist.inputs.push_back( input );
+            }
         }
-        else if ( strcmp( (const char*)name, "p" ) == 0 )
+        else if ( state == POLYLIST && strcmp( (const char*)name, "p" ) == 0 )
         {
             state = PRIMITIVES;
         }
@@ -487,20 +475,196 @@ struct MeshHeader
     unsigned int inputCount;
 };
 
+enum VType
+{
+    VT_UBYTE    = 0,
+    VT_HALF,
+    VT_FLOAT,
+    VT_NORMAL      // 2_10_10_10
+};
+
+const VType vType[COUNT][OT_COMPRESS_COUNT] =
+{
+    { VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   },
+    { VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL , VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL },
+    { VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL , VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL },
+    { VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL , VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL },
+    { VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  },
+    { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_HALF   , VT_HALF   , VT_HALF   , VT_HALF   },
+    { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_HALF   , VT_HALF   , VT_HALF   , VT_HALF   },
+};
+
+const unsigned int vSize[COUNT][OT_COMPRESS_COUNT] =
+{
+    { 16    , 8     , 16    , 8     , 16    , 8     , 16    , 8 },
+    { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
+    { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
+    { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
+    { 4     , 4     , 4     , 4     , 4     , 4     , 4     , 4 },
+    { 8     , 8     , 8     , 8     , 4     , 4     , 4     , 4 },
+    { 8     , 8     , 8     , 8     , 4     , 4     , 4     , 4 },
+};
+
 struct MeshInputDesc
 {
-    int semantic;
-    int size;
-    int offset;
+    Semantic    semantic;
+    VType       type;
+    int         size;
+    int         offset;
+};
+
+enum IType
+{
+    IT_UBYTE   = 0,
+    IT_USHORT,
+    IT_UINTEGER
 };
 
 struct SubMeshDesc
 {
-    int type;
-    int count;
+    IType   type;
+    int     count;
 };
 
-bool BuildMesh()
+unsigned char toUByte( float v )
+{
+    return floor( 255.0f * v );
+}
+
+// Float 32-bits
+// sign     : 1 bit
+// exponent : 8 bits
+// mantissa : 23 bits
+// if ( v < 2^-128 ) -> ( mantissa / 2^24 ) * 2^-128
+// else              -> ( 1 + mantissa / 2^24 ) * 2^( exponent - 128 )
+
+// Float 16-bits ( half )
+// sign     : 1 bit
+// exponent : 5 bits
+// mantissa : 10 bits
+// if ( v < 2^-16 ) -> (-1)^sign * ( mantissa / 2^11 ) * 2^-16
+// else             -> (-1)^sign * ( 1 + mantissa / 2^11 ) * 2^( exponent - 16 )
+
+// Float 10-bits
+// exponent : 5 bits
+// mantissa : 5 bits
+// if ( v < 2^-16 ) -> ( mantissa / 2^6 ) * 2^-16
+// else             -> ( 1 + mantissa / 2^6 ) * 2^( exponent - 16 )
+
+unsigned short toFloat16( float v )
+{
+    unsigned int f_mem      = *((unsigned int *)( &v ));
+    int f_sign     = ( f_mem & 0x80000000 ) >> 31;
+    int f_exponent = ( f_mem & 0x7f800000 ) >> 23;
+    int f_mantissa = ( f_mem & 0x07ffffff );
+
+    unsigned short sign = f_sign;
+    unsigned short exponent, mantissa;
+
+    if ( ( f_exponent - 128 ) < -26 )
+    {
+        exponent = 0x0000;
+        mantissa = 0x0000;
+    }
+    else if ( ( f_exponent - 128 ) < -16 )
+    {
+        exponent = 0x0000;
+        mantissa = ( f_mantissa >> 13 ) & 0x0000ffff;
+    }
+    else if ( ( f_exponent - 128 ) > 16 )
+    {
+        exponent = 0x0031;
+        mantissa = 0x03ff;
+    }
+    else
+    {
+        exponent = f_exponent - 112;
+        mantissa = ( f_mantissa >> 13 ) & 0x0000ffff;
+    }
+
+    return ( ( sign << 15 ) | ( exponent << 10 ) | mantissa );
+}
+
+unsigned short toFloat10( float v )
+{
+    unsigned int f_mem      = *((unsigned int *)( &v ));
+    int f_exponent = ( f_mem & 0x7f800000 ) >> 23;
+    int f_mantissa = ( f_mem & 0x07ffffff );
+
+    unsigned short exponent, mantissa;
+
+    if ( ( f_exponent - 128 ) < -26 )
+    {
+        exponent = 0x0000;
+        mantissa = 0x0000;
+    }
+    else if ( ( f_exponent - 128 ) < -16 )
+    {
+        exponent = 0x0000;
+        mantissa = ( f_mantissa >> 18 ) & 0x0000ffff;
+    }
+    else if ( ( f_exponent - 128 ) > 16 )
+    {
+        exponent = 0x0031;
+        mantissa = 0x03ff;
+    }
+    else
+    {
+        exponent = f_exponent - 112;
+        mantissa = ( f_mantissa >> 18 ) & 0x0000ffff;
+    }
+
+    return ( ( exponent << 5 ) | mantissa );
+}
+
+void FormatData( void * dest, const float * src, int stride, const MeshInputDesc& input )
+{
+    memset( dest, 0, input.size );
+
+    switch ( input.type )
+    {
+    case VT_UBYTE:
+        {
+            assert( input.semantic == COLOR );
+
+            unsigned char * color = (unsigned char *)dest;
+            for ( int i=0; i<stride; ++i )
+            {
+                color[ i ] = toUByte( src[i] );
+            }
+        }
+        break;
+    case VT_HALF:
+        {
+            assert( input.semantic == POSITION || input.semantic == TEXCOORD0 || input.semantic == TEXCOORD1 );
+
+            unsigned short * half = (unsigned short *)dest;
+            for ( int i=0; i<stride; ++i )
+            {
+                half[ i ] = toFloat16( src[i] );
+            }
+        }
+        break;
+    case VT_FLOAT:
+        {
+            memcpy( dest, src, stride * sizeof( float ) );
+        }
+        break;
+    case VT_NORMAL:
+        {
+            assert( input.semantic == NORMAL || input.semantic == TANGENT || input.semantic == BINORMAL );
+
+            unsigned int * n = (unsigned int *)dest;
+            for ( int i=0; i<stride; ++i )
+            {
+                *n |= toFloat10( src[i] ) >> ( 32 - 10 * i );
+            }
+        }
+        break;
+    }
+}
+
+bool BuildMesh( const char * outFilename, int options )
 {
     MeshHeader header;
 
@@ -526,6 +690,8 @@ bool BuildMesh()
 
     if ( v_source == NULL )
         return false;
+
+    // build vertex layout
 
     std::vector< MeshInputDesc >    input_layout;
     std::vector< ColladaSource * >  source_layout;
@@ -572,8 +738,10 @@ bool BuildMesh()
             {
                 MeshInputDesc input;
                 input.semantic = inputs[ i ].semantic;
+                input.type = vType[ input.semantic ][ options ];
+                input.size = vSize[ input.semantic ][ options ];
                 input.offset = vertex_size;
-                input.size = source->stride * 4;        // 4-byte floats
+
                 vertex_size += input.size;
 
                 input_layout.push_back( input );
@@ -585,6 +753,8 @@ bool BuildMesh()
             }
         }
     }
+
+    // build triangle lists
 
     std::vector< void * > sub_meshes;
 
@@ -600,19 +770,15 @@ bool BuildMesh()
 
         int * index = poly_it->primitives.data();
         int * index_end = index + poly_it->primitives.size();
-        int count = 0;
 
         while ( index != index_end )
         {
-            for ( size_t i=0; i<source_layout.size(); ++i, ++index, ++count )
+            for ( size_t i=0; i<source_layout.size(); ++i, ++index )
             {
                 const ColladaSource * source = source_layout[ i ];
                 const MeshInputDesc& input = input_layout[ i ];
-            
-                assert( index < index_end );
-                assert( *index >= 0 );
-                assert( count < poly_it->primitives.size() );
-                memcpy( ptr + input.offset, source->array.data() + *index * source->stride, input.size );
+
+                FormatData( ptr + input.offset, source->array.data() + *index * source->stride, source->stride, input );
             }
 
             ptr += vertex_size;
@@ -650,11 +816,11 @@ bool BuildMesh()
     return true;
 }
 
-bool CompileMesh()
+bool CompileMesh( const char * inFilename, const char * outFilename, int options )
 {
-    LoadCollada( "../../../data/sibenik.dae" );
+    LoadCollada( inFilename );
 
-    BuildMesh();
+    BuildMesh( outFilename, options );
 
     return true;
 }
