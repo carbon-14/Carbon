@@ -28,23 +28,83 @@ namespace Level5_NS
     ProgramCache programCache;
     RenderList renderList;
 
-    struct TextureHeader
+    enum VType
     {
-        unsigned int    internalFormat;
-        unsigned int    externalFormat;
-        unsigned int    mipMapCount;
-        bool            compressed;
+        VT_UBYTE    = 0,
+        VT_SHORT,
+        VT_HALF,
+        VT_FLOAT,
+        VT_NMVECT      // 2_10_10_10
     };
 
-    struct LevelDesc
+    const DataType toAttribType[] =
     {
-        unsigned int    size;
-        unsigned int    width;
-        unsigned int    height;
+        DT_U8,
+        DT_S16,
+        DT_F16,
+        DT_F32,
+        DT_S2_10_10_10
     };
 
-    Handle LoadTexture( const Char * filename )
+    const SizeT toAttribSize[] =
     {
+        1, 
+        2, 
+        2,
+        4,
+        1   // used to keep a size of 4 in vertex declaration
+    };
+
+    const Bool toAttribNormalized[] =
+    {
+        false,
+        false,
+        false,
+        false,
+        true
+    };
+
+    enum IType
+    {
+        IT_UBYTE   = 0,
+        IT_USHORT,
+        IT_ULONG
+    };
+
+    const DataType toIndexType[] =
+    {
+        DT_U8,
+        DT_U16,
+        DT_U32
+    };
+
+    const SizeT toIndexSize[] =
+    {
+        1, 
+        2, 
+        4
+    };
+
+    struct MeshHeader
+    {
+        IType   indexType;
+        U32     subMeshCount;
+        U32     inputCount;
+        U32     vertexDataSize;
+    };
+
+    struct MeshInputDesc
+    {
+        VertexSemantic  semantic;
+        VType           type;
+        U32             size;
+        U32             offset;
+    };
+
+    Geometry LoadMesh( const Char * filename )
+    {
+        Geometry geom;
+
         PathString path;
         FileSystem::BuildPathName( filename, path, FileSystem::PT_CACHE );
 
@@ -54,34 +114,48 @@ namespace Level5_NS
 
         U8 * ptr = (U8*)data;
 
-        TextureHeader * header = (TextureHeader*)ptr;
+        MeshHeader * header = (MeshHeader*)ptr;
+        ptr += sizeof(MeshHeader);
 
-        ptr += sizeof(TextureHeader);
+        geom.m_indexType    = toIndexType[ header->indexType ];
+        geom.m_subGeomCount = header->subMeshCount;
 
-        const SizeT maxMipMapCount = 16;
-        SizeT sizes[ maxMipMapCount ];
-        SizeT widths[ maxMipMapCount ];
-        SizeT heights[ maxMipMapCount ];
-        void * datas[ maxMipMapCount ];
-
-        SizeT count = ( header->mipMapCount < maxMipMapCount ) ? header->mipMapCount : maxMipMapCount;
-        for ( SizeT i=0; i<count; ++i )
+        VertexDeclaration& vDecl = geom.m_vertexDecl;
+        vDecl.m_count = header->inputCount;
+        vDecl.m_size = 0;
+        for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
-            LevelDesc * desc = (LevelDesc*)ptr;
-            ptr += sizeof(LevelDesc);
+            MeshInputDesc * desc = (MeshInputDesc*)ptr;
+            ptr += sizeof(MeshInputDesc);
 
-            sizes[ i ]      = desc->size;
-            widths[ i ]     = desc->width;
-            heights[ i ]    = desc->height;
-            datas[ i ]      = ptr;
-            ptr += desc->size;
+            vDecl.m_attributes[ i ].m_semantic      = desc->semantic;
+            vDecl.m_attributes[ i ].m_type          = toAttribType[ desc->type ];
+            vDecl.m_attributes[ i ].m_size          = desc->size / toAttribSize[ desc->type ];
+            vDecl.m_attributes[ i ].m_normalized    = toAttribNormalized[ desc->type ];
+            vDecl.m_attributes[ i ].m_offset        = desc->offset;
+            vDecl.m_size                            += desc->size;
         }
 
-        Handle texture = RenderDevice::CreateTexture( header->internalFormat, header->externalFormat, count, header->compressed, sizes, widths, heights, datas );
+        geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( header->vertexDataSize, ptr, BU_STATIC );
+
+        ptr += header->vertexDataSize;
+
+        for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
+        {
+            SizeT count = *((U32*)ptr);
+            ptr += sizeof(U32);
+
+            SizeT size = count * DataTypeSize[ geom.m_indexType ];
+
+            geom.m_subGeoms[ i ].m_indexCount   = count;
+            geom.m_subGeoms[ i ].m_indexBuffer  = RenderDevice::CreateIndexBuffer( size, ptr, BU_STATIC );
+            geom.m_subGeoms[ i ].m_vertexArray  = RenderDevice::CreateVertexArray( geom.m_vertexDecl, geom.m_vertexBuffer, geom.m_subGeoms[ i ].m_indexBuffer );
+            ptr += size;
+        }
 
         UnknownAllocator::Deallocate( data );
 
-        return texture;
+        return geom;
     }
 
     class FullScreenQuadRenderer
@@ -94,35 +168,11 @@ namespace Level5_NS
         void Initialize()
         {
             m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "level4" );
+            m_renderElement.m_program   = programCache.GetProgram( "level5" );
 
-            const AttribDeclaration vDecl[] =
-            {
-                { VS_POSITION, DT_F32, 4, false, 0 }
-            };
-            const F32 vb[4][4] =
-            {
-                { -1.0f, -1.0f, -frameRatio, -1.0f },
-                { +1.0f, -1.0f, +frameRatio, -1.0f },
-                { -1.0f, +1.0f, -frameRatio, +1.0f },
-                { +1.0f, +1.0f, +frameRatio, +1.0f }
-            };
-            const U8 ib[2][3] =
-            {
-                0, 1, 2,
-                2, 1, 3,
-            };
+            m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
 
-            m_renderElement.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, 1, 16, 4, (const void*)vb, DT_U8, 6, (const void*)ib, VAU_STATIC );
-
-            m_renderElement.m_samplers = m_samplers;
-            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_NONE, WT_CLAMP );
-            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_NONE, WT_CLAMP );
-
-            m_renderElement.m_textures = m_textures;
-            m_textures[0] = LoadTexture( "carbon_c.btx" );
-            m_textures[1] = LoadTexture( "carbon_n.btx" );
-            m_renderElement.m_unitCount = 2;
+            m_renderElement.m_unitCount = 0;
         }
 
         void Render()
@@ -132,20 +182,18 @@ namespace Level5_NS
 
         void Destroy()
         {
-            RenderDevice::DestroySampler( m_samplers[0] );
-            RenderDevice::DestroySampler( m_samplers[1] );
-            RenderDevice::DestroyTexture( m_textures[0] );
-            RenderDevice::DestroyTexture( m_textures[1] );
-            RenderDevice::DestroyVertexArray( m_renderElement.m_vertexArray );
+            Geometry& geom = m_renderElement.m_geom;
+            for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
+            {
+                RenderDevice::DestroyVertexArray( geom.m_subGeoms[ i ].m_vertexArray );
+                RenderDevice::DestroyBuffer( geom.m_subGeoms[ i ].m_indexBuffer );
+            }
+            RenderDevice::DestroyBuffer( geom.m_vertexBuffer );
         }
 
     private:
         RenderElement   m_renderElement;
-        Handle          m_textures[2];
-        Handle          m_samplers[2];
     };
-
-
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
