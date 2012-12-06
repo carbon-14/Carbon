@@ -41,7 +41,13 @@ namespace Graphic
                 RenderDevice::SampleTexture( e.m_textures[ i ], e.m_samplers[ i ], i );
             }
 
-            RenderDevice::Draw( e.m_primitive, e.m_vertexArray );
+            for ( SizeT i=0; i<e.m_geom.m_subGeomCount; ++i )
+            {
+                const SubGeometry& sub = e.m_geom.m_subGeoms[ i ];
+                RenderDevice::BeginGeometry( e.m_geom.m_vertexDecl, sub.m_vertexArray, sub.m_indexBuffer );
+                RenderDevice::DrawIndexed( e.m_primitive, sub.m_indexCount, e.m_geom.m_indexType );
+                RenderDevice::EndGeometry( e.m_geom.m_vertexDecl );
+            }
 
             for ( SizeT i=0; i<e.m_unitCount; ++i )
             {

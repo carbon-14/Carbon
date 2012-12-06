@@ -14,23 +14,26 @@ namespace Graphic
         GL_GEOMETRY_SHADER  // ST_GEOMETRY_SHADER
     };
 
-    const GLenum ToGLVertexArrayUsage[] =
+    const GLenum ToGLBufferUsage[] =
     {
-        GL_STATIC_DRAW,     // VBU_STATIC
-        GL_DYNAMIC_DRAW,    // VBU_DYNAMIC
-        GL_STREAM_DRAW      // VBU_STREAM
+        GL_STATIC_DRAW,     // BU_STATIC
+        GL_DYNAMIC_DRAW,    // BU_DYNAMIC
+        GL_STREAM_DRAW      // BU_STREAM
     };
 
     const GLenum ToGLDataType[] =
     {
-        GL_BYTE,            // DT_S8
-        GL_UNSIGNED_BYTE,   // DT_U8
-        GL_SHORT,           // DT_S16
-        GL_UNSIGNED_SHORT,  // DT_U16
-        GL_INT,             // DT_S32
-        GL_UNSIGNED_INT,    // DT_U32
-        GL_FLOAT,           // DT_F32
-        GL_DOUBLE           // DT_F64
+        GL_BYTE,                        // DT_S8
+        GL_UNSIGNED_BYTE,               // DT_U8
+        GL_SHORT,                       // DT_S16
+        GL_UNSIGNED_SHORT,              // DT_U16
+        GL_HALF_FLOAT,                  // DT_F16
+        GL_INT,                         // DT_S32
+        GL_UNSIGNED_INT,                // DT_U32
+        GL_FLOAT,                       // DT_F32
+        GL_DOUBLE,                      // DT_F64
+        GL_INT_2_10_10_10_REV,          // DT_S2_10_10_10
+        GL_UNSIGNED_INT_2_10_10_10_REV  // DT_U2_10_10_10
     };
 
     const GLenum ToGLPrimitiveType[] =
@@ -84,62 +87,67 @@ namespace Graphic
 
     //===================================================================================
 
-    VertexArray * IRenderDevice::CreateVertexArray(
-        const AttribDeclaration attribDecl[],
-        SizeT attribCount,
-        SizeT vertexSize,
-        SizeT vertexCount,
-        const void * vertexData,
-        DataType indexType,
-        SizeT indexCount,
-        const void * indexData,
-        VertexArrayUsage usage )
+    Handle CreateBuffer( SizeT size, const void * data, GLenum usage, GLenum target )
     {
-        VertexArray * v = (VertexArray*)Core::UnknownAllocator::Allocate( sizeof( VertexArray ) );
+        GLuint buffer;
+        glGenBuffers( 1, &buffer );
+        glBindBuffer( target, buffer );
+        glBufferData( target, size, data, usage );
+        glBindBuffer( target, 0 );
+        return buffer;
+    }
 
-        v->m_attribMap = 0;
+    //===================================================================================
 
-        glGenVertexArrays( 1, &v->m_va );
-        glBindVertexArray( v->m_va );
+    Handle IRenderDevice::CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage )
+    {
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ARRAY_BUFFER );
+    }
 
-        glGenBuffers( 1, &v->m_vb );
-        glBindBuffer( GL_ARRAY_BUFFER, v->m_vb );
-        glBufferData( GL_ARRAY_BUFFER, vertexCount * vertexSize, vertexData, ToGLVertexArrayUsage[ usage ] );
-        for ( SizeT i=0; i<attribCount; ++i )
+    Handle IRenderDevice::CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage )
+    {
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ELEMENT_ARRAY_BUFFER );
+    }
+
+    void IRenderDevice::DestroyBuffer( Handle buffer )
+    {
+        glDeleteBuffers( 1, (GLuint*)&buffer );
+    }
+
+    Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
+    {
+        GLuint varray;
+        glGenVertexArrays( 1, &varray );
+        glBindVertexArray( varray );
+
+        GLenum error = glGetError();
+
+        glBindBuffer( GL_ARRAY_BUFFER, vbuffer );
+        for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
-            const AttribDeclaration& attrib = attribDecl[ i ];
-            v->m_attribMap |= ToVertexSemanticMap[ attrib.m_semantic ];
+            const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
             glEnableVertexAttribArray( attrib.m_semantic );
-            glVertexAttribPointer( attrib.m_semantic, attrib.m_size, ToGLDataType[ attrib.m_type ], attrib.m_normalized, vertexSize, reinterpret_cast< const void * >( attrib.m_offset ) );
+            error = glGetError();
+            glVertexAttribPointer( attrib.m_semantic, attrib.m_size, ToGLDataType[ attrib.m_type ], attrib.m_normalized, vDecl.m_size, reinterpret_cast< const void * >( attrib.m_offset ) );
+            error = glGetError();
             glDisableVertexAttribArray( attrib.m_semantic );
         }
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
-        if ( indexData )
+        if ( ibuffer )
         {
-            glGenBuffers( 1, &v->m_ib );
-            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, v->m_ib );
-            glBufferData( GL_ELEMENT_ARRAY_BUFFER, indexCount * DataTypeSize[ indexType ], indexData, ToGLVertexArrayUsage[ usage ] );
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibuffer );
+            error = glGetError();
             glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
-
-            v->m_indexType = ToGLDataType[ indexType ];
-            v->m_indexCount = indexCount;
         }
 
         glBindVertexArray( 0 );
-
-        return v;
+        return varray;
     }
 
-    void IRenderDevice::DestroyVertexArray( VertexArray * v )
+    void IRenderDevice::DestroyVertexArray( Handle varray )
     {
-        CARBON_ASSERT( v );
-
-        glDeleteVertexArrays( 1, &v->m_va );
-        glDeleteBuffers( 1, &v->m_vb );
-        glDeleteBuffers( 1, &v->m_ib );
-
-        Core::UnknownAllocator::Deallocate( v );
+        glDeleteVertexArrays( 1, (GLuint*)&varray );
     }
 
     U32 IRenderDevice::CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count )
@@ -299,8 +307,7 @@ namespace Graphic
 
     void IRenderDevice::DestroyTexture( Handle texture )
     {
-        GLuint t = texture;
-        glDeleteTextures( 1, &t );
+        glDeleteTextures( 1, (GLuint*)&texture );
     }
 
     Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
@@ -317,8 +324,7 @@ namespace Graphic
 
     void IRenderDevice::DestroySampler( Handle sampler )
     {
-        GLuint s = sampler;
-        glDeleteSamplers( 1, &s );
+        glDeleteSamplers( 1, (GLuint*)&sampler );
     }
 
     void IRenderDevice::SampleTexture( Handle texture, Handle sampler, SizeT unit )
@@ -328,42 +334,41 @@ namespace Graphic
         glBindSampler( unit, sampler );
     }
 
-    void IRenderDevice::Draw( PrimitiveType primitive, VertexArray * va )
+    void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )
     {
-        CARBON_ASSERT( va );
+        glBindVertexArray( varray );
 
-        glBindVertexArray( va->m_va );
+        if ( ibuffer )
+            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibuffer );
 
-        GLuint attribIdxCount = 0;
-        GLuint attribIdx[VS_COUNT];
-        for ( SizeT i=0; i<VS_COUNT; ++i )
+        for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
-            attribIdx[attribIdxCount]   = i;
-            attribIdxCount              += ( va->m_attribMap & ToVertexSemanticMap[i] ) >> i;
+            const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
+            glEnableVertexAttribArray( attrib.m_semantic );
+        }
+    }
+
+    void IRenderDevice::EndGeometry( const VertexDeclaration& vDecl )
+    {
+        for ( SizeT i=0; i<vDecl.m_count; ++i )
+        {
+            const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
+            glDisableVertexAttribArray( attrib.m_semantic );
         }
 
-        for ( SizeT i=0; i<attribIdxCount; ++i )
-        {
-            glEnableVertexAttribArray( attribIdx[i] );
-        }
-
-        if ( va->m_ib )
-        {
-            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, va->m_ib );
-            glDrawElements( ToGLPrimitiveType[ primitive ], va->m_indexCount, va->m_indexType, (GLvoid*)0 );
-            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
-        }
-        else
-        {
-            glDrawArrays( ToGLPrimitiveType[ primitive ], 0, va->m_vertexCount );
-        }
-
-        for ( SizeT i=0; i<attribIdxCount; ++i )
-        {
-            glDisableVertexAttribArray( attribIdx[i] );
-        }
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 
         glBindVertexArray( 0 );
+    }
+
+    void IRenderDevice::Draw( PrimitiveType primitive, SizeT vertexCount )
+    {
+        glDrawArrays( ToGLPrimitiveType[ primitive ], 0, vertexCount );
+    }
+
+    void IRenderDevice::DrawIndexed( PrimitiveType primitive, SizeT indexCount, DataType indexType )
+    {
+        glDrawElements( ToGLPrimitiveType[ primitive ], indexCount, ToGLDataType[ indexType ], (GLvoid*)0 );
     }
 
     void IRenderDevice::SetViewport( U32 x, U32 y, U32 w, U32 h )
