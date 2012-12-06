@@ -417,7 +417,7 @@ void endElementCollada( void * ctx, const xmlChar * name )
             std::string::iterator end = collada_characters.end();
             while ( it != end )
             {
-                if ( *it < 48 || *it > 57 ) { *it = 0; }
+                if ( *it == ' ' ) { *it = 0; }
                 ++it;
             }
 
@@ -459,7 +459,7 @@ void endElementCollada( void * ctx, const xmlChar * name )
             std::string::iterator end = collada_characters.end();
             while ( it != end )
             {
-                if ( *it < 48 || *it > 57 ) { *it = 0; }
+                if ( *it == ' ' ) { *it = 0; }
                 ++it;
             }
 
@@ -802,7 +802,7 @@ bool BuildMesh( const char * outFilename, int options )
     poly_it = polylists.begin();
     for ( ; poly_it != poly_end; ++poly_it )
     {
-        sub_meshes.push_back( poly_it->primitives.size() );
+        sub_meshes.push_back( poly_it->count * 3 ); // Only triangles
 
         int * index = poly_it->primitives.data();
         int * index_end = index + poly_it->primitives.size();
@@ -893,9 +893,19 @@ bool BuildMesh( const char * outFilename, int options )
 
     fwrite(&header,1,sizeof(MeshHeader),fp);
     fwrite(input_layout.data(),1,sizeof(MeshInputDesc)*input_layout.size(),fp);
-    fwrite(sub_meshes.data(),1,sizeof(unsigned int)*sub_meshes.size(),fp);
     fwrite(vertex_data,1,vbuffer_size,fp);
-    fwrite(index_data,1,ibuffer_size,fp);
+
+    index_end = (unsigned char*)index_data;
+    for ( unsigned int i=0; i<sub_meshes.size(); ++i )
+    {
+        unsigned int count      = sub_meshes[ i ];
+        unsigned int size       = count * index_size;
+
+        fwrite(&count,1,sizeof(unsigned int),fp);
+        fwrite(index_end,1,size,fp);
+
+        index_end += size;
+    }
 
     fclose(fp);
 
