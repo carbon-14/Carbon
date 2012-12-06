@@ -625,25 +625,20 @@ unsigned short toFloat16( float v )
     unsigned short sign = f_sign;
     unsigned short exponent, mantissa;
 
-    if ( ( f_exponent - 128 ) < -26 )
+    if ( f_exponent < 102 )
     {
         exponent = 0x0000;
         mantissa = 0x0000;
     }
-    else if ( ( f_exponent - 128 ) < -16 )
+    else if ( f_exponent > 144 )
     {
-        exponent = 0x0000;
-        mantissa = ( f_mantissa >> 13 ) & 0x0000ffff;
-    }
-    else if ( ( f_exponent - 128 ) > 16 )
-    {
-        exponent = 0x0031;
+        exponent = 0x001f;
         mantissa = 0x03ff;
     }
     else
     {
-        exponent = f_exponent - 112;
-        mantissa = ( f_mantissa >> 13 ) & 0x0000ffff;
+        exponent = ( f_exponent - 112 ) & 0x001f;
+        mantissa = ( f_mantissa >> 13 ) & 0x03ff;
     }
 
     return ( ( sign << 15 ) | ( exponent << 10 ) | mantissa );
@@ -670,10 +665,10 @@ void FormatData( void * dest, const float * src, int stride, const MeshInputDesc
         {
             assert( input.semantic == TEXCOORD0 || input.semantic == TEXCOORD1 );
 
-            unsigned char * color = (unsigned char *)dest;
+            short * uvs = (short * )dest;
             for ( int i=0; i<stride; ++i )
             {
-                color[ i ] = toShort( src[i] );
+                uvs[ i ] = toShort( src[i] );
             }
         }
     case VT_HALF:
