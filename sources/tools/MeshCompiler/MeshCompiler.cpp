@@ -1,11 +1,70 @@
 #include "MeshCompiler/MeshCompiler.h"
 
+
+
 #include "libxml.h"
 #include "libxml/parser.h"
 
 #include <vector>
 
 #include <cassert>
+
+#if defined( CARBON_PLATFORM_WIN32 )
+#include <Windows.h>
+#endif
+
+bool RecursiveCreateDirectory( const char * dir )
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    if ( ! CreateDirectory( dir, NULL ) )
+    {
+        DWORD err = GetLastError();
+        if ( err == ERROR_ALREADY_EXISTS )
+        {
+            return true;
+        }
+        if ( err == ERROR_PATH_NOT_FOUND )
+        {
+            char * fileStart;
+            char parentDir[ 256 ];
+            if ( GetFullPathName( dir, 256, parentDir, &fileStart ) == 0 )
+            {
+                return false;
+            }
+            *(fileStart - 1 ) = 0;
+
+            if ( RecursiveCreateDirectory( parentDir ) )
+            {
+                return ( CreateDirectory( dir, NULL ) != 0 );
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+#endif
+    return true;
+}
+
+bool BuildDirectory( const char * path )
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    char dir[ 256 ];
+    char * fileStart;
+    if ( GetFullPathName( path, 256, dir, &fileStart ) == 0 )
+    {
+        return false;
+    }
+    *( fileStart - 1 ) = 0;
+
+    if ( ! RecursiveCreateDirectory( dir ) )
+    {
+        return false;
+    }
+#endif
+    return true;
+}
 
 enum ParseState
 {
@@ -17,8 +76,7 @@ enum ParseState
                 VERTICES,
                 POLYLIST,
                     PRIMITIVES,
-    FINISH,
-    ERROR
+    FINISH
 };
 
 enum Semantic
@@ -248,6 +306,10 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 {
                     strcpy( semantic, (const char *)*(++a) );
                 }
+                else if ( strcmp( (const char *)*a, "offset" ) == 0 )
+                {
+                    sscanf( (const char*)*(++a), "%d", &input.offset );
+                }
                 else if ( strcmp( (const char *)*a, "source" ) == 0 )
                 {
                     strcpy( (char *)input.source, (const char *)*(++a) );
@@ -298,8 +360,6 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
             state = START;
         }
         break;
-    default :
-        state = ERROR;
     }
 }
 
@@ -422,8 +482,6 @@ void endElementCollada( void * ctx, const xmlChar * name )
         break;
     case FINISH :
         break;
-    default :
-        state = ERROR;
     }
 }
 
@@ -468,35 +526,29 @@ int LoadCollada( const char * filename )
 
 //////////////////////////////////////////////////////////////////////////
 
-struct MeshHeader
-{
-    unsigned int vertexDataSize;
-    unsigned int subMeshCount;
-    unsigned int inputCount;
-};
-
 enum VType
 {
     VT_UBYTE    = 0,
+    VT_SHORT,
     VT_HALF,
     VT_FLOAT,
-    VT_NORMAL      // 2_10_10_10
+    VT_NMVECT      // 2_10_10_10
 };
 
 const VType vType[COUNT][OT_COMPRESS_COUNT] =
 {
     { VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   },
-    { VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL , VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL },
-    { VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL , VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL },
-    { VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL , VT_FLOAT  , VT_FLOAT  , VT_NORMAL , VT_NORMAL },
+    { VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT , VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT },
+    { VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT , VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT },
+    { VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT , VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT },
     { VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  , VT_UBYTE  },
-    { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_HALF   , VT_HALF   , VT_HALF   , VT_HALF   },
-    { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_HALF   , VT_HALF   , VT_HALF   , VT_HALF   },
+    { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_SHORT  , VT_SHORT  , VT_SHORT  , VT_SHORT  },
+    { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_SHORT  , VT_SHORT  , VT_SHORT  , VT_SHORT  },
 };
 
 const unsigned int vSize[COUNT][OT_COMPRESS_COUNT] =
 {
-    { 16    , 8     , 16    , 8     , 16    , 8     , 16    , 8 },
+    { 12    , 6     , 12    , 6     , 12    , 6     , 12    , 6 },
     { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
     { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
     { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
@@ -505,30 +557,49 @@ const unsigned int vSize[COUNT][OT_COMPRESS_COUNT] =
     { 8     , 8     , 8     , 8     , 4     , 4     , 4     , 4 },
 };
 
-struct MeshInputDesc
-{
-    Semantic    semantic;
-    VType       type;
-    int         size;
-    int         offset;
-};
-
 enum IType
 {
     IT_UBYTE   = 0,
     IT_USHORT,
-    IT_UINTEGER
+    IT_ULONG
 };
 
-struct SubMeshDesc
+struct MeshHeader
 {
-    IType   type;
-    int     count;
+    IType        indexType;
+    unsigned int subMeshCount;
+    unsigned int inputCount;
+    unsigned int vertexDataSize;
+};
+
+struct MeshInputDesc
+{
+    Semantic        semantic;
+    VType           type;
+    unsigned int    size;
+    unsigned int    offset;
 };
 
 unsigned char toUByte( float v )
 {
-    return floor( 255.0f * v );
+    return (unsigned char)( 255.0f * v );
+}
+
+// linear scale from [-256.0;256[ to [-32768;32767]
+short toShort( float v )
+{
+    return (short)( 128.0f * v );
+}
+
+// linear scale from [-1.0;1.0] to [-512;511]
+unsigned int toS10( float v )
+{
+    if ( v < -1.0 )
+        return -512;
+    if ( v > 1.0 )
+        return 511;
+
+    return ( 0x200 + (unsigned int)( v * 511.5f + 511.5f ) ) & 0x3ff;
 }
 
 // Float 32-bits
@@ -544,13 +615,6 @@ unsigned char toUByte( float v )
 // mantissa : 10 bits
 // if ( v < 2^-16 ) -> (-1)^sign * ( mantissa / 2^11 ) * 2^-16
 // else             -> (-1)^sign * ( 1 + mantissa / 2^11 ) * 2^( exponent - 16 )
-
-// Float 10-bits
-// exponent : 5 bits
-// mantissa : 5 bits
-// if ( v < 2^-16 ) -> ( mantissa / 2^6 ) * 2^-16
-// else             -> ( 1 + mantissa / 2^6 ) * 2^( exponent - 16 )
-
 unsigned short toFloat16( float v )
 {
     unsigned int f_mem      = *((unsigned int *)( &v ));
@@ -585,38 +649,6 @@ unsigned short toFloat16( float v )
     return ( ( sign << 15 ) | ( exponent << 10 ) | mantissa );
 }
 
-unsigned short toFloat10( float v )
-{
-    unsigned int f_mem      = *((unsigned int *)( &v ));
-    int f_exponent = ( f_mem & 0x7f800000 ) >> 23;
-    int f_mantissa = ( f_mem & 0x07ffffff );
-
-    unsigned short exponent, mantissa;
-
-    if ( ( f_exponent - 128 ) < -26 )
-    {
-        exponent = 0x0000;
-        mantissa = 0x0000;
-    }
-    else if ( ( f_exponent - 128 ) < -16 )
-    {
-        exponent = 0x0000;
-        mantissa = ( f_mantissa >> 18 ) & 0x0000ffff;
-    }
-    else if ( ( f_exponent - 128 ) > 16 )
-    {
-        exponent = 0x0031;
-        mantissa = 0x03ff;
-    }
-    else
-    {
-        exponent = f_exponent - 112;
-        mantissa = ( f_mantissa >> 18 ) & 0x0000ffff;
-    }
-
-    return ( ( exponent << 5 ) | mantissa );
-}
-
 void FormatData( void * dest, const float * src, int stride, const MeshInputDesc& input )
 {
     memset( dest, 0, input.size );
@@ -634,6 +666,16 @@ void FormatData( void * dest, const float * src, int stride, const MeshInputDesc
             }
         }
         break;
+    case VT_SHORT:
+        {
+            assert( input.semantic == TEXCOORD0 || input.semantic == TEXCOORD1 );
+
+            unsigned char * color = (unsigned char *)dest;
+            for ( int i=0; i<stride; ++i )
+            {
+                color[ i ] = toShort( src[i] );
+            }
+        }
     case VT_HALF:
         {
             assert( input.semantic == POSITION || input.semantic == TEXCOORD0 || input.semantic == TEXCOORD1 );
@@ -650,14 +692,14 @@ void FormatData( void * dest, const float * src, int stride, const MeshInputDesc
             memcpy( dest, src, stride * sizeof( float ) );
         }
         break;
-    case VT_NORMAL:
+    case VT_NMVECT:
         {
             assert( input.semantic == NORMAL || input.semantic == TANGENT || input.semantic == BINORMAL );
 
             unsigned int * n = (unsigned int *)dest;
             for ( int i=0; i<stride; ++i )
             {
-                *n |= toFloat10( src[i] ) >> ( 32 - 10 * i );
+                *n |= toS10( src[i] ) << ( 10 * i );
             }
         }
         break;
@@ -707,7 +749,7 @@ bool BuildMesh( const char * outFilename, int options )
         std::vector< ColladaInput >& inputs = poly_it->inputs;
         for ( size_t i=0; i<inputs.size(); ++i )
         {
-            int offset = inputs[ i ].offset;
+            size_t offset = inputs[ i ].offset;
             while ( offset != i )
             {
                 if ( offset >= inputs.size() )
@@ -756,17 +798,16 @@ bool BuildMesh( const char * outFilename, int options )
 
     // build triangle lists
 
-    std::vector< void * > sub_meshes;
-
-    void * vertex_data = malloc( vertex_size * vertex_count );
-    unsigned char * ptr = (unsigned char*)vertex_data;
-
-    unsigned int buffer_size = vertex_size * vertex_count;
+    unsigned int vbuffer_size = vertex_size * vertex_count;
+    void * vertex_data = malloc( vbuffer_size );
+    
+    unsigned char * vertex_end = (unsigned char *)vertex_data;
+    std::vector< unsigned int > sub_meshes;
     
     poly_it = polylists.begin();
     for ( ; poly_it != poly_end; ++poly_it )
     {
-        sub_meshes.push_back( ptr );
+        sub_meshes.push_back( poly_it->primitives.size() );
 
         int * index = poly_it->primitives.data();
         int * index_end = index + poly_it->primitives.size();
@@ -778,15 +819,15 @@ bool BuildMesh( const char * outFilename, int options )
                 const ColladaSource * source = source_layout[ i ];
                 const MeshInputDesc& input = input_layout[ i ];
 
-                FormatData( ptr + input.offset, source->array.data() + *index * source->stride, source->stride, input );
+                FormatData( vertex_end + input.offset, source->array.data() + *index * source->stride, source->stride, input );
             }
 
-            ptr += vertex_size;
-        } 
+            vertex_end += vertex_size;
+        }
     }
 
     // remove duplicated vertices
-    unsigned char * vertex_end = (unsigned char *)vertex_data;
+    vertex_end = (unsigned char *)vertex_data;
     std::vector< unsigned int > indices;
     indices.reserve( vertex_count );
     for ( unsigned int i=0; i<vertex_count; ++i )
@@ -809,8 +850,61 @@ bool BuildMesh( const char * outFilename, int options )
         }
     }
 
-    unsigned int new_buffer_size = vertex_end - (unsigned char *)vertex_data;
+    vbuffer_size = ( vertex_end - (unsigned char *)vertex_data );
+    vertex_count = vbuffer_size / vertex_size;
 
+    header.vertexDataSize = vbuffer_size;
+
+    unsigned int index_size = 0;
+    unsigned int index_count = indices.size();
+    if ( vertex_count <= ( 1 << 8 ) ) {
+        header.indexType = IT_UBYTE;
+        index_size = 1;
+    } else if ( vertex_count <= ( 1 << 16 ) ) {
+        header.indexType = IT_USHORT;
+        index_size = 2;
+    } else {
+        header.indexType = IT_ULONG;
+        index_size = 4;
+    }
+
+    unsigned int ibuffer_size = index_size * index_count;
+
+    void * index_data = malloc( ibuffer_size );
+    unsigned char * index_end = (unsigned char *)index_data;
+    unsigned char * index_it = ((unsigned char *)indices.data()) + ( sizeof(unsigned int) - index_size );
+    while ( index_it < (unsigned char *)( indices.data() + index_count ) )
+    {
+        memcpy( index_end, index_it, index_size );
+        index_end += index_size;
+        index_it += sizeof(unsigned int);
+    }
+
+    if ( ! BuildDirectory( outFilename ) )
+    {
+        free( index_data );
+        free( vertex_data );
+        return false;
+    }
+
+    FILE *fp;
+
+    if (fopen_s(&fp, outFilename, "wb"))
+    {
+        free( index_data );
+        free( vertex_data );
+        return false;
+    }
+
+    fwrite(&header,1,sizeof(MeshHeader),fp);
+    fwrite(input_layout.data(),1,sizeof(MeshInputDesc)*input_layout.size(),fp);
+    fwrite(sub_meshes.data(),1,sizeof(unsigned int)*sub_meshes.size(),fp);
+    fwrite(vertex_data,1,vbuffer_size,fp);
+    fwrite(index_data,1,ibuffer_size,fp);
+
+    fclose(fp);
+
+    free( index_data );
     free( vertex_data );
 
     return true;
