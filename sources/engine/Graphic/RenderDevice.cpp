@@ -205,7 +205,7 @@ namespace Graphic
             GLchar buffer[ 1024 ];
 
             glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
-            if ( logLength > 1024 )
+            if ( logLength > 1024 || logLength < 0 )
             {
                 logLength = 1024;
             }
@@ -371,15 +371,14 @@ namespace Graphic
         glDrawElements( ToGLPrimitiveType[ primitive ], indexCount, ToGLDataType[ indexType ], (GLvoid*)0 );
     }
 
-    void IRenderDevice::SetViewport( U32 x, U32 y, U32 w, U32 h )
-    {
-        glViewport( x, y, w, h );
-    }
-
     void IRenderDevice::ClearColor( F32 r, F32 g, F32 b, F32 a )
     {
+        glEnable( GL_CULL_FACE );
+        glEnable( GL_DEPTH_TEST );
+
         glClearColor( r, g, b, a );
-        glClear( GL_COLOR_BUFFER_BIT );
+        glClearDepth( 1.0 );
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
     }
 
     void IRenderDevice::SetSRGBWrite( Bool enable )

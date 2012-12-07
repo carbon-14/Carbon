@@ -128,7 +128,6 @@ namespace Graphic
         static void             Draw( PrimitiveType primitive, SizeT vertexCount );
         static void             DrawIndexed( PrimitiveType primitive, SizeT indexCount, DataType indexType );
 
-        static void             SetViewport( U32 x, U32 y, U32 w, U32 h );
         static void             ClearColor( F32 r, F32 g, F32 b, F32 a );
         static void             SetSRGBWrite( Bool enable );
     };
