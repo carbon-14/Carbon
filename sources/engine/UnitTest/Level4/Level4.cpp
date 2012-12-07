@@ -132,8 +132,8 @@ namespace Level4_NS
             geom.m_subGeoms[ 0 ].m_indexCount  = 6;
 
             m_renderElement.m_samplers = m_samplers;
-            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_NONE, WT_CLAMP );
-            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_NONE, WT_CLAMP );
+            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
+            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
 
             m_renderElement.m_textures = m_textures;
             m_textures[0] = LoadTexture( "carbon_c.btx" );
