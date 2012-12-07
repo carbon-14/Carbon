@@ -170,59 +170,7 @@ namespace Level5_NS
             m_renderElement.m_primitive = PT_TRIANGLES;
             m_renderElement.m_program   = programCache.GetProgram( "level5" );
 
-            //m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
-
-            Geometry& geom = m_renderElement.m_geom;
-
-            VertexDeclaration& vDecl            = geom.m_vertexDecl;
-            vDecl.m_attributes[0].m_semantic    = VS_POSITION;
-            vDecl.m_attributes[0].m_type        = DT_F32;
-            vDecl.m_attributes[0].m_size        = 3;
-            vDecl.m_attributes[0].m_normalized  = false;
-            vDecl.m_attributes[0].m_offset      = 0;
-            vDecl.m_attributes[1].m_semantic    = VS_COLOR;
-            vDecl.m_attributes[1].m_type        = DT_U8;
-            vDecl.m_attributes[1].m_size        = 4;
-            vDecl.m_attributes[1].m_normalized  = true;
-            vDecl.m_attributes[1].m_offset      = 12;
-            vDecl.m_attributes[2].m_semantic    = VS_TEXCOORD0;
-            vDecl.m_attributes[2].m_type        = DT_S16;
-            vDecl.m_attributes[2].m_size        = 2;
-            vDecl.m_attributes[2].m_normalized  = false;
-            vDecl.m_attributes[2].m_offset      = 16;
-            vDecl.m_size                        = 20;
-            vDecl.m_count                       = 3;
-
-            struct VertexTest
-            {
-                F32 position[3];
-                U8  color[4];
-                S16 uvs[2];
-            };
-
-            geom.m_vertexCount = 4;
-            const VertexTest vb[4] =
-            {
-                { -1.0f, -1.0f, 0.0f, 255, 0, 0, 255, 0, 128 },
-                { +1.0f, -1.0f, 0.0f, 0, 255, 0, 255, 128, 128 },
-                { -1.0f, +1.0f, 0.0f, 0, 0, 255, 255, 0, 0 },
-                { +1.0f, +1.0f, 0.0f, 0, 0, 0, 255, 128, 0 },
-            };
-
-            geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(vb), vb, BU_STATIC );
-
-            geom.m_indexType = DT_U8;
-
-            const U8 ib[2][3] =
-            {
-                0, 1, 2,
-                2, 1, 3,
-            };
-
-            geom.m_subGeomCount = 1;
-            geom.m_subGeoms[ 0 ].m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
-            geom.m_subGeoms[ 0 ].m_vertexArray = RenderDevice::CreateVertexArray( vDecl, geom.m_vertexBuffer, geom.m_subGeoms[ 0 ].m_indexBuffer );
-            geom.m_subGeoms[ 0 ].m_indexCount  = 6;
+            m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
 
             m_renderElement.m_unitCount = 0;
         }
@@ -385,6 +333,8 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         programCache.Update();
 
         fsqRenderer.Render();
+
+        RenderDevice::ClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
 
         renderList.Draw( programCache );
 
