@@ -1,16 +1,12 @@
 #version 420
 
-layout( location = 0 ) in vec3 position;
-layout( location = 1 ) in vec3 normal;
-layout( location = 5 ) in vec2 texcoord0;
+layout( location = 0 ) in vec4 position;
+layout( location = 1 ) in vec4 normal;
 
-out Data
-{
-    vec3 pos;
-} DataOut;
+out vec4 test;
 
 void main()
 {
-    DataOut.pos = position.xyz;
-    gl_Position = vec4( 0.01 * position.xy, 0.0, 1.0 );
+    test = normal;
+    gl_Position = position;
 }

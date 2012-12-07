@@ -170,7 +170,51 @@ namespace Level5_NS
             m_renderElement.m_primitive = PT_TRIANGLES;
             m_renderElement.m_program   = programCache.GetProgram( "level5" );
 
-            m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
+            //m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
+
+            Geometry& geom = m_renderElement.m_geom;
+
+            VertexDeclaration& vDecl            = geom.m_vertexDecl;
+            vDecl.m_attributes[0].m_semantic    = VS_POSITION;
+            vDecl.m_attributes[0].m_type        = DT_F32;
+            vDecl.m_attributes[0].m_size        = 4;
+            vDecl.m_attributes[0].m_normalized  = false;
+            vDecl.m_attributes[0].m_offset      = 0;
+            vDecl.m_attributes[1].m_semantic    = VS_NORMAL;
+            vDecl.m_attributes[1].m_type        = DT_F32;
+            vDecl.m_attributes[1].m_size        = 4;
+            vDecl.m_attributes[1].m_normalized  = false;
+            vDecl.m_attributes[1].m_offset      = 16;
+            vDecl.m_size                        = 32;
+            vDecl.m_count                       = 2;
+
+            struct VertexCaca
+            {
+                F32 position[4];
+                F32 normal[4];
+            };
+
+            geom.m_vertexCount = 3;
+            const VertexCaca vb[3] =
+            {
+                { -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f },
+                { +1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f },
+                { -1.0f, +1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f },
+            };
+
+            geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(vb), vb, BU_STATIC );
+
+            geom.m_indexType = DT_U8;
+
+            const U8 ib[3] =
+            {
+                0, 1, 2
+            };
+
+            geom.m_subGeomCount = 1;
+            geom.m_subGeoms[ 0 ].m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
+            geom.m_subGeoms[ 0 ].m_vertexArray = RenderDevice::CreateVertexArray( vDecl, geom.m_vertexBuffer, geom.m_subGeoms[ 0 ].m_indexBuffer );
+            geom.m_subGeoms[ 0 ].m_indexCount  = 3;
 
             m_renderElement.m_unitCount = 0;
         }
