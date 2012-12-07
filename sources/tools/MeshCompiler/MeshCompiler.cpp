@@ -329,6 +329,12 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 input.semantic = POSITION;
             } else if ( strcmp( semantic, "NORMAL" ) == 0 ) {
                 input.semantic = NORMAL;
+            } else if ( strcmp( semantic, "TANGENT" ) == 0 ) {
+                input.semantic = TANGENT;
+            } else if ( strcmp( semantic, "BINORMAL" ) == 0 ) {
+                input.semantic = BINORMAL;
+            } else if ( strcmp( semantic, "COLOR" ) == 0 ) {
+                input.semantic = COLOR;
             } else if ( strcmp( semantic, "TEXCOORD" ) == 0 ) {
                 if ( set == 0 )
                     input.semantic = TEXCOORD0;
@@ -428,7 +434,12 @@ void endElementCollada( void * ctx, const xmlChar * name )
             {
                 float v;
                 sscanf( &*it, "%f", &v );
-                source.array.push_back( v );
+
+                float t = floor( v + 0.5f );
+                if ( abs(v - t) < 1.0f / 1024.0f )
+                    source.array.push_back( t );
+                else
+                    source.array.push_back( v );
 
                 while ( it != end && *it != 0 ) { ++it; }
                 while ( it != end && *it == 0 ) { ++it; }
@@ -867,7 +878,7 @@ bool BuildMesh( const char * outFilename, int options )
 
     void * index_data = malloc( ibuffer_size );
     unsigned char * index_end = (unsigned char *)index_data;
-    unsigned char * index_it = ((unsigned char *)indices.data()) + ( sizeof(unsigned int) - index_size );
+    unsigned char * index_it = ((unsigned char *)indices.data());
     while ( index_it < (unsigned char *)( indices.data() + index_count ) )
     {
         memcpy( index_end, index_it, index_size );
