@@ -640,7 +640,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "D:\\GitDepot\\Carbon\\" );
+    FileSystem::Initialize( "..\\..\\..\\" );
 
     if ( ! device3d.Initialize( hwnd ) )
     {
