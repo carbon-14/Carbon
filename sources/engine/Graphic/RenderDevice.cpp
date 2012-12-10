@@ -21,6 +21,13 @@ namespace Graphic
         GL_STREAM_DRAW      // BU_STREAM
     };
 
+    const GLenum ToGLBufferAccess[] =
+    {
+        GL_READ_ONLY,       // BA_READ_ONLY
+        GL_WRITE_ONLY,      // BA_WRITE_ONLY
+        GL_READ_WRITE       // BU_READ_WRITE
+    };
+
     const GLenum ToGLDataType[] =
     {
         GL_BYTE,                        // DT_S8
@@ -109,9 +116,26 @@ namespace Graphic
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ELEMENT_ARRAY_BUFFER );
     }
 
+    Handle IRenderDevice::CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage )
+    {
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_UNIFORM_BUFFER );
+    }
+
     void IRenderDevice::DestroyBuffer( Handle buffer )
     {
         glDeleteBuffers( 1, (GLuint*)&buffer );
+    }
+
+    void * IRenderDevice::MapUniformBuffer( Handle buffer, BufferAccess access )
+    {
+        glBindBuffer( GL_UNIFORM_BUFFER, buffer );
+        return glMapBuffer( GL_UNIFORM_BUFFER, ToGLBufferAccess[ access ] );
+    }
+
+    void IRenderDevice::UnmapUniformBuffer( )
+    {
+        GLboolean test = glUnmapBuffer( GL_UNIFORM_BUFFER );
+        glBindBuffer( GL_UNIFORM_BUFFER, 0 );
     }
 
     Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
@@ -332,6 +356,11 @@ namespace Graphic
         glActiveTexture( GL_TEXTURE0 + unit );
         glBindTexture( GL_TEXTURE_2D, texture );
         glBindSampler( unit, sampler );
+    }
+
+    void IRenderDevice::BindUniformBuffer( Handle ubuffer, SizeT location )
+    {
+        glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
     }
 
     void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )

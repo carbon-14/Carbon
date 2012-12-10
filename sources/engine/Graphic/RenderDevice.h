@@ -52,6 +52,13 @@ namespace Graphic
         BU_STREAM
     };
 
+    enum BufferAccess
+    {
+        BA_READ_ONLY,
+        BA_WRITE_ONLY,
+        BA_READ_WRITE
+    };
+
     struct AttribDeclaration
     {
         VertexSemantic  m_semantic;
@@ -105,7 +112,11 @@ namespace Graphic
     public:
         static Handle           CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage );
         static Handle           CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage );
+        static Handle           CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage );
         static void             DestroyBuffer( Handle buffer );
+
+        static void *           MapUniformBuffer( Handle buffer, BufferAccess access );
+        static void             UnmapUniformBuffer( );
 
         static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer );
         static void             DestroyVertexArray( Handle varray );
@@ -121,6 +132,8 @@ namespace Graphic
         static Handle           CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap );
         static void             DestroySampler( Handle sampler );
         static void             SampleTexture( Handle texture, Handle sampler, SizeT unit );
+
+        static void             BindUniformBuffer( Handle ubuffer, SizeT location );
 
         static void             BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer );
         static void             EndGeometry( const VertexDeclaration& vDecl );

@@ -36,6 +36,9 @@ namespace Graphic
         Handle *        m_samplers;
         Handle *        m_textures;
         SizeT           m_unitCount;
+
+        Handle *        m_uniformBuffers;
+        SizeT           m_uniformBufferCout;
     };
 
     class _GraphicExport RenderList

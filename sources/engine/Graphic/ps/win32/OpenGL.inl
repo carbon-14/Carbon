@@ -92,11 +92,25 @@ extern "C"
     Func ( PFNGLGETCOMPRESSEDTEXIMAGEPROC       , glGetCompressedTexImage       );  \
                                                                                     \
     /* GL_VERSION_1_5 */                                                            \
+    Func ( PFNGLGENQUERIESPROC                  , glGenQueries                  );  \
+    Func ( PFNGLDELETEQUERIESPROC               , glDeleteQueries               );  \
+    Func ( PFNGLISQUERYPROC                     , glIsQuery                     );  \
+    Func ( PFNGLBEGINQUERYPROC                  , glBeginQuery                  );  \
+    Func ( PFNGLENDQUERYPROC                    , glEndQuery                    );  \
+    Func ( PFNGLGETQUERYIVPROC                  , glGetQueryiv                  );  \
+    Func ( PFNGLGETQUERYOBJECTIVPROC            , glGetQueryObjectiv            );  \
+    Func ( PFNGLGETQUERYOBJECTUIVPROC           , glGetQueryObjectuiv           );  \
     Func ( PFNGLBINDBUFFERPROC                  , glBindBuffer                  );  \
     Func ( PFNGLDELETEBUFFERSPROC               , glDeleteBuffers               );  \
     Func ( PFNGLGENBUFFERSPROC                  , glGenBuffers                  );  \
+    Func ( PFNGLISBUFFERPROC                    , glIsBuffer                    );  \
     Func ( PFNGLBUFFERDATAPROC                  , glBufferData                  );  \
     Func ( PFNGLBUFFERSUBDATAPROC               , glBufferSubData               );  \
+    Func ( PFNGLGETBUFFERSUBDATAPROC            , glGetBufferSubData            );  \
+    Func ( PFNGLMAPBUFFERPROC                   , glMapBuffer                   );  \
+    Func ( PFNGLUNMAPBUFFERPROC                 , glUnmapBuffer                 );  \
+    Func ( PFNGLGETBUFFERPARAMETERIVPROC        , glGetBufferParameteriv        );  \
+    Func ( PFNGLGETBUFFERPOINTERVPROC           , glGetBufferPointerv           );  \
                                                                                     \
     /* GL_VERSION_2_0 */                                                            \
     Func ( PFNGLATTACHSHADERPROC                , glAttachShader                );  \
@@ -119,6 +133,10 @@ extern "C"
     Func ( PFNGLUSEPROGRAMPROC                  , glUseProgram                  );  \
     Func ( PFNGLVERTEXATTRIBPOINTERPROC         , glVertexAttribPointer         );  \
                                                                                     \
+    /* GL_VERSION_3_0 */                                                            \
+    Func ( PFNGLBINDBUFFERRANGEPROC             , glBindBufferRange             );  \
+    Func ( PFNGLBINDBUFFERBASEPROC              , glBindBufferBase              );  \
+                                                                                    \
     /* GL_ARB_framebuffer_object */                                                 \
     Func ( PFNGLGENERATEMIPMAPPROC              , glGenerateMipmap              );  \
                                                                                     \
@@ -127,6 +145,15 @@ extern "C"
     Func ( PFNGLDELETEVERTEXARRAYSPROC          , glDeleteVertexArrays          );  \
     Func ( PFNGLGENVERTEXARRAYSPROC             , glGenVertexArrays             );  \
     Func ( PFNGLISVERTEXARRAYPROC               , glIsVertexArray               );  \
+                                                                                    \
+    /* GL_ARB_uniform_buffer_object */                                              \
+    Func ( PFNGLGETUNIFORMINDICESPROC           , glGetUniformIndices           );  \
+    Func ( PFNGLGETACTIVEUNIFORMSIVPROC         , glGetActiveUniformsiv         );  \
+    Func ( PFNGLGETACTIVEUNIFORMNAMEPROC        , glGetActiveUniformName        );  \
+    Func ( PFNGLGETUNIFORMBLOCKINDEXPROC        , glGetUniformBlockIndex        );  \
+    Func ( PFNGLGETACTIVEUNIFORMBLOCKIVPROC     , glGetActiveUniformBlockiv     );  \
+    Func ( PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC   , glGetActiveUniformBlockName   );  \
+    Func ( PFNGLUNIFORMBLOCKBINDINGPROC         , glUniformBlockBinding         );  \
                                                                                     \
     /* GL_ARB_sampler_objects */                                                    \
     Func ( PFNGLGENSAMPLERSPROC                 , glGenSamplers                 );  \

@@ -36,6 +36,11 @@ namespace Graphic
 
             programCache.UseProgram( e.m_program );
 
+            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
+            {
+                RenderDevice::BindUniformBuffer( e.m_uniformBuffers[ i ], i );
+            }
+
             for ( SizeT i=0; i<e.m_unitCount; ++i )
             {
                 RenderDevice::SampleTexture( e.m_textures[ i ], e.m_samplers[ i ], i );
@@ -52,6 +57,11 @@ namespace Graphic
             for ( SizeT i=0; i<e.m_unitCount; ++i )
             {
                 RenderDevice::SampleTexture( 0, 0, i );
+            }
+
+            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
+            {
+                RenderDevice::BindUniformBuffer( 0, i );
             }
         }
 
