@@ -6,6 +6,7 @@
 #include "libxml/parser.h"
 
 #include <vector>
+#include <map>
 
 #include <cassert>
 
@@ -329,10 +330,6 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 input.semantic = POSITION;
             } else if ( strcmp( semantic, "NORMAL" ) == 0 ) {
                 input.semantic = NORMAL;
-            } else if ( strcmp( semantic, "TANGENT" ) == 0 ) {
-                input.semantic = TANGENT;
-            } else if ( strcmp( semantic, "BINORMAL" ) == 0 ) {
-                input.semantic = BINORMAL;
             } else if ( strcmp( semantic, "COLOR" ) == 0 ) {
                 input.semantic = COLOR;
             } else if ( strcmp( semantic, "TEXCOORD" ) == 0 ) {
@@ -546,7 +543,7 @@ enum VType
     VT_NMVECT      // 2_10_10_10
 };
 
-const VType vType[COUNT][OT_COMPRESS_COUNT] =
+const VType vType[COUNT][CT_COUNT] =
 {
     { VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   , VT_FLOAT  , VT_HALF   },
     { VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT , VT_FLOAT  , VT_FLOAT  , VT_NMVECT , VT_NMVECT },
@@ -557,7 +554,7 @@ const VType vType[COUNT][OT_COMPRESS_COUNT] =
     { VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_FLOAT  , VT_SHORT  , VT_SHORT  , VT_SHORT  , VT_SHORT  },
 };
 
-const unsigned int vSize[COUNT][OT_COMPRESS_COUNT] =
+const unsigned int vSize[COUNT][CT_COUNT] =
 {
     { 12    , 6     , 12    , 6     , 12    , 6     , 12    , 6 },
     { 12    , 12    , 4     , 4     , 12    , 12    , 4     , 4 },
@@ -712,6 +709,70 @@ void FormatData( void * dest, const float * src, int stride, const MeshInputDesc
     }
 }
 
+void ComputeTangents( float * tangent1, float * tangent2, const float ** positions, const float ** texcoords, int triangle_index )
+{
+    int i0 = triangle_index;
+    int i1 = ( i0 + 1 ) % 3;
+    int i2 = ( i0 + 2 ) % 3;
+
+    float dx1 = positions[ i1 ][0] - positions[ i0 ][0];
+    float dx2 = positions[ i2 ][0] - positions[ i0 ][0];
+    float dy1 = positions[ i1 ][1] - positions[ i0 ][1];
+    float dy2 = positions[ i2 ][1] - positions[ i0 ][1];
+    float dz1 = positions[ i1 ][2] - positions[ i0 ][2];
+    float dz2 = positions[ i2 ][2] - positions[ i0 ][2];
+
+    float du1 = texcoords[ i1 ][0] - texcoords[ i0 ][0];
+    float du2 = texcoords[ i2 ][0] - texcoords[ i0 ][0];
+    float dv1 = texcoords[ i1 ][1] - texcoords[ i0 ][1];
+    float dv2 = texcoords[ i2 ][1] - texcoords[ i0 ][1];
+
+    float r = 1.0f / ( du1 * dv2 - du2 * dv1 );
+
+    tangent1[0] += ( ( dv2 - dx1 - dv1 * dx2 ) + ( du2 - dx1 - du1 * dx2 ) ) * r;
+    tangent1[1] += ( ( dv2 - dy1 - dv1 * dy2 ) + ( du2 - dy1 - du1 * dy2 ) ) * r;
+    tangent1[2] += ( ( dv2 - dz1 - dv1 * dz2 ) + ( du2 - dz1 - du1 * dz2 ) ) * r;
+
+    tangent2[0] += ( ( du1 - dx2 - du2 * dx1 ) + ( du1 - dx2 - du2 * dx1 ) ) * r;
+    tangent2[1] += ( ( du1 - dy2 - du2 * dy1 ) + ( du1 - dy2 - du2 * dy1 ) ) * r;
+    tangent2[2] += ( ( du1 - dz2 - du2 * dz1 ) + ( du1 - dz2 - du2 * dz1 ) ) * r;
+}
+
+void NormalizeTangents( float * tangent1, float * tangent2, const float * normal )
+{
+    float proj = tangent1[0] * normal[0] + tangent1[1] * normal[1] + tangent1[2] * normal[2];
+
+    float ortho1[3];
+    ortho1[0] = tangent1[0] - normal[0] * proj;
+    ortho1[1] = tangent1[1] - normal[1] * proj;
+    ortho1[2] = tangent1[2] - normal[2] * proj;
+
+    float len = sqrt( ortho1[0] * ortho1[0] + ortho1[1] * ortho1[1] + ortho1[2] * ortho1[2] );
+    if ( len > 0.0f )
+    {
+        ortho1[0] /= len;
+        ortho1[1] /= len;
+        ortho1[2] /= len;
+    }
+
+    float ortho2[3];
+    ortho2[0] = normal[1] * ortho1[2] - normal[2] * ortho1[1];
+    ortho2[1] = normal[2] * ortho1[0] - normal[0] * ortho1[2];
+    ortho2[2] = normal[0] * ortho1[1] - normal[1] * ortho1[0];
+
+    proj = tangent2[0] * ortho2[0] + tangent2[1] * ortho2[1] + tangent2[2] * ortho2[2];
+    if ( proj < 0.0f )
+    {
+        memcpy( tangent1, ortho1, sizeof( ortho1 ) );
+        memcpy( tangent2, ortho2, sizeof( ortho2 ) );
+    }
+    else
+    {
+        memcpy( tangent1, ortho2, sizeof( ortho2 ) );
+        memcpy( tangent2, ortho1, sizeof( ortho1 ) );
+    }
+}
+
 bool BuildMesh( const char * outFilename, int options )
 {
     MeshHeader header;
@@ -739,12 +800,142 @@ bool BuildMesh( const char * outFilename, int options )
     if ( v_source == NULL )
         return false;
 
+    bool gen_tangents = false;
+
+    // build tangent space
+    std::map< long long, int > tangentIndices;
+    ColladaSource tangent1Source;
+    ColladaSource tangent2Source;
+    if ( options & OT_GENERATE_TANGENT_SPACE )
+    {
+        const ColladaInput * position = NULL;
+        const ColladaInput * normal = NULL;
+        const ColladaInput * texcoord = NULL;
+
+        const ColladaSource * pos_source = NULL;
+        const ColladaSource * nrm_source = NULL;
+        const ColladaSource * tex_source = NULL;
+
+        {
+            const ColladaPolylist& list = polylists.front();
+            const std::vector< ColladaInput >& inputs = list.inputs;
+            for ( size_t i=0; i<inputs.size(); ++i )
+            {
+                ColladaSource * source = NULL;
+                for ( size_t j=0; j<sources.size(); ++j )
+                {
+                    if ( strcmp( vertices.id, inputs[ i ].source + 1 ) == 0 )
+                    {
+                        source = v_source;
+                        break;
+                    }
+                    else if ( strcmp( sources[ j ].id, inputs[ i ].source + 1 ) == 0 )
+                    {
+                        source = &sources[ j ];
+                        break;
+                    }
+                }
+
+                if ( inputs[ i ].semantic == POSITION )
+                {
+                    position = &inputs[ i ];
+                    pos_source = source;
+                }
+                else if ( inputs[ i ].semantic == NORMAL )
+                {
+                    normal = &inputs[ i ];
+                    nrm_source = source;
+                }
+                else if ( inputs[ i ].semantic == TEXCOORD0 )
+                {
+                    texcoord = &inputs[ i ];
+                    tex_source = source;
+                }
+            }
+        }
+
+        if ( normal && texcoord )
+        {
+            gen_tangents = true;
+            strcpy( tangent1Source.id, "TANGENT" );
+            tangent1Source.stride = 3;
+
+            strcpy( tangent2Source.id, "BINORMAL" );
+            tangent2Source.stride = 3;
+
+            std::vector< ColladaPolylist >::iterator poly_it = polylists.begin();
+            std::vector< ColladaPolylist >::iterator poly_end = polylists.end();
+            for ( ; poly_it != poly_end; ++poly_it )
+            {
+                int * index = poly_it->primitives.data();
+                int * index_end = index + poly_it->primitives.size();
+
+                while ( index != index_end )
+                {
+                    const float * p[3];
+                    const float * t[3];
+                    for ( size_t i=0; i<3; ++i )
+                    {
+                        p[i] = pos_source->array.data() + index[ position->offset + i * poly_it->inputs.size() ];
+                        t[i] = tex_source->array.data() + index[ texcoord->offset + i * poly_it->inputs.size() ];
+                    }
+
+                    for ( size_t i=0; i<3; ++i )
+                    {
+                        long long lo = index[ normal->offset ];
+                        long long hi = index[ texcoord->offset ];
+                        long long id = lo + ( hi << 32 );
+
+                        std::map< long long, int >::iterator ti = tangentIndices.find( id );
+                        if ( ti == tangentIndices.end() )
+                        {
+                            float tangent1[3] = { 0.0f, 0.0f, 0.0f };
+                            float tangent2[3] = { 0.0f, 0.0f, 0.0f };
+
+                            ComputeTangents( tangent1, tangent2, p, t, i );
+
+                            tangentIndices[ id ] = tangent1Source.array.size() / 3;
+
+                            for ( size_t j=0; j<3; ++j )
+                            {
+                                tangent1Source.array.push_back( tangent1[ j ] );
+                                tangent2Source.array.push_back( tangent2[ j ] );
+                            }
+                        }
+                        else
+                        {
+                            float * tangent1 = tangent1Source.array.data() + 3 * ti->second;
+                            float * tangent2 = tangent2Source.array.data() + 3 * ti->second;
+
+                            ComputeTangents( tangent1, tangent2, p, t, i );
+                        }
+                    }
+
+                    index += poly_it->inputs.size() * 3;
+                }
+            }
+
+            std::map< long long, int >::iterator ti = tangentIndices.begin();
+            std::map< long long, int >::iterator ti_end = tangentIndices.end();
+            for ( ; ti != ti_end; ++ti )
+            {
+                float * tangent1 = tangent1Source.array.data() + 3 * ti->second;
+                float * tangent2 = tangent2Source.array.data() + 3 * ti->second;
+
+                const float * n = nrm_source->array.data() + ( ti->first & 0x00000000ffffffff );
+                NormalizeTangents( tangent1, tangent2, n );
+            }
+        }
+    }
+
     // build vertex layout
 
     std::vector< MeshInputDesc >    input_layout;
     std::vector< ColladaSource * >  source_layout;
     unsigned int vertex_size = 0;
     unsigned int vertex_count = 0;
+
+    int compression = CompressionMask & options;
 
     std::vector< ColladaPolylist >::iterator poly_it = polylists.begin();
     std::vector< ColladaPolylist >::iterator poly_end = polylists.end();
@@ -786,8 +977,8 @@ bool BuildMesh( const char * outFilename, int options )
             {
                 MeshInputDesc input;
                 input.semantic = inputs[ i ].semantic;
-                input.type = vType[ input.semantic ][ options ];
-                input.size = vSize[ input.semantic ][ options ];
+                input.type = vType[ input.semantic ][ compression ];
+                input.size = vSize[ input.semantic ][ compression ];
                 input.offset = vertex_size;
 
                 vertex_size += input.size;
@@ -800,6 +991,24 @@ bool BuildMesh( const char * outFilename, int options )
                 return false;
             }
         }
+    }
+
+    MeshInputDesc tangent1Input;
+    MeshInputDesc tangent2Input;
+
+    if ( gen_tangents )
+    {
+        tangent1Input.semantic  = TANGENT;
+        tangent1Input.type      = vType[ TANGENT ][ compression ];
+        tangent1Input.size      = vSize[ TANGENT ][ compression ];
+        tangent1Input.offset    = vertex_size;
+        vertex_size            += tangent1Input.size;
+
+        tangent2Input.semantic  = BINORMAL;
+        tangent2Input.type      = vType[ BINORMAL ][ compression ];
+        tangent2Input.size      = vSize[ BINORMAL ][ compression ];
+        tangent2Input.offset    = vertex_size;
+        vertex_size            += tangent2Input.size;
     }
 
     // build triangle lists
@@ -817,15 +1026,41 @@ bool BuildMesh( const char * outFilename, int options )
 
         int * index = poly_it->primitives.data();
         int * index_end = index + poly_it->primitives.size();
+        
+        int triangle_index = 0;
+        const float * triangle_positions[3] = { NULL, NULL, NULL };
+        const float * triangle_texcoords[3] = { NULL, NULL, NULL };
+        const float * triangle_normals[3] = { NULL, NULL, NULL };
 
         while ( index != index_end )
         {
+            long long lo, hi;
+
             for ( size_t i=0; i<source_layout.size(); ++i, ++index )
             {
                 const ColladaSource * source = source_layout[ i ];
                 const MeshInputDesc& input = input_layout[ i ];
 
+                if ( gen_tangents )
+                {
+                    if ( input.semantic == NORMAL )
+                        lo = *index;
+                    else if ( input.semantic == TEXCOORD0 )
+                        hi = *index;
+                }
+
                 FormatData( vertex_end + input.offset, source->array.data() + *index * source->stride, source->stride, input );
+            }
+
+            if ( gen_tangents )
+            {
+                long long id = lo + ( hi << 32 );
+
+                std::map< long long, int >::iterator ti = tangentIndices.find( id );
+                assert( ti != tangentIndices.end() );
+
+                FormatData( vertex_end + tangent1Input.offset, tangent1Source.array.data() + 3 * ti->second, 3, tangent1Input );
+                FormatData( vertex_end + tangent2Input.offset, tangent2Source.array.data() + 3 * ti->second, 3, tangent2Input );
             }
 
             vertex_end += vertex_size;

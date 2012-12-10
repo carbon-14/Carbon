@@ -6,7 +6,7 @@
 
 int main( int argc, char* argv[] )
 {
-    if ( argc < 3 || argc > 6 )
+    if ( argc < 3 || argc > 7 )
         goto exit;
 
     char * inFile = argv[--argc];
@@ -17,11 +17,13 @@ int main( int argc, char* argv[] )
     {
         char * option = argv[--argc];
         if ( strcmp( option, "-cmp_pos" ) == 0 )
-            options |= OT_COMPRESS_POSITION;
+            options |= CT_POSITION;
         else if ( strcmp( option, "-cmp_vec" ) == 0 )
-            options |= OT_COMPRESS_VECTOR;
+            options |= CT_VECTOR;
         else if ( strcmp( option, "-cmp_uvs" ) == 0 )
-            options |= OT_COMPRESS_TEXCOORD;
+            options |= CT_TEXCOORD;
+        else if ( strcmp( option, "-gen_ts" ) == 0 )
+            options |= OT_GENERATE_TANGENT_SPACE;
         else
             goto exit;
     }
