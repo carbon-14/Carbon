@@ -431,12 +431,7 @@ void endElementCollada( void * ctx, const xmlChar * name )
             {
                 float v;
                 sscanf( &*it, "%f", &v );
-
-                float t = floor( v + 0.5f );
-                if ( abs(v - t) < 1.0f / 1024.0f )
-                    source.array.push_back( t );
-                else
-                    source.array.push_back( v );
+                source.array.push_back( v );
 
                 while ( it != end && *it != 0 ) { ++it; }
                 while ( it != end && *it == 0 ) { ++it; }
@@ -580,7 +575,7 @@ struct MeshHeader
     unsigned int vertexDataSize;
 };
 
-struct MeshInputDesc
+struct MeshInput
 {
     Semantic        semantic;
     VType           type;
@@ -652,7 +647,16 @@ unsigned short toFloat16( float v )
     return ( ( sign << 15 ) | ( exponent << 10 ) | mantissa );
 }
 
-void FormatData( void * dest, const float * src, int stride, const MeshInputDesc& input )
+float FormatFloat( float v )
+{
+    float t = floor( v + 0.5f );
+    if ( abs(v - t) < ( 1.0f / 4096.0f ) )
+        return t;
+    else
+        return v;
+}
+
+void FormatData( void * dest, const float * src, int stride, const MeshInput& input )
 {
     memset( dest, 0, input.size );
 
@@ -709,67 +713,124 @@ void FormatData( void * dest, const float * src, int stride, const MeshInputDesc
     }
 }
 
-void ComputeTangents( float * tangent1, float * tangent2, const float ** positions, const float ** texcoords, int triangle_index )
+std::vector< float >::iterator RemoveDuplicatedVertices( std::vector< float >& vertices, size_t stride, std::vector< size_t >& indices )
 {
-    int i0 = triangle_index;
-    int i1 = ( i0 + 1 ) % 3;
-    int i2 = ( i0 + 2 ) % 3;
+    std::vector< float >::iterator end = vertices.begin();
 
-    float dx1 = positions[ i1 ][0] - positions[ i0 ][0];
-    float dx2 = positions[ i2 ][0] - positions[ i0 ][0];
-    float dy1 = positions[ i1 ][1] - positions[ i0 ][1];
-    float dy2 = positions[ i2 ][1] - positions[ i0 ][1];
-    float dz1 = positions[ i1 ][2] - positions[ i0 ][2];
-    float dz2 = positions[ i2 ][2] - positions[ i0 ][2];
+    for ( std::vector< float >::iterator vertex = vertices.begin(); vertex != vertices.end(); vertex += stride )
+    {
+        std::vector< float >::iterator d = vertices.begin();
+        while ( d != end && !std::equal( d, d + stride, vertex ) )
+        {
+            d += stride;
+        }
 
-    float du1 = texcoords[ i1 ][0] - texcoords[ i0 ][0];
-    float du2 = texcoords[ i2 ][0] - texcoords[ i0 ][0];
-    float dv1 = texcoords[ i1 ][1] - texcoords[ i0 ][1];
-    float dv2 = texcoords[ i2 ][1] - texcoords[ i0 ][1];
+        indices.push_back( ( d - vertices.begin() ) / stride );
 
-    float r = 1.0f / ( du1 * dv2 - du2 * dv1 );
+        if ( d == end )
+        {
+            std::copy( vertex, vertex + stride, end );
+            end += stride;
+        }
+    }
 
-    tangent1[0] += ( ( dv2 - dx1 - dv1 * dx2 ) + ( du2 - dx1 - du1 * dx2 ) ) * r;
-    tangent1[1] += ( ( dv2 - dy1 - dv1 * dy2 ) + ( du2 - dy1 - du1 * dy2 ) ) * r;
-    tangent1[2] += ( ( dv2 - dz1 - dv1 * dz2 ) + ( du2 - dz1 - du1 * dz2 ) ) * r;
-
-    tangent2[0] += ( ( du1 - dx2 - du2 * dx1 ) + ( du1 - dx2 - du2 * dx1 ) ) * r;
-    tangent2[1] += ( ( du1 - dy2 - du2 * dy1 ) + ( du1 - dy2 - du2 * dy1 ) ) * r;
-    tangent2[2] += ( ( du1 - dz2 - du2 * dz1 ) + ( du1 - dz2 - du2 * dz1 ) ) * r;
+    return end;
 }
 
-void NormalizeTangents( float * tangent1, float * tangent2, const float * normal )
+
+void BuildTangentSpace( float * tangents,
+                        float * binormals,
+                        const float * vertices,
+                        size_t vertex_count,
+                        size_t stride,
+                        const size_t * indices,
+                        size_t index_count,
+                        size_t pos_offset,
+                        size_t nrm_offset,
+                        size_t uvs_offset )
 {
-    float proj = tangent1[0] * normal[0] + tangent1[1] * normal[1] + tangent1[2] * normal[2];
-
-    float ortho1[3];
-    ortho1[0] = tangent1[0] - normal[0] * proj;
-    ortho1[1] = tangent1[1] - normal[1] * proj;
-    ortho1[2] = tangent1[2] - normal[2] * proj;
-
-    float len = sqrt( ortho1[0] * ortho1[0] + ortho1[1] * ortho1[1] + ortho1[2] * ortho1[2] );
-    if ( len > 0.0f )
+    for ( size_t i=0; i<index_count; i += 3 )
     {
-        ortho1[0] /= len;
-        ortho1[1] /= len;
-        ortho1[2] /= len;
+        const size_t idx[3] = { indices[ i + 0 ], indices[ i + 1 ], indices[ i + 2 ] };
+        const float * v[3]  = { vertices + idx[0] * stride + 0, vertices + idx[1] * stride + 1, vertices + idx[2] * stride + 2 };
+
+        const float * p[3]  = { v[0] + pos_offset, v[1] + pos_offset, v[2] + pos_offset };
+        const float * w[3]  = { v[0] + uvs_offset, v[1] + uvs_offset, v[2] + uvs_offset };
+        float * t[3]        = { tangents + idx[0] * 3 + 0, tangents + idx[1] * 3 + 1, tangents + idx[2] * 3 + 2 };
+        float * b[3]        = { binormals + idx[0] * 3 + 0, binormals + idx[1] * 3 + 1, binormals + idx[2] * 3 + 2 };
+
+        float dx1 = p[1][0] - p[0][0];
+        float dx2 = p[2][0] - p[0][0];
+        float dy1 = p[1][1] - p[0][1];
+        float dy2 = p[2][1] - p[0][1];
+        float dz1 = p[1][2] - p[0][2];
+        float dz2 = p[2][2] - p[0][2];
+
+        float du1 = w[1][0] - w[0][0];
+        float du2 = w[2][0] - w[0][0];
+        float dv1 = w[1][1] - w[0][1];
+        float dv2 = w[2][1] - w[0][1];
+
+        float r = 1.0f / ( du1 * dv2 - du2 * dv1 );
+
+        float tdir[3];
+        tdir[0] = ( ( dv2 - dx1 - dv1 * dx2 ) + ( du2 - dx1 - du1 * dx2 ) ) * r;
+        tdir[1] = ( ( dv2 - dy1 - dv1 * dy2 ) + ( du2 - dy1 - du1 * dy2 ) ) * r;
+        tdir[2] = ( ( dv2 - dz1 - dv1 * dz2 ) + ( du2 - dz1 - du1 * dz2 ) ) * r;
+
+        float bdir[3];
+        bdir[0] = ( ( du1 - dx2 - du2 * dx1 ) + ( du1 - dx2 - du2 * dx1 ) ) * r;
+        bdir[1] = ( ( du1 - dy2 - du2 * dy1 ) + ( du1 - dy2 - du2 * dy1 ) ) * r;
+        bdir[2] = ( ( du1 - dz2 - du2 * dz1 ) + ( du1 - dz2 - du2 * dz1 ) ) * r;
+
+        for ( size_t j=0; j<3; ++j )
+        {
+            t[j][0] += tdir[0];
+            t[j][1] += tdir[1];
+            t[j][2] += tdir[2];
+
+            b[j][0] += bdir[0];
+            b[j][1] += bdir[1];
+            b[j][2] += bdir[2];
+        }
     }
 
-    float ortho2[3];
-    ortho2[0] = normal[1] * ortho1[2] - normal[2] * ortho1[1];
-    ortho2[1] = normal[2] * ortho1[0] - normal[0] * ortho1[2];
-    ortho2[2] = normal[0] * ortho1[1] - normal[1] * ortho1[0];
+    for ( size_t i=0; i<vertex_count; ++i )
+    {        
+        float *         t = tangents + i * 3;
+        float *         b = binormals + i * 3;
+        const float *   n = vertices + i * stride + nrm_offset;
 
-    proj = tangent2[0] * ortho2[0] + tangent2[1] * ortho2[1] + tangent2[2] * ortho2[2];
-    if ( proj < 0.0f )
-    {
-        memcpy( tangent1, ortho1, sizeof( ortho1 ) );
-        memcpy( tangent2, ortho2, sizeof( ortho2 ) );
-    }
-    else
-    {
-        memcpy( tangent1, ortho2, sizeof( ortho2 ) );
-        memcpy( tangent2, ortho1, sizeof( ortho1 ) );
+        float proj = t[0] * n[0] + t[1] * n[1] + t[2] * n[2];
+
+        float ortho1[3];
+        ortho1[0] = t[0] - n[0] * proj;
+        ortho1[1] = t[1] - n[1] * proj;
+        ortho1[2] = t[2] - n[2] * proj;
+
+        float len = sqrt( ortho1[0] * ortho1[0] + ortho1[1] * ortho1[1] + ortho1[2] * ortho1[2] );
+        if ( len > 0.0f )
+        {
+            ortho1[0] /= len;
+            ortho1[1] /= len;
+            ortho1[2] /= len;
+        }
+
+        float ortho2[3];
+        ortho2[0] = n[1] * ortho1[2] - n[2] * ortho1[1];
+        ortho2[1] = n[2] * ortho1[0] - n[0] * ortho1[2];
+        ortho2[2] = n[0] * ortho1[1] - n[1] * ortho1[0];
+
+        proj = b[0] * ortho2[0] + b[1] * ortho2[1] + b[2] * ortho2[2];
+        if ( proj > 0.0f )
+        {
+            ortho2[0] = -ortho2[0];
+            ortho2[1] = -ortho2[1];
+            ortho2[2] = -ortho2[2];
+        }
+
+        memcpy( t, ortho1, sizeof( ortho1 ) );
+        memcpy( b, ortho2, sizeof( ortho2 ) );
     }
 }
 
@@ -783,157 +844,24 @@ bool BuildMesh( const char * outFilename, int options )
     ColladaInput& v_input = vertices.inputs.front();
     std::vector< ColladaPolylist > polylists = mesh.polylists;
 
-    header.inputCount = sources.size();
-    header.subMeshCount = polylists.size();
-
-    ColladaSource * v_source = NULL;
+    size_t v_source = -1;
     for ( size_t i=0; i< sources.size(); ++i )
     {
-        ColladaSource& source = sources[ i ];
-        if ( strcmp( source.id, v_input.source + 1 ) == 0 )
+        if ( strcmp( sources[ i ].id, v_input.source + 1 ) == 0 )
         {
-            v_source = &source;
+            v_source = i;
             break;
         }
     }
 
-    if ( v_source == NULL )
+    if ( v_source == -1 )
         return false;
 
-    bool gen_tangents = false;
-
-    // build tangent space
-    std::map< long long, int > tangentIndices;
-    ColladaSource tangent1Source;
-    ColladaSource tangent2Source;
-    if ( options & OT_GENERATE_TANGENT_SPACE )
-    {
-        const ColladaInput * position = NULL;
-        const ColladaInput * normal = NULL;
-        const ColladaInput * texcoord = NULL;
-
-        const ColladaSource * pos_source = NULL;
-        const ColladaSource * nrm_source = NULL;
-        const ColladaSource * tex_source = NULL;
-
-        {
-            const ColladaPolylist& list = polylists.front();
-            const std::vector< ColladaInput >& inputs = list.inputs;
-            for ( size_t i=0; i<inputs.size(); ++i )
-            {
-                ColladaSource * source = NULL;
-                for ( size_t j=0; j<sources.size(); ++j )
-                {
-                    if ( strcmp( vertices.id, inputs[ i ].source + 1 ) == 0 )
-                    {
-                        source = v_source;
-                        break;
-                    }
-                    else if ( strcmp( sources[ j ].id, inputs[ i ].source + 1 ) == 0 )
-                    {
-                        source = &sources[ j ];
-                        break;
-                    }
-                }
-
-                if ( inputs[ i ].semantic == POSITION )
-                {
-                    position = &inputs[ i ];
-                    pos_source = source;
-                }
-                else if ( inputs[ i ].semantic == NORMAL )
-                {
-                    normal = &inputs[ i ];
-                    nrm_source = source;
-                }
-                else if ( inputs[ i ].semantic == TEXCOORD0 )
-                {
-                    texcoord = &inputs[ i ];
-                    tex_source = source;
-                }
-            }
-        }
-
-        if ( normal && texcoord )
-        {
-            gen_tangents = true;
-            strcpy( tangent1Source.id, "TANGENT" );
-            tangent1Source.stride = 3;
-
-            strcpy( tangent2Source.id, "BINORMAL" );
-            tangent2Source.stride = 3;
-
-            std::vector< ColladaPolylist >::iterator poly_it = polylists.begin();
-            std::vector< ColladaPolylist >::iterator poly_end = polylists.end();
-            for ( ; poly_it != poly_end; ++poly_it )
-            {
-                int * index = poly_it->primitives.data();
-                int * index_end = index + poly_it->primitives.size();
-
-                while ( index != index_end )
-                {
-                    const float * p[3];
-                    const float * t[3];
-                    for ( size_t i=0; i<3; ++i )
-                    {
-                        p[i] = pos_source->array.data() + index[ position->offset + i * poly_it->inputs.size() ];
-                        t[i] = tex_source->array.data() + index[ texcoord->offset + i * poly_it->inputs.size() ];
-                    }
-
-                    for ( size_t i=0; i<3; ++i )
-                    {
-                        long long lo = index[ normal->offset ];
-                        long long hi = index[ texcoord->offset ];
-                        long long id = lo + ( hi << 32 );
-
-                        std::map< long long, int >::iterator ti = tangentIndices.find( id );
-                        if ( ti == tangentIndices.end() )
-                        {
-                            float tangent1[3] = { 0.0f, 0.0f, 0.0f };
-                            float tangent2[3] = { 0.0f, 0.0f, 0.0f };
-
-                            ComputeTangents( tangent1, tangent2, p, t, i );
-
-                            tangentIndices[ id ] = tangent1Source.array.size() / 3;
-
-                            for ( size_t j=0; j<3; ++j )
-                            {
-                                tangent1Source.array.push_back( tangent1[ j ] );
-                                tangent2Source.array.push_back( tangent2[ j ] );
-                            }
-                        }
-                        else
-                        {
-                            float * tangent1 = tangent1Source.array.data() + 3 * ti->second;
-                            float * tangent2 = tangent2Source.array.data() + 3 * ti->second;
-
-                            ComputeTangents( tangent1, tangent2, p, t, i );
-                        }
-                    }
-
-                    index += poly_it->inputs.size() * 3;
-                }
-            }
-
-            std::map< long long, int >::iterator ti = tangentIndices.begin();
-            std::map< long long, int >::iterator ti_end = tangentIndices.end();
-            for ( ; ti != ti_end; ++ti )
-            {
-                float * tangent1 = tangent1Source.array.data() + 3 * ti->second;
-                float * tangent2 = tangent2Source.array.data() + 3 * ti->second;
-
-                const float * n = nrm_source->array.data() + ( ti->first & 0x00000000ffffffff );
-                NormalizeTangents( tangent1, tangent2, n );
-            }
-        }
-    }
-
     // build vertex layout
-
-    std::vector< MeshInputDesc >    input_layout;
-    std::vector< ColladaSource * >  source_layout;
-    unsigned int vertex_size = 0;
-    unsigned int vertex_count = 0;
+    std::vector< Semantic > semantic_layout;
+    std::vector< size_t >   source_layout;
+    size_t vertex_count     = 0;
+    size_t vertex_stride    = 0;
 
     int compression = CompressionMask & options;
 
@@ -955,7 +883,7 @@ bool BuildMesh( const char * outFilename, int options )
                 std::swap( inputs[ i ], inputs[ offset ] );
             }
 
-            ColladaSource * source = NULL;
+            size_t source = -1;
             for ( size_t j=0; j<sources.size(); ++j )
             {
                 if ( strcmp( vertices.id, inputs[ i ].source + 1 ) == 0 )
@@ -965,25 +893,19 @@ bool BuildMesh( const char * outFilename, int options )
                 }
                 else if ( strcmp( sources[ j ].id, inputs[ i ].source + 1 ) == 0 )
                 {
-                    source = &sources[ j ];
+                    source = j;
                     break;
                 }
             }
 
-            if ( source == NULL )
+            if ( source == -1 )
                 return false;
 
-            if ( input_layout.size() <= i )             // Create layout on first inputs
+            if ( source_layout.size() <= i )             // Create layout on first inputs
             {
-                MeshInputDesc input;
-                input.semantic = inputs[ i ].semantic;
-                input.type = vType[ input.semantic ][ compression ];
-                input.size = vSize[ input.semantic ][ compression ];
-                input.offset = vertex_size;
+                vertex_stride += sources[ source ].stride;
 
-                vertex_size += input.size;
-
-                input_layout.push_back( input );
+                semantic_layout.push_back( inputs[ i ].semantic );
                 source_layout.push_back( source );
             }
             else if ( source_layout[ i ] != source )    // check layout
@@ -993,31 +915,11 @@ bool BuildMesh( const char * outFilename, int options )
         }
     }
 
-    MeshInputDesc tangent1Input;
-    MeshInputDesc tangent2Input;
-
-    if ( gen_tangents )
-    {
-        tangent1Input.semantic  = TANGENT;
-        tangent1Input.type      = vType[ TANGENT ][ compression ];
-        tangent1Input.size      = vSize[ TANGENT ][ compression ];
-        tangent1Input.offset    = vertex_size;
-        vertex_size            += tangent1Input.size;
-
-        tangent2Input.semantic  = BINORMAL;
-        tangent2Input.type      = vType[ BINORMAL ][ compression ];
-        tangent2Input.size      = vSize[ BINORMAL ][ compression ];
-        tangent2Input.offset    = vertex_size;
-        vertex_size            += tangent2Input.size;
-    }
-
     // build triangle lists
-
-    unsigned int vbuffer_size = vertex_size * vertex_count;
-    void * vertex_data = malloc( vbuffer_size );
+    std::vector< float > vertex_cache;
+    vertex_cache.reserve( vertex_count * vertex_stride );
     
-    unsigned char * vertex_end = (unsigned char *)vertex_data;
-    std::vector< unsigned int > sub_meshes;
+    std::vector< size_t > sub_meshes;
     
     poly_it = polylists.begin();
     for ( ; poly_it != poly_end; ++poly_it )
@@ -1026,78 +928,145 @@ bool BuildMesh( const char * outFilename, int options )
 
         int * index = poly_it->primitives.data();
         int * index_end = index + poly_it->primitives.size();
-        
-        int triangle_index = 0;
-        const float * triangle_positions[3] = { NULL, NULL, NULL };
-        const float * triangle_texcoords[3] = { NULL, NULL, NULL };
-        const float * triangle_normals[3] = { NULL, NULL, NULL };
 
         while ( index != index_end )
         {
-            long long lo, hi;
-
             for ( size_t i=0; i<source_layout.size(); ++i, ++index )
             {
-                const ColladaSource * source = source_layout[ i ];
-                const MeshInputDesc& input = input_layout[ i ];
-
-                if ( gen_tangents )
-                {
-                    if ( input.semantic == NORMAL )
-                        lo = *index;
-                    else if ( input.semantic == TEXCOORD0 )
-                        hi = *index;
-                }
-
-                FormatData( vertex_end + input.offset, source->array.data() + *index * source->stride, source->stride, input );
+                const ColladaSource& source = sources[ source_layout[ i ] ];
+                for ( int i=0; i<source.stride; ++i )
+                    vertex_cache.push_back( FormatFloat( source.array[ i + *index * source.stride ] ) );
             }
-
-            if ( gen_tangents )
-            {
-                long long id = lo + ( hi << 32 );
-
-                std::map< long long, int >::iterator ti = tangentIndices.find( id );
-                assert( ti != tangentIndices.end() );
-
-                FormatData( vertex_end + tangent1Input.offset, tangent1Source.array.data() + 3 * ti->second, 3, tangent1Input );
-                FormatData( vertex_end + tangent2Input.offset, tangent2Source.array.data() + 3 * ti->second, 3, tangent2Input );
-            }
-
-            vertex_end += vertex_size;
         }
     }
 
     // remove duplicated vertices
-    vertex_end = (unsigned char *)vertex_data;
-    std::vector< unsigned int > indices;
+    std::vector< size_t > indices;
     indices.reserve( vertex_count );
-    for ( unsigned int i=0; i<vertex_count; ++i )
-    {
-        unsigned char * vertex = (unsigned char *)vertex_data + i * vertex_size;
 
-        unsigned char * d = (unsigned char *)vertex_data;
-        while ( d != vertex_end )
+    std::vector< float >::iterator cache_end = RemoveDuplicatedVertices( vertex_cache, vertex_stride, indices );
+    vertex_count = ( cache_end - vertex_cache.begin() ) / vertex_stride;
+
+    // Compute Tangent Space
+    if ( options & OT_GENERATE_TANGENT_SPACE )
+    {
+        size_t pos_offset = -1;
+        size_t nrm_offset = -1;
+        size_t uvs_offset = -1;
+
+        size_t offset = 0;
+        for ( size_t i=0; i<semantic_layout.size(); ++i )
         {
-            if ( memcmp( d, vertex, vertex_size ) == 0 ) { break; }
-            d += vertex_size;
+            if ( semantic_layout[ i ] == POSITION )
+                pos_offset = offset;
+            else if ( semantic_layout[ i ] == NORMAL )
+                nrm_offset = offset;
+            else if ( semantic_layout[ i ] == TEXCOORD0 )
+                uvs_offset = offset;
+            offset += sources[ source_layout[ i ] ].stride;
         }
 
-        indices.push_back( ( d - (unsigned char *)vertex_data ) / vertex_size );
-
-        if ( d == vertex_end )
+        if ( pos_offset != -1 && nrm_offset != -1 && uvs_offset != -1 )
         {
-            memcpy( vertex_end, vertex, vertex_size );
-            vertex_end += vertex_size;
+            sources.resize( sources.size() + 2 );
+
+            std::vector< ColladaSource >::iterator tangentSource = sources.end() - 2;
+            strcpy( tangentSource->id, "TANGENT" );
+            tangentSource->stride = 3;
+            tangentSource->array.resize( 3 * vertex_count, 0.0f );
+            size_t tan_offset = offset;
+
+            offset += tangentSource->stride;
+
+            std::vector< ColladaSource >::iterator binormalSource = sources.end() - 1;
+            strcpy( binormalSource->id, "BINORMAL" );
+            binormalSource->stride = 3;
+            binormalSource->array.resize( 3 * vertex_count, 0.0f );
+            size_t bin_offset = offset;
+
+            offset += binormalSource->stride;
+
+            BuildTangentSpace( tangentSource->array.data(), binormalSource->array.data(), vertex_cache.data(), vertex_count, vertex_stride, indices.data(), indices.size(), pos_offset, nrm_offset, uvs_offset );
+
+            // insert TS into vertex cache
+            size_t cache_size = vertex_count * offset;
+            vertex_cache.reserve( cache_size );
+
+            std::vector< float > tmp( cache_size );
+
+            std::vector< float >::iterator tmp_it   = tmp.begin();
+            std::vector< float >::iterator v_it     = vertex_cache.begin();
+            std::vector< float >::iterator t_it     = tangentSource->array.begin();
+            std::vector< float >::iterator b_it     = binormalSource->array.begin();
+            while ( tmp_it != tmp.end() )
+            {
+                std::copy( v_it, v_it + vertex_stride, tmp_it );
+                v_it += vertex_stride;
+                tmp_it += vertex_stride;
+
+                std::copy( t_it, t_it + 3, tmp_it );
+                t_it += 3;
+                tmp_it += 3;
+
+                std::copy( b_it, b_it + 3, tmp_it );
+                b_it += 3;
+                tmp_it += 3;
+            }
+
+            vertex_cache = tmp;
+
+            semantic_layout.push_back( TANGENT );
+            source_layout.push_back( sources.size() - 2 );
+
+            semantic_layout.push_back( BINORMAL );
+            source_layout.push_back( sources.size() - 1 );
+            
+            vertex_stride = offset;
+            cache_end = vertex_cache.begin() + vertex_count * vertex_stride;
         }
     }
 
-    vbuffer_size = ( vertex_end - (unsigned char *)vertex_data );
-    vertex_count = vbuffer_size / vertex_size;
+    // Build input layout
+    size_t vertex_size = 0;
+    std::vector< MeshInput > input_layout;
 
-    header.vertexDataSize = vbuffer_size;
+    for ( size_t i=0; i<source_layout.size(); ++i )
+    {
+        MeshInput input;
+        input.semantic = semantic_layout[ i ];
+        input.type      = vType[ input.semantic ][ compression ];
+        input.size      = vSize[ input.semantic ][ compression ];
+        input.offset    = vertex_size;
+        vertex_size    += input.size;
 
-    unsigned int index_size = 0;
-    unsigned int index_count = indices.size();
+        input_layout.push_back( input );
+    }
+
+    // Build vertex data
+    size_t vbuffer_size = vertex_count * vertex_size;
+    unsigned char * vertex_data = (unsigned char *)malloc( vbuffer_size );
+    unsigned char * vertex_end = vertex_data;
+
+    for ( size_t i=0; i<vertex_count; ++i )
+    {
+        float * vertex = vertex_cache.data() + i * vertex_stride;
+
+        for ( size_t j=0; j<input_layout.size(); ++j )
+        {
+            MeshInput& input = input_layout[ j ];
+            FormatData( vertex_end, vertex, sources[ source_layout[ j ] ].stride, input );
+
+            vertex_end += input.size;
+            vertex += sources[ source_layout[ j ] ].stride;
+        }
+    }
+
+    header.inputCount       = input_layout.size();
+    header.subMeshCount     = sub_meshes.size();
+    header.vertexDataSize   = vbuffer_size;
+
+    size_t index_size = 0;
+    size_t index_count = indices.size();
     if ( vertex_count <= ( 1 << 8 ) ) {
         header.indexType = IT_UBYTE;
         index_size = 1;
@@ -1109,16 +1078,16 @@ bool BuildMesh( const char * outFilename, int options )
         index_size = 4;
     }
 
-    unsigned int ibuffer_size = index_size * index_count;
+    size_t ibuffer_size = index_size * index_count;
 
-    void * index_data = malloc( ibuffer_size );
-    unsigned char * index_end = (unsigned char *)index_data;
+    unsigned char * index_data = (unsigned char *)malloc( ibuffer_size );
+    unsigned char * index_end = index_data;
     unsigned char * index_it = ((unsigned char *)indices.data());
     while ( index_it < (unsigned char *)( indices.data() + index_count ) )
     {
         memcpy( index_end, index_it, index_size );
         index_end += index_size;
-        index_it += sizeof(unsigned int);
+        index_it += sizeof(size_t);
     }
 
     if ( ! BuildDirectory( outFilename ) )
@@ -1138,14 +1107,14 @@ bool BuildMesh( const char * outFilename, int options )
     }
 
     fwrite(&header,1,sizeof(MeshHeader),fp);
-    fwrite(input_layout.data(),1,sizeof(MeshInputDesc)*input_layout.size(),fp);
+    fwrite(input_layout.data(),1,sizeof(MeshInput)*input_layout.size(),fp);
     fwrite(vertex_data,1,vbuffer_size,fp);
 
     index_end = (unsigned char*)index_data;
-    for ( unsigned int i=0; i<sub_meshes.size(); ++i )
+    for ( size_t i=0; i<sub_meshes.size(); ++i )
     {
-        unsigned int count      = sub_meshes[ i ];
-        unsigned int size       = count * index_size;
+        unsigned int count  = sub_meshes[ i ];
+        unsigned int size   = count * index_size;
 
         fwrite(&count,1,sizeof(unsigned int),fp);
         fwrite(index_end,1,size,fp);
