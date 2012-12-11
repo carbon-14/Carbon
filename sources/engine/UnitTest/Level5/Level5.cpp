@@ -206,7 +206,7 @@ namespace Level5_NS
         U32     vertexDataSize;
     };
 
-    struct MeshInputDesc
+    struct MeshInput
     {
         VertexSemantic  semantic;
         VType           type;
@@ -238,8 +238,8 @@ namespace Level5_NS
         vDecl.m_size = 0;
         for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
-            MeshInputDesc * desc = (MeshInputDesc*)ptr;
-            ptr += sizeof(MeshInputDesc);
+            MeshInput * desc = (MeshInput*)ptr;
+            ptr += sizeof(MeshInput);
 
             vDecl.m_attributes[ i ].m_semantic      = desc->semantic;
             vDecl.m_attributes[ i ].m_type          = toAttribType[ desc->type ];
@@ -285,11 +285,15 @@ namespace Level5_NS
 
             m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
 
-            m_sampler = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-            m_renderElement.m_samplers = &m_sampler;
-            m_texture = LoadTexture( "carbon_c.btx" );
-            m_renderElement.m_textures = &m_texture;
-            m_renderElement.m_unitCount = 1;
+            m_sampler[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
+            m_sampler[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
+            m_renderElement.m_samplers = m_sampler;
+
+            m_texture[0] = LoadTexture( "carbon_c.btx" );
+            m_texture[1] = LoadTexture( "carbon_n.btx" );
+            m_renderElement.m_textures = m_texture;
+
+            m_renderElement.m_unitCount = 2;
 
             m_renderElement.m_uniformBuffers = &uniformBuffer;
             m_renderElement.m_uniformBufferCout = 1;
@@ -302,8 +306,10 @@ namespace Level5_NS
 
         void Destroy()
         {
-            RenderDevice::DestroySampler( m_sampler );
-            RenderDevice::DestroyTexture( m_texture );
+            RenderDevice::DestroySampler( m_sampler[0] );
+            RenderDevice::DestroySampler( m_sampler[1] );
+            RenderDevice::DestroyTexture( m_texture[0] );
+            RenderDevice::DestroyTexture( m_texture[1] );
 
             Geometry& geom = m_renderElement.m_geom;
             for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
@@ -316,8 +322,8 @@ namespace Level5_NS
 
     private:
         RenderElement   m_renderElement;
-        Handle          m_sampler;
-        Handle          m_texture;
+        Handle          m_sampler[2];
+        Handle          m_texture[2];
     };
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
