@@ -6,13 +6,13 @@ in Data
     vec3 normal;
     vec3 tangent;
     vec3 binormal;
-    vec3 color;
     vec2 uv;
 } DataIn;
 
 out vec4 outColor;
 
-layout(binding=0) uniform sampler2D carbonColor;
+layout(binding=0) uniform sampler2D sphereColor;
+layout(binding=1) uniform sampler2D sphereNormal;
 
 layout(binding=1) uniform AmbientParameters
 {
@@ -36,9 +36,23 @@ layout(binding=3) uniform FlashParameters
     float   flashRadius;
 };
 
+const vec3 emissiveColor = 2.0 * vec3( 1.0f, 0.5, 0.25 );
+
 void main()
 {
-    vec3 n = normalize( DataIn.normal );
+    mat3 tbn = mat3(    normalize( DataIn.tangent ),
+                        normalize( DataIn.binormal ),
+                        normalize( DataIn.normal ) );
+
+    vec4 color = texture2D( sphereColor, DataIn.uv );
+
+    vec3 albedo = color.rgb;
+    vec3 emissive = color.a * emissiveColor;
+
+    vec3 n  = texture2D( sphereNormal, DataIn.uv ).rgb;
+    n.xy    = 2.0 * n.xy - 1.0;
+    n.z     = sqrt( 1.0 - dot( n.xy, n.xy ) );
+    n       = tbn * n;
 
     vec3 light = vec3(0.0);
     {
@@ -66,9 +80,9 @@ void main()
     vec3 ambient = vec3(0.0);
     {
         vec3 ambientColor = mix( groundColor.rgb * groundColor.a, skyColor.rgb * skyColor.a, 0.5 + 0.5 * n.yyy );
-        float ambientIntensity = DataIn.color.x * mix( 1.0, 0.5, dot( n, normalize( vec3( 1.0, 1.0, 1.0 ) ) ) );
+        float ambientIntensity = mix( 1.0, 0.5, dot( n, normalize( vec3( 1.0, 1.0, 1.0 ) ) ) );
         ambient = ambientIntensity * ambientColor;
     }
 
-    outColor = vec4( light + flash + ambient, 1.0 );
+    outColor = vec4( albedo * ( light + flash + ambient ) + emissive, 1.0 );
 }
