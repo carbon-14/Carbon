@@ -9,11 +9,13 @@ layout( location = 5 ) in vec2 texcoords;
 layout(binding=0) uniform CameraParameters
 {
     mat4    viewProjMatrix;
+    vec4    cameraPosition;
 };
 
 layout(binding=4) uniform SphereParameters
 {
     mat4    worldMatrix;
+    vec4    emissiveColor;
 };
 
 out Data

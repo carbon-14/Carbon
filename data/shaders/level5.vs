@@ -10,6 +10,7 @@ layout( location = 5 ) in vec2 texcoords;
 layout(binding=0) uniform CameraParameters
 {
     mat4    viewProjMatrix;
+    vec4    cameraPosition;
 };
 
 out Data

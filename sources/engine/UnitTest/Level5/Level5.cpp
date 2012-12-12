@@ -57,7 +57,7 @@ namespace Level5_NS
     const Vector arenaMin = Vector4( -19.0f, -15.0f, -7.0f );
     const Vector bodyOffset = Vector3( 0.0f, 2.0f, 0.0f );
     const F32 groundHeight = -15.0f;
-    const F32 bodyWalkSpeed = 5.0f;
+    const F32 bodyWalkSpeed = 7.5f;
     const F32 bodyRunSpeed = 15.0f;
     const F32 friction = 10.0f;
 
@@ -68,6 +68,8 @@ namespace Level5_NS
     Bool bodyFall       = true;
     Bool bodyJump       = false;
     F32 bodyJumpForce   = 10.0f;
+
+    Bool useFlashLight  = false;
 
     const SizeT frameAllocatorSize = 10 * 1024;
 
@@ -87,6 +89,7 @@ namespace Level5_NS
     struct CameraData
     {
         Matrix  viewProjMatrix;
+        Vector  position;
     };
 
     struct AmbientData
@@ -337,6 +340,7 @@ namespace Level5_NS
     struct SphereParameters
     {
         Matrix  m_world;
+        Vector  m_emissiveColor;
     };
 
     class SphereRenderer
@@ -363,20 +367,15 @@ namespace Level5_NS
 
             m_renderElement.m_unitCount = 2;
 
-            m_translation   = Vector3( 5.0f, -10.0f, 0.0f );
+            m_position      = Vector4( 5.0f, -10.0f, 0.0f );
             m_scale         = One4();
             m_orientation   = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
-
-            SphereParameters params;
-            params.m_world = RMatrix( m_orientation );
-            Scale( params.m_world, m_scale );
-            Translate( params.m_world, m_translation );
 
             m_uniformBuffers[0] = cameraParameters;
             m_uniformBuffers[1] = ambientParameters;
             m_uniformBuffers[2] = lightParameters;
             m_uniformBuffers[3] = flashParameters;
-            m_uniformBuffers[4] = RenderDevice::CreateUniformBuffer( sizeof(params), &params, BU_STREAM );
+            m_uniformBuffers[4] = RenderDevice::CreateUniformBuffer( sizeof(SphereParameters), NULL, BU_STREAM );
             m_renderElement.m_uniformBuffers = m_uniformBuffers;
             m_renderElement.m_uniformBufferCout = 5;
         }
@@ -385,11 +384,15 @@ namespace Level5_NS
         {
             m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
 
+            Vector emissive = Vector4( 10.0f, 5.0f, 2.5f, 1.0f ) / SquareLength( m_position - cameraPosition );
+
             SphereParameters * params = static_cast< SphereParameters * >( RenderDevice::MapUniformBuffer( m_uniformBuffers[4], BA_WRITE_ONLY ) );
 
             params->m_world = RMatrix( m_orientation );
             Scale( params->m_world, m_scale );
-            Translate( params->m_world, m_translation );
+            params->m_world.m_column[3] = m_position;
+
+            params->m_emissiveColor = emissive;
 
             RenderDevice::UnmapUniformBuffer( );
 
@@ -420,7 +423,7 @@ namespace Level5_NS
         Handle              m_textures[2];
         Handle              m_uniformBuffers[5];
 
-        Vector              m_translation;
+        Vector              m_position;
         Vector              m_scale;
         Vector              m_orientation;
     };
@@ -441,11 +444,9 @@ namespace Level5_NS
                 case VK_ESCAPE:
                     PostQuitMessage(0);
                     break;
-		        case VK_F12:
-                {
+		        case VK_F4:
                     programCache.NotifySourceChange();
                     break;
-                }
                 case VK_F1:
                     cameraMode = CM_Demo;
                     break;
@@ -476,6 +477,9 @@ namespace Level5_NS
                     break;
                 case 'D':
                     moveX = Min( 1.0f, moveX + 1.0f );
+                    break;
+                case 'F' :
+                    useFlashLight = ! useFlashLight;
                     break;
 		    }
 		    break;
@@ -681,6 +685,7 @@ namespace Level5_NS
 
         flash->position     = cam_base.m_column[3];
         flash->direction    = -cam_base.m_column[2];
+        flash->color        = useFlashLight ? One4() : Zero4();
 
         RenderDevice::UnmapUniformBuffer( );
 
@@ -701,6 +706,7 @@ namespace Level5_NS
         CameraData  * cam = static_cast< CameraData * >( RenderDevice::MapUniformBuffer( cameraParameters, BA_WRITE_ONLY ) );
 
         cam->viewProjMatrix = Mul( proj, view );
+        cam->position       = cam_base.m_column[3];
 
         RenderDevice::UnmapUniformBuffer( );
     }
@@ -775,8 +781,8 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
 
     AmbientData ambient;
-    ambient.groundColor = Vector4( 1.0f, 1.0f, 1.0f, 0.01f );
-    ambient.skyColor    = Vector4( 0.2976f, 0.5317f, 1.0f, 0.025f );
+    ambient.groundColor = Vector4( 0.01f, 0.01f, 0.01f, 1.0f );
+    ambient.skyColor    = Vector4( 0.0074f, 0.0133f, 0.025f, 1.0f );
 
     ambientParameters = RenderDevice::CreateUniformBuffer( sizeof(AmbientData),&ambient, BU_STATIC );
 
@@ -787,7 +793,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     lightParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&light, BU_STREAM );
 
     LightData flash;
-    flash.color = One4();
+    flash.color = Zero4();
     flash.radius = 15.0f;
 
     flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_STREAM );

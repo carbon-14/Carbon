@@ -57,10 +57,14 @@ void main()
         float d = length(l);
         l /= d;
 
-        vec3 diff = flashColor.a * flashColor.rgb * max( dot( l, n ), 0.0 );
+        vec3 intensity = flashColor.a * flashColor.rgb;
+
         float att = max( 1.0 - d * d / ( flashRadius * flashRadius ), 0.0 );
         att *= ( clamp( dot( l, -flashDirection.xyz ), 0.85, 1.0 ) - 0.85 ) / 0.15;
-        flash = att * att * diff;
+
+        float diff   = max( dot( l, n ), 0.0 );
+
+        flash = att * att * diff * intensity;
     }
 
     vec3 ambient = vec3(0.0);

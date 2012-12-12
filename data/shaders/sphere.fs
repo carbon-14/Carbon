@@ -14,6 +14,12 @@ out vec4 outColor;
 layout(binding=0) uniform sampler2D sphereColor;
 layout(binding=1) uniform sampler2D sphereNormal;
 
+layout(binding=0) uniform CameraParameters
+{
+    mat4    viewProjMatrix;
+    vec4    cameraPosition;
+};
+
 layout(binding=1) uniform AmbientParameters
 {
     vec4    groundColor;
@@ -36,7 +42,11 @@ layout(binding=3) uniform FlashParameters
     float   flashRadius;
 };
 
-const vec3 emissiveColor = 2.0 * vec3( 1.0f, 0.5, 0.25 );
+layout(binding=4) uniform SphereParameters
+{
+    mat4    worldMatrix;
+    vec4    emissiveColor;
+};
 
 void main()
 {
@@ -47,12 +57,14 @@ void main()
     vec4 color = texture2D( sphereColor, DataIn.uv );
 
     vec3 albedo = color.rgb;
-    vec3 emissive = color.a * emissiveColor;
+    vec3 emissive = color.a * emissiveColor.rgb;
 
     vec3 n  = texture2D( sphereNormal, DataIn.uv ).rgb;
     n.xy    = 2.0 * n.xy - 1.0;
     n.z     = sqrt( 1.0 - dot( n.xy, n.xy ) );
     n       = tbn * n;
+
+    vec3 v = normalize( cameraPosition.xyz - DataIn.position );
 
     vec3 light = vec3(0.0);
     {
@@ -60,9 +72,12 @@ void main()
         float d = length(l);
         l /= d;
 
-        vec3 diff = lightColor.a * lightColor.rgb * max( dot( l, n ), 0.0 );
-        float att = max( 1.0 - d * d / ( lightRadius * lightRadius ), 0.0 );
-        light = att * att * diff;
+        float att = max( 1.0 - d * d / ( flashRadius * flashRadius ), 0.0 );
+
+        float diff  = max( dot( l, n ), 0.0 );
+        float spec  = pow( max( dot( normalize( l + v ), n ), 0.0 ), 32.0 );
+
+        light = att * att * ( diff + spec ) *  lightColor.rgb;
     }
 
     vec3 flash = vec3(0.0);
@@ -71,10 +86,13 @@ void main()
         float d = length(l);
         l /= d;
 
-        vec3 diff = flashColor.a * flashColor.rgb * max( dot( l, n ), 0.0 );
         float att = max( 1.0 - d * d / ( flashRadius * flashRadius ), 0.0 );
         att *= ( clamp( dot( l, -flashDirection.xyz ), 0.85, 1.0 ) - 0.85 ) / 0.15;
-        flash = att * att * diff;
+
+        float diff  = max( dot( l, n ), 0.0 );
+        float spec  = pow( max( dot( normalize( l + v ), n ), 0.0 ), 32.0 );
+
+        flash = att * att * ( diff + spec ) * flashColor.rgb;
     }
 
     vec3 ambient = vec3(0.0);
