@@ -19,12 +19,14 @@ links               { "OpenGL32" }
 
 configuration       ( config_debug.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
+    debugdir        ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
     defines         ( config_debug.defines )
     flags           ( config_debug.flags )
     addExternalLibs ( config_debug, external_libs )
 
 configuration       ( config_release.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_release.name )
+    debugdir        ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
     defines         ( config_release.defines )
     flags           ( config_release.flags )
     addExternalLibs ( config_release, external_libs )
