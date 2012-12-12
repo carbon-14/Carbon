@@ -29,6 +29,7 @@ namespace Level5_NS
     U64 clockTicks = 0;
     U32 frameCount = 0;
     U64 frameTime = 0;
+    F32 time = 0.0f;
 
     enum CameraMode
     {
@@ -77,12 +78,29 @@ namespace Level5_NS
     RenderDevice device3d;
     ProgramCache programCache;
     RenderList renderList;
-    Handle uniformBuffer;
 
-    struct UniformData
+    Handle cameraParameters;
+    Handle ambientParameters;
+    Handle lightParameters;
+    Handle flashParameters;
+
+    struct CameraData
     {
         Matrix  viewProjMatrix;
-        F32 time;
+    };
+
+    struct AmbientData
+    {
+        Vector  groundColor;
+        Vector  skyColor;
+    };
+
+    struct LightData
+    {
+        Vector  position;
+        Vector  direction;
+        Vector  color;
+        F32     radius;
     };
 
     struct TextureHeader
@@ -285,18 +303,14 @@ namespace Level5_NS
 
             m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
 
-            m_sampler[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-            m_sampler[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-            m_renderElement.m_samplers = m_sampler;
+            m_renderElement.m_unitCount = 0;
 
-            m_texture[0] = LoadTexture( "carbon_c.btx" );
-            m_texture[1] = LoadTexture( "carbon_n.btx" );
-            m_renderElement.m_textures = m_texture;
-
-            m_renderElement.m_unitCount = 2;
-
-            m_renderElement.m_uniformBuffers = &uniformBuffer;
-            m_renderElement.m_uniformBufferCout = 1;
+            m_uniformBuffers[0] = cameraParameters;
+            m_uniformBuffers[1] = ambientParameters;
+            m_uniformBuffers[2] = lightParameters;
+            m_uniformBuffers[3] = flashParameters;
+            m_renderElement.m_uniformBuffers = m_uniformBuffers;
+            m_renderElement.m_uniformBufferCout = 4;
         }
 
         void Render()
@@ -306,11 +320,6 @@ namespace Level5_NS
 
         void Destroy()
         {
-            RenderDevice::DestroySampler( m_sampler[0] );
-            RenderDevice::DestroySampler( m_sampler[1] );
-            RenderDevice::DestroyTexture( m_texture[0] );
-            RenderDevice::DestroyTexture( m_texture[1] );
-
             Geometry& geom = m_renderElement.m_geom;
             for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
             {
@@ -322,8 +331,98 @@ namespace Level5_NS
 
     private:
         RenderElement   m_renderElement;
-        Handle          m_sampler[2];
-        Handle          m_texture[2];
+        Handle          m_uniformBuffers[4];
+    };
+
+    struct SphereParameters
+    {
+        Matrix  m_world;
+    };
+
+    class SphereRenderer
+    {
+    public:
+        SphereRenderer()
+        {
+        }
+
+        void Initialize()
+        {
+            m_renderElement.m_primitive = PT_TRIANGLES;
+            m_renderElement.m_program   = programCache.GetProgram( "sphere" );
+
+            m_renderElement.m_geom = LoadMesh( "sphere.bmh" );
+
+            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
+            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
+            m_renderElement.m_samplers = m_samplers;
+
+            m_textures[0] = LoadTexture( "crack_c.btx" );
+            m_textures[1] = LoadTexture( "crack_n.btx" );
+            m_renderElement.m_textures = m_textures;
+
+            m_renderElement.m_unitCount = 2;
+
+            m_translation   = Vector3( 5.0f, -10.0f, 0.0f );
+            m_scale         = One4();
+            m_orientation   = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
+
+            SphereParameters params;
+            params.m_world = RMatrix( m_orientation );
+            Scale( params.m_world, m_scale );
+            Translate( params.m_world, m_translation );
+
+            m_uniformBuffers[0] = cameraParameters;
+            m_uniformBuffers[1] = ambientParameters;
+            m_uniformBuffers[2] = lightParameters;
+            m_uniformBuffers[3] = flashParameters;
+            m_uniformBuffers[4] = RenderDevice::CreateUniformBuffer( sizeof(params), &params, BU_STREAM );
+            m_renderElement.m_uniformBuffers = m_uniformBuffers;
+            m_renderElement.m_uniformBufferCout = 5;
+        }
+
+        void Render()
+        {
+            m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
+
+            SphereParameters * params = static_cast< SphereParameters * >( RenderDevice::MapUniformBuffer( m_uniformBuffers[4], BA_WRITE_ONLY ) );
+
+            params->m_world = RMatrix( m_orientation );
+            Scale( params->m_world, m_scale );
+            Translate( params->m_world, m_translation );
+
+            RenderDevice::UnmapUniformBuffer( );
+
+            renderList.Push( m_renderElement );
+        }
+
+        void Destroy()
+        {
+            RenderDevice::DestroyBuffer( m_uniformBuffers[3] );
+
+            RenderDevice::DestroySampler( m_samplers[0] );
+            RenderDevice::DestroySampler( m_samplers[1] );
+            RenderDevice::DestroyTexture( m_textures[0] );
+            RenderDevice::DestroyTexture( m_textures[1] );
+
+            Geometry& geom = m_renderElement.m_geom;
+            for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
+            {
+                RenderDevice::DestroyVertexArray( geom.m_subGeoms[ i ].m_vertexArray );
+                RenderDevice::DestroyBuffer( geom.m_subGeoms[ i ].m_indexBuffer );
+            }
+            RenderDevice::DestroyBuffer( geom.m_vertexBuffer );
+        }
+
+    private:
+        RenderElement       m_renderElement;
+        Handle              m_samplers[2];
+        Handle              m_textures[2];
+        Handle              m_uniformBuffers[5];
+
+        Vector              m_translation;
+        Vector              m_scale;
+        Vector              m_orientation;
     };
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -461,10 +560,21 @@ namespace Level5_NS
         U64 diff = currentTime - frameTime;
         frameTime = currentTime;
 
-        F32 time = static_cast< F32 >( frameTime * Core::TimeUtils::ClockPeriod() );
+        time = static_cast< F32 >( frameTime * Core::TimeUtils::ClockPeriod() );
         F32 elapsedTime = static_cast< F32 >( diff * Core::TimeUtils::ClockPeriod() );
+        
+        F32 lightRatio = 0.5f + 0.5f * Sin( time );
+        const Vector color = Vector4( 1.0f, 0.6881f, 0.5317f, 1.0f );
 
-        Matrix view;
+        Vector lightColor = Lerp( color, Swizzle< 2, 1, 0, 3 >( color ), Splat(lightRatio) );
+
+        LightData  * light = static_cast< LightData * >( RenderDevice::MapUniformBuffer( lightParameters, BA_WRITE_ONLY ) );
+
+        light->color = lightColor;
+
+        RenderDevice::UnmapUniformBuffer( );
+
+        Matrix cam_base;
 
         switch ( cameraMode )
         {
@@ -478,13 +588,10 @@ namespace Level5_NS
                 Vector cam_right    = Normalize( Cross( cam_dir, cam_up ) );
                 cam_up              = Normalize( Cross( cam_right, cam_dir ) );
 
-                Matrix cam_base;
                 cam_base.m_column[0] = cam_right;
                 cam_base.m_column[1] = cam_up;
                 cam_base.m_column[2] = -cam_dir;
                 cam_base.m_column[3] = cameraPosition;
-
-                view = Inverse( cam_base );
 
                 break;
             }
@@ -500,14 +607,12 @@ namespace Level5_NS
                 cameraOrientation = MulQuat( cameraOrientation, rotateX );
                 cameraOrientation = MulQuat( rotateY, cameraOrientation );
 
-                Matrix cam_base = RMatrix( cameraOrientation );
+                cam_base = RMatrix( cameraOrientation );
 
                 cameraPosition = cameraPosition - Splat(moveY * elapsedTime * moveSpeed) * cam_base.m_column[2];
                 cameraPosition = cameraPosition + Splat(moveX * elapsedTime * moveSpeed) * cam_base.m_column[0];
 
                 cam_base.m_column[3] = cameraPosition;
-
-                view = Inverse( cam_base );
 
                 break;
             }
@@ -523,7 +628,7 @@ namespace Level5_NS
                 cameraOrientation = MulQuat( cameraOrientation, rotateX );
                 cameraOrientation = MulQuat( rotateY, cameraOrientation );
 
-                Matrix cam_base = RMatrix( cameraOrientation );
+                cam_base = RMatrix( cameraOrientation );
 
                 if ( bodyFall )
                 {
@@ -568,11 +673,18 @@ namespace Level5_NS
 
                 cam_base.m_column[3] = cameraPosition;
 
-                view = Inverse( cam_base );
-
                 break;
             }
         }
+
+        LightData  * flash = static_cast< LightData * >( RenderDevice::MapUniformBuffer( flashParameters, BA_WRITE_ONLY ) );
+
+        flash->position     = cam_base.m_column[3];
+        flash->direction    = -cam_base.m_column[2];
+
+        RenderDevice::UnmapUniformBuffer( );
+
+        Matrix view = Inverse( cam_base );
 
         F32 n       = 0.25f;
         F32 f       = 50.0f;
@@ -586,10 +698,9 @@ namespace Level5_NS
         proj.m_column[2] = Vector4( 0.0f    , 0.0f                  , ( f + n ) / ( n - f )         , -1.0f );
         proj.m_column[3] = Vector4( 0.0f    , 0.0f                  , ( 2.0f * n * f ) / ( n - f )  , 0.0f  );
 
-        UniformData  * uniformData = static_cast< UniformData * >( RenderDevice::MapUniformBuffer( uniformBuffer, BA_WRITE_ONLY ) );
+        CameraData  * cam = static_cast< CameraData * >( RenderDevice::MapUniformBuffer( cameraParameters, BA_WRITE_ONLY ) );
 
-        uniformData->viewProjMatrix = Mul( proj, view );
-        uniformData->time           = time;
+        cam->viewProjMatrix = Mul( proj, view );
 
         RenderDevice::UnmapUniformBuffer( );
     }
@@ -661,10 +772,31 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     renderList.SetSRGBWrite( true );
 
+    cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
+
+    AmbientData ambient;
+    ambient.groundColor = Vector4( 1.0f, 1.0f, 1.0f, 0.01f );
+    ambient.skyColor    = Vector4( 0.2976f, 0.5317f, 1.0f, 0.025f );
+
+    ambientParameters = RenderDevice::CreateUniformBuffer( sizeof(AmbientData),&ambient, BU_STATIC );
+
+    LightData light;
+    light.position = Vector4( 10.0f, 0.0f, 0.0f );
+    light.radius = 20.0f;
+
+    lightParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&light, BU_STREAM );
+
+    LightData flash;
+    flash.color = One4();
+    flash.radius = 15.0f;
+
+    flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_STREAM );
+
     MeshRenderer meshRenderer;
     meshRenderer.Initialize();
 
-    uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(UniformData),NULL, BU_STREAM );
+    SphereRenderer sphereRenderer;
+    sphereRenderer.Initialize();
 
     UNIT_TEST_MESSAGE( "Carbon Engine : Run\n" );
 
@@ -679,6 +811,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         UpdateGlobalUniformData();
 
         meshRenderer.Render();
+        sphereRenderer.Render();
 
         RenderDevice::ClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
 
@@ -695,8 +828,12 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     UNIT_TEST_MESSAGE( "Carbon Engine : Destroy\n" );
 
-    RenderDevice::DestroyBuffer( uniformBuffer );
+    RenderDevice::DestroyBuffer( flashParameters );
+    RenderDevice::DestroyBuffer( lightParameters );
+    RenderDevice::DestroyBuffer( ambientParameters );
+    RenderDevice::DestroyBuffer( cameraParameters );
 
+    sphereRenderer.Destroy();
     meshRenderer.Destroy();
 
     programCache.Destroy();
