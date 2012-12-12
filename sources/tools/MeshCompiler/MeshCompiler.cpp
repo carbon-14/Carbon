@@ -683,6 +683,7 @@ void FormatData( void * dest, const float * src, int stride, const MeshInput& in
                 uvs[ i ] = toShort( src[i] );
             }
         }
+        break;
     case VT_HALF:
         {
             assert( input.semantic == POSITION || input.semantic == TEXCOORD0 || input.semantic == TEXCOORD1 );
@@ -751,13 +752,13 @@ void BuildTangentSpace( float * tangents,
 {
     for ( size_t i=0; i<index_count; i += 3 )
     {
-        const size_t idx[3] = { indices[ i + 0 ], indices[ i + 1 ], indices[ i + 2 ] };
-        const float * v[3]  = { vertices + idx[0] * stride + 0, vertices + idx[1] * stride + 1, vertices + idx[2] * stride + 2 };
+        const size_t idx[3] = { indices[ i + 0 ]            , indices[ i + 1 ]              , indices[ i + 2 ]              };
+        const float * v[3]  = { vertices + idx[0] * stride  , vertices + idx[1] * stride    , vertices + idx[2] * stride    };
 
-        const float * p[3]  = { v[0] + pos_offset, v[1] + pos_offset, v[2] + pos_offset };
-        const float * w[3]  = { v[0] + uvs_offset, v[1] + uvs_offset, v[2] + uvs_offset };
-        float * t[3]        = { tangents + idx[0] * 3 + 0, tangents + idx[1] * 3 + 1, tangents + idx[2] * 3 + 2 };
-        float * b[3]        = { binormals + idx[0] * 3 + 0, binormals + idx[1] * 3 + 1, binormals + idx[2] * 3 + 2 };
+        const float * p[3]  = { v[0] + pos_offset           , v[1] + pos_offset             , v[2] + pos_offset             };
+        const float * w[3]  = { v[0] + uvs_offset           , v[1] + uvs_offset             , v[2] + uvs_offset             };
+        float * t[3]        = { tangents + idx[0] * 3       , tangents + idx[1] * 3         , tangents + idx[2] * 3         };
+        float * b[3]        = { binormals + idx[0] * 3      , binormals + idx[1] * 3        , binormals + idx[2] * 3        };
 
         float dx1 = p[1][0] - p[0][0];
         float dx2 = p[2][0] - p[0][0];
@@ -771,17 +772,29 @@ void BuildTangentSpace( float * tangents,
         float dv1 = w[1][1] - w[0][1];
         float dv2 = w[2][1] - w[0][1];
 
-        float r = 1.0f / ( du1 * dv2 - du2 * dv1 );
+        float r = 1.0f / ( du2 * dv1 - dv2 * du1 );
 
         float tdir[3];
-        tdir[0] = ( ( dv2 - dx1 - dv1 * dx2 ) + ( du2 - dx1 - du1 * dx2 ) ) * r;
-        tdir[1] = ( ( dv2 - dy1 - dv1 * dy2 ) + ( du2 - dy1 - du1 * dy2 ) ) * r;
-        tdir[2] = ( ( dv2 - dz1 - dv1 * dz2 ) + ( du2 - dz1 - du1 * dz2 ) ) * r;
+        tdir[0] = ( dv1 * dx2 - dv2 * dx1 ) * r;
+        tdir[1] = ( dv1 * dy2 - dv2 * dy1 ) * r;
+        tdir[2] = ( dv1 * dz2 - dv2 * dz1 ) * r;
 
         float bdir[3];
-        bdir[0] = ( ( du1 - dx2 - du2 * dx1 ) + ( du1 - dx2 - du2 * dx1 ) ) * r;
-        bdir[1] = ( ( du1 - dy2 - du2 * dy1 ) + ( du1 - dy2 - du2 * dy1 ) ) * r;
-        bdir[2] = ( ( du1 - dz2 - du2 * dz1 ) + ( du1 - dz2 - du2 * dz1 ) ) * r;
+        bdir[0] = ( du2 * dx1 - du1 * dx2 ) * r;
+        bdir[1] = ( du2 * dy1 - du1 * dy2 ) * r;
+        bdir[2] = ( du2 * dz1 - du1 * dz2 ) * r;
+
+        /*float r = 1.0f / ( du1 * dv2 - du2 * dv1 );
+
+        float tdir[3];
+        tdir[0] = ( ( dv2 * dx1 - dv1 * dx2 ) + ( du2 * dx1 - du1 * dx2 ) ) * r;
+        tdir[1] = ( ( dv2 * dy1 - dv1 * dy2 ) + ( du2 * dy1 - du1 * dy2 ) ) * r;
+        tdir[2] = ( ( dv2 * dz1 - dv1 * dz2 ) + ( du2 * dz1 - du1 * dz2 ) ) * r;
+
+        float bdir[3];
+        bdir[0] = ( ( du1 * dx2 - du2 * dx1 ) + ( du1 * dx2 - du2 * dx1 ) ) * r;
+        bdir[1] = ( ( du1 * dy2 - du2 * dy1 ) + ( du1 * dy2 - du2 * dy1 ) ) * r;
+        bdir[2] = ( ( du1 * dz2 - du2 * dz1 ) + ( du1 * dz2 - du2 * dz1 ) ) * r;*/
 
         for ( size_t j=0; j<3; ++j )
         {
@@ -822,7 +835,7 @@ void BuildTangentSpace( float * tangents,
         ortho2[2] = n[0] * ortho1[1] - n[1] * ortho1[0];
 
         proj = b[0] * ortho2[0] + b[1] * ortho2[1] + b[2] * ortho2[2];
-        if ( proj > 0.0f )
+        if ( proj < 0.0f )
         {
             ortho2[0] = -ortho2[0];
             ortho2[1] = -ortho2[1];
