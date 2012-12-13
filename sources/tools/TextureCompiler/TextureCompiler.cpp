@@ -280,7 +280,6 @@ bool LoadPNG( const char * file_name )
     * PNG file before the first IDAT (image data chunk).  REQUIRED
     */
     png_read_info(png_ptr, info_ptr);
-    channels = (int)png_get_channels(png_ptr, info_ptr);
 
     png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
         &interlace_type, NULL, NULL);
@@ -336,9 +335,9 @@ bool LoadPNG( const char * file_name )
     * use it - you should use the (solid) application background if it has one.
     */
 
-    png_color_16 my_background, *image_background;
+    /*png_color_16 my_background, *image_background;
 
-    /*if (png_get_bKGD(png_ptr, info_ptr, &image_background))
+    if (png_get_bKGD(png_ptr, info_ptr, &image_background))
         png_set_background(png_ptr, image_background,
             PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
     else

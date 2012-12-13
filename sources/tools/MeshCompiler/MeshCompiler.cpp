@@ -784,18 +784,6 @@ void BuildTangentSpace( float * tangents,
         bdir[1] = ( du2 * dy1 - du1 * dy2 ) * r;
         bdir[2] = ( du2 * dz1 - du1 * dz2 ) * r;
 
-        /*float r = 1.0f / ( du1 * dv2 - du2 * dv1 );
-
-        float tdir[3];
-        tdir[0] = ( ( dv2 * dx1 - dv1 * dx2 ) + ( du2 * dx1 - du1 * dx2 ) ) * r;
-        tdir[1] = ( ( dv2 * dy1 - dv1 * dy2 ) + ( du2 * dy1 - du1 * dy2 ) ) * r;
-        tdir[2] = ( ( dv2 * dz1 - dv1 * dz2 ) + ( du2 * dz1 - du1 * dz2 ) ) * r;
-
-        float bdir[3];
-        bdir[0] = ( ( du1 * dx2 - du2 * dx1 ) + ( du1 * dx2 - du2 * dx1 ) ) * r;
-        bdir[1] = ( ( du1 * dy2 - du2 * dy1 ) + ( du1 * dy2 - du2 * dy1 ) ) * r;
-        bdir[2] = ( ( du1 * dz2 - du2 * dz1 ) + ( du1 * dz2 - du2 * dz1 ) ) * r;*/
-
         for ( size_t j=0; j<3; ++j )
         {
             t[j][0] += tdir[0];
