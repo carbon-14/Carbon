@@ -200,5 +200,7 @@ namespace Graphic
     public:
         static HGLRC CreateContext( HDC hDC, const int *attribList );
         static void DestroyContext( HGLRC renderContext );
+
+        static int CreatePixelFormat( HDC hDC, const int * attribList );
     };
 }
