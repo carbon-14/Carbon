@@ -280,7 +280,7 @@ WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
     MemoryManager::Initialize( frameAllocatorSize );
     FileSystem::Initialize( "..\\..\\..\\" );
 
-    if ( ! device3d.Initialize( hwnd ) )
+    if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
         return FALSE;
     }
