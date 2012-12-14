@@ -45,10 +45,10 @@ int main( int argc, char* argv[] )
 
 exit :
     printf( "usage: TextureCompiler [profile] [-cmp|-mipmap] <output> <input>\n\n" );
-    printf( "   profile     color, linear, normal       ( required )\n" );
-    printf( "   cmp         compress texture            ( optional )\n" );
-    printf( "   mipmap      generate mip map levels     ( optional )\n" );
-    printf( "   output      output file name            ( required )\n" );
-    printf( "   input       input file name             ( required )\n" );
+    printf( "    profile    color, linear, normal       ( required )\n" );
+    printf( "    cmp        compress texture            ( optional )\n" );
+    printf( "    mipmap     generate mip map levels     ( optional )\n" );
+    printf( "    output     output file name            ( required )\n" );
+    printf( "    input      input file name             ( required )\n" );
     return 0;
 }

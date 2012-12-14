@@ -36,7 +36,7 @@ LRESULT CALLBACK WndProc(HWND p_hWnd, UINT p_uiMessage, WPARAM p_wParam, LPARAM 
 }
 #endif
 
-#include "libpng/inc/png.h"
+#include "libpng/png.h"
 
 unsigned int width, height;
 int bit_depth, channels;
@@ -335,14 +335,14 @@ bool LoadPNG( const char * file_name )
     * use it - you should use the (solid) application background if it has one.
     */
 
-    png_color_16 my_background, *image_background;
+    /*png_color_16 my_background, *image_background;
 
     if (png_get_bKGD(png_ptr, info_ptr, &image_background))
         png_set_background(png_ptr, image_background,
             PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
     else
         png_set_background(png_ptr, &my_background,
-            PNG_BACKGROUND_GAMMA_SCREEN, 0, 1.0);
+            PNG_BACKGROUND_GAMMA_SCREEN, 0, 1.0);*/
 
     /* Some suggestions as to how to get a screen gamma value
     *
@@ -507,7 +507,7 @@ struct LevelDesc
     unsigned int    height;
 };
 
-bool BuildImage( const char * outFilename, TextureProfile profile, int options )
+bool BuildTexture( const char * outFilename, TextureProfile profile, int options )
 {
     GLuint map;
     glGenTextures(1, &map);
@@ -721,7 +721,7 @@ bool CompileTexture( const char * inFilename, const char * outFilename, TextureP
         return false;
     }
 
-    bool success = BuildImage( outFilename, profile, options );
+    bool success = BuildTexture( outFilename, profile, options );
 
     DestroyOpenGL();
 
