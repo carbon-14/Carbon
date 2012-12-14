@@ -1,7 +1,5 @@
 #include "MeshCompiler/MeshCompiler.h"
 
-
-
 #include "libxml.h"
 #include "libxml/parser.h"
 
@@ -13,6 +11,8 @@
 #if defined( CARBON_PLATFORM_WIN32 )
 #include <Windows.h>
 #endif
+
+#include "Forsyth.h"
 
 bool RecursiveCreateDirectory( const char * dir )
 {
@@ -738,6 +738,10 @@ std::vector< float >::iterator RemoveDuplicatedVertices( std::vector< float >& v
     return end;
 }
 
+void OptimizeIndices( std::vector< size_t >& indices, size_t vertexCount )
+{
+    ReorderForsyth( indices, vertexCount );
+}
 
 void BuildTangentSpace( float * tangents,
                         float * binormals,
@@ -947,6 +951,9 @@ bool BuildMesh( const char * outFilename, int options )
 
     std::vector< float >::iterator cache_end = RemoveDuplicatedVertices( vertex_cache, vertex_stride, indices );
     vertex_count = ( cache_end - vertex_cache.begin() ) / vertex_stride;
+
+    // Optimize indices
+    OptimizeIndices( indices, vertex_count );
 
     // Compute Tangent Space
     if ( options & OT_GENERATE_TANGENT_SPACE )

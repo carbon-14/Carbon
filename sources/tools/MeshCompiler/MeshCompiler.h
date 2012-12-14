@@ -19,4 +19,4 @@ enum OptionType
 
 bool CompileMesh( const char * inFilename, const char * outFilename, int options );
 
-#endif
+#endif // _MESHCOMPILER_MESHCOMPILER_H
