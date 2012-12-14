@@ -578,8 +578,6 @@ namespace Level5_NS
 
         RenderDevice::UnmapUniformBuffer( );
 
-        Matrix cam_base;
-
         switch ( cameraMode )
         {
         case CM_Demo:
@@ -588,14 +586,20 @@ namespace Level5_NS
                 Vector cam_at   = Vector4( 5.0f, -10.0f, 0.0f );
 
                 Vector cam_dir      = Normalize( cam_at - cameraPosition );
-                Vector cam_up       = UnitY();
-                Vector cam_right    = Normalize( Cross( cam_dir, cam_up ) );
-                cam_up              = Normalize( Cross( cam_right, cam_dir ) );
+                F128 dir;
+                Store( dir, cam_dir );
 
-                cam_base.m_column[0] = cam_right;
-                cam_base.m_column[1] = cam_up;
-                cam_base.m_column[2] = -cam_dir;
-                cam_base.m_column[3] = cameraPosition;
+                F32 angleX = ASin( dir[1] );
+
+                Vector cam_proj     = Normalize( Select( cam_dir, Zero4(), Mask< 0, 1, 0, 1 >() ) );
+                F128 proj;
+                Store( proj, cam_proj );
+
+                F32 angleY = ACos( proj[0] );
+                if ( proj[2] > 0.0f )
+                    angleY = -angleY;
+
+                cameraOrientation = MulQuat( Quaternion( UnitY(), angleY - HalfPi() ), Quaternion( UnitX(), angleX ) );
 
                 break;
             }
@@ -607,16 +611,13 @@ namespace Level5_NS
                 Vector rotateX = Quaternion( UnitX(), -mousedY * elapsedTime * turnSpeed );
                 mousedY = 0.0f;
 
-                Vector rotate = MulQuat( rotateY, rotateX );
                 cameraOrientation = MulQuat( cameraOrientation, rotateX );
                 cameraOrientation = MulQuat( rotateY, cameraOrientation );
 
-                cam_base = RMatrix( cameraOrientation );
+                Matrix ori = RMatrix( cameraOrientation );
 
-                cameraPosition = cameraPosition - Splat(moveY * elapsedTime * moveSpeed) * cam_base.m_column[2];
-                cameraPosition = cameraPosition + Splat(moveX * elapsedTime * moveSpeed) * cam_base.m_column[0];
-
-                cam_base.m_column[3] = cameraPosition;
+                cameraPosition = cameraPosition - Splat(moveY * elapsedTime * moveSpeed) * ori.m_column[2];
+                cameraPosition = cameraPosition + Splat(moveX * elapsedTime * moveSpeed) * ori.m_column[0];
 
                 break;
             }
@@ -632,8 +633,6 @@ namespace Level5_NS
                 cameraOrientation = MulQuat( cameraOrientation, rotateX );
                 cameraOrientation = MulQuat( rotateY, cameraOrientation );
 
-                cam_base = RMatrix( cameraOrientation );
-
                 if ( bodyFall )
                 {
                     Vector force = gravity * Splat(bodyMass);
@@ -645,8 +644,9 @@ namespace Level5_NS
                     Vector move = Zero4();
                     if ( moveX != 0.0f || moveY != 0.0f )
                     {
-                        Vector right = Splat( moveX ) * Select( cam_base.m_column[0], Zero4(), Mask< 0, 1, 0, 1 >() );
-                        Vector front = Splat( moveY ) * Select( cam_base.m_column[2], Zero4(), Mask< 0, 1, 0, 1 >() );
+                        Matrix ori = RMatrix( cameraOrientation );
+                        Vector right = Splat( moveX ) * Select( ori.m_column[0], Zero4(), Mask< 0, 1, 0, 1 >() );
+                        Vector front = Splat( moveY ) * Select( ori.m_column[2], Zero4(), Mask< 0, 1, 0, 1 >() );
                         move = right - front;
                     }
 
@@ -675,11 +675,12 @@ namespace Level5_NS
 
                 cameraPosition = bodyPosition + Vector3( 0.0f, 2.0f, 0.0f );
 
-                cam_base.m_column[3] = cameraPosition;
-
                 break;
             }
         }
+
+        Matrix cam_base = RMatrix( cameraOrientation );
+        cam_base.m_column[3] = cameraPosition;
 
         LightData  * flash = static_cast< LightData * >( RenderDevice::MapUniformBuffer( flashParameters, BA_WRITE_ONLY ) );
 
@@ -749,6 +750,14 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
                         ,NULL );
 
     if ( !hwnd ) return FALSE;
+
+    RECT rcClient, rcWind;
+    POINT ptDiff;
+    GetClientRect(hwnd, &rcClient);
+    GetWindowRect(hwnd, &rcWind);
+    ptDiff.x = (rcWind.right - rcWind.left) - rcClient.right;
+    ptDiff.y = (rcWind.bottom - rcWind.top) - rcClient.bottom;
+    MoveWindow(hwnd,rcWind.left, rcWind.top, frameWidth + ptDiff.x, frameHeight + ptDiff.y, TRUE);
 
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
