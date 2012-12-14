@@ -3,6 +3,7 @@
 namespace Graphic
 {
     RenderList::RenderList()
+        : m_sRGBWrite( false )
     {
     }
 
@@ -16,9 +17,15 @@ namespace Graphic
         m_list.PushBack( element );
     }
 
+    void RenderList::SetSRGBWrite( Bool enable )
+    {
+        m_sRGBWrite = enable;
+    }
+
     void RenderList::Draw( const ProgramCache& programCache )
     {
         // BEGIN
+        RenderDevice::SetSRGBWrite( m_sRGBWrite );
 
         // DRAW
         Core::Array< RenderElement >::Iterator it = m_list.Begin();
@@ -29,22 +36,39 @@ namespace Graphic
 
             programCache.UseProgram( e.m_program );
 
+            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
+            {
+                RenderDevice::BindUniformBuffer( e.m_uniformBuffers[ i ], i );
+            }
+
             for ( SizeT i=0; i<e.m_unitCount; ++i )
             {
                 RenderDevice::SampleTexture( e.m_textures[ i ], e.m_samplers[ i ], i );
             }
 
-            RenderDevice::Draw( e.m_primitive, e.m_vertexArray );
+            for ( SizeT i=0; i<e.m_geom.m_subGeomCount; ++i )
+            {
+                const SubGeometry& sub = e.m_geom.m_subGeoms[ i ];
+                RenderDevice::BeginGeometry( e.m_geom.m_vertexDecl, sub.m_vertexArray, sub.m_indexBuffer );
+                RenderDevice::DrawIndexed( e.m_primitive, sub.m_indexCount, e.m_geom.m_indexType );
+                RenderDevice::EndGeometry( e.m_geom.m_vertexDecl );
+            }
 
             for ( SizeT i=0; i<e.m_unitCount; ++i )
             {
                 RenderDevice::SampleTexture( 0, 0, i );
+            }
+
+            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
+            {
+                RenderDevice::BindUniformBuffer( 0, i );
             }
         }
 
         // END
         m_list.Clear();
         RenderDevice::UseProgram( 0 );
+        RenderDevice::SetSRGBWrite( !m_sRGBWrite );
     }
 
     void RenderList::Clear()

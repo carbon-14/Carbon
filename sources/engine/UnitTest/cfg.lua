@@ -23,18 +23,21 @@ end
 	
 configuration       ( config_debug.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
+    debugdir        ( path.getrelative(prj.basedir,app_dir).."/"..config_debug.name )
     defines         ( config_debug.defines )
     flags           ( config_debug.flags )
     links           { "Core"..config_debug.suffix, "Graphic"..config_debug.suffix }
 
 configuration       ( config_release.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_release.name )
+    debugdir        ( path.getrelative(prj.basedir,app_dir).."/"..config_release.name )
     defines         ( config_release.defines )
     flags           ( config_release.flags )
     links           { "Core"..config_release.suffix, "Graphic"..config_release.suffix }
 
 configuration       ( config_retail.name )
     targetdir       ( path.getrelative(prj.basedir,app_dir).."/"..config_retail.name )
+    debugdir        ( path.getrelative(prj.basedir,app_dir).."/"..config_retail.name )
     defines         ( config_retail.defines )
     flags           ( config_retail.flags )
     links           { "Core"..config_retail.suffix, "Graphic"..config_retail.suffix }

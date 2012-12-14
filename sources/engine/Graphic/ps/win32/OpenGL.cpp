@@ -50,4 +50,37 @@ namespace Graphic
         wglMakeCurrent( 0, 0 );
         wglDeleteContext( context );
     }
+
+    int OpenGL::CreatePixelFormat( HDC hDC, const int * attribList )
+    {
+        HGLRC dummyContext = wglCreateContext( hDC );
+        if ( !dummyContext )
+        {
+            return 0;
+        }
+
+        if ( !wglMakeCurrent( hDC, dummyContext ) )
+        {
+            wglDeleteContext( dummyContext );
+            return 0;
+        }
+
+        PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress( "wglChoosePixelFormatARB" );
+
+        const UINT MaxFormats = 1;
+        int format;
+        UINT numFormats;
+
+        if ( !wglChoosePixelFormatARB( hDC, attribList, NULL, MaxFormats, &format, &numFormats ) )
+        {
+            wglMakeCurrent( 0, 0 );
+            wglDeleteContext( dummyContext );
+            return 0;
+        }
+
+        wglMakeCurrent( 0, 0 );
+        wglDeleteContext( dummyContext );
+
+        return format;
+    }
 }

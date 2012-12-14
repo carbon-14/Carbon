@@ -34,12 +34,20 @@ namespace Level3_NS
         void Initialize()
         {
             m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "level3" );
+            m_renderElement.m_program   = programCache.GetProgram( "level4" );
 
-            const AttribDeclaration vDecl[] =
-            {
-                { VS_POSITION, DT_F32, 4, false, 0 }
-            };
+            Geometry& geom = m_renderElement.m_geom;
+
+            VertexDeclaration& vDecl            = geom.m_vertexDecl;
+            vDecl.m_attributes[0].m_semantic    = VS_POSITION;
+            vDecl.m_attributes[0].m_type        = DT_F32;
+            vDecl.m_attributes[0].m_size        = 4;
+            vDecl.m_attributes[0].m_normalized  = false;
+            vDecl.m_attributes[0].m_offset      = 0;
+            vDecl.m_size                        = 16;
+            vDecl.m_count                       = 1;
+
+            geom.m_vertexCount = 4;
             const F32 vb[4][4] =
             {
                 { -1.0f, -1.0f, 0.0f, 1.0f },
@@ -47,13 +55,21 @@ namespace Level3_NS
                 { -1.0f, +1.0f, 0.0f, 0.0f },
                 { +1.0f, +1.0f, 1.0f, 0.0f }
             };
+
+            geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(vb), vb, BU_STATIC );
+
+            geom.m_indexType = DT_U8;
+
             const U8 ib[2][3] =
             {
                 0, 1, 2,
                 2, 1, 3,
             };
 
-            m_renderElement.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, 1, 16, 4, (const void*)vb, DT_U8, 6, (const void*)ib, VAU_STATIC );
+            geom.m_subGeomCount = 1;
+            geom.m_subGeoms[ 0 ].m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
+            geom.m_subGeoms[ 0 ].m_vertexArray = RenderDevice::CreateVertexArray( vDecl, geom.m_vertexBuffer, geom.m_subGeoms[ 0 ].m_indexBuffer );
+            geom.m_subGeoms[ 0 ].m_indexCount  = 6;
         }
 
         void Render()
@@ -63,11 +79,17 @@ namespace Level3_NS
 
         void Destroy()
         {
-            RenderDevice::DestroyVertexArray( m_renderElement.m_vertexArray );
+            Geometry& geom = m_renderElement.m_geom;
+            for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
+            {
+                RenderDevice::DestroyVertexArray( geom.m_subGeoms[ i ].m_vertexArray );
+                RenderDevice::DestroyBuffer( geom.m_subGeoms[ i ].m_indexBuffer );
+            }
+            RenderDevice::DestroyBuffer( geom.m_vertexBuffer );
         }
 
     private:
-        RenderElement m_renderElement;
+        RenderElement   m_renderElement;
     };
 
 
@@ -182,9 +204,9 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
     UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "D:\\GitDepot\\Carbon\\" );
+    FileSystem::Initialize( "..\\..\\..\\" );
 
-    if ( ! device3d.Initialize( hwnd ) )
+    if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
         return FALSE;
     }

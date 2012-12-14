@@ -1,3 +1,16 @@
+-------------------------------------------------------------------------------------------
+-- Utils
+-------------------------------------------------------------------------------------------
+
+function addExternalLibs( config, ext_libs )
+    for _, lib_name in ipairs( ext_libs ) do
+        links           { lib_name..config.suffix }
+        includedirs     { path.getrelative(prj.basedir,ext_dir).."/inc/"..lib_name }
+        for _, ps_dir in ipairs( platform_dirs ) do
+            includedirs { path.getrelative(prj.basedir,ext_dir).."/inc/"..ps_dir.."/"..lib_name }
+        end
+    end
+end
 
 -------------------------------------------------------------------------------------------
 -- Globals
@@ -58,8 +71,8 @@ for _, sln_basedir in ipairs( s ) do
     _G.sln.basedir  = src_dir.."/"..sln_basedir
     _G.sln.location = sln_location
 
-    includedirs     { "../"..ext_dir }
-    libdirs         { "../"..lib_dir }
+    includedirs     { "../"..ext_dir.."/inc" }
+    libdirs         { "../"..lib_dir, "../"..ext_dir.."/"..lib_dir }
 
     dofile( sln_basedir.."/cfg.lua" )
 end
