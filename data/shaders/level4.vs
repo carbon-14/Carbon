@@ -6,7 +6,6 @@ out Data
 {
     vec3 pos;
     vec2 uv;
-    
 } DataOut;
 
 void main()
