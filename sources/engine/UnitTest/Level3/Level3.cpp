@@ -34,7 +34,7 @@ namespace Level3_NS
         void Initialize()
         {
             m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "level4" );
+            m_renderElement.m_program   = programCache.GetProgram( "level3" );
 
             Geometry& geom = m_renderElement.m_geom;
 
@@ -70,6 +70,9 @@ namespace Level3_NS
             geom.m_subGeoms[ 0 ].m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
             geom.m_subGeoms[ 0 ].m_vertexArray = RenderDevice::CreateVertexArray( vDecl, geom.m_vertexBuffer, geom.m_subGeoms[ 0 ].m_indexBuffer );
             geom.m_subGeoms[ 0 ].m_indexCount  = 6;
+
+            m_renderElement.m_unitCount = 0;
+            m_renderElement.m_uniformBufferCout = 0;
         }
 
         void Render()

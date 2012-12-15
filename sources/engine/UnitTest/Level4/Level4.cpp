@@ -139,6 +139,8 @@ namespace Level4_NS
             m_textures[0] = LoadTexture( "carbon_c.btx" );
             m_textures[1] = LoadTexture( "carbon_n.btx" );
             m_renderElement.m_unitCount = 2;
+
+            m_renderElement.m_uniformBufferCout = 0;
         }
 
         void Render()
