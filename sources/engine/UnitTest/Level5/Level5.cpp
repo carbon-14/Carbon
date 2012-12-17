@@ -821,6 +821,9 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     UNIT_TEST_MESSAGE( "Carbon Engine : Run\n" );
 
+    RenderDevice::EnableDepthTest( true );
+    RenderDevice::EnableCullFace( true );
+
     while ( 1 )
     {
         if ( ! MessagePump( &msg ) ) break;
@@ -834,7 +837,9 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         meshRenderer.Render();
         sphereRenderer.Render();
 
-        RenderDevice::ClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+        RenderDevice::SetClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
+        RenderDevice::SetClearDepth( 1.0f );
+        RenderDevice::Clear( CM_COLOR | CM_DEPTH );
 
         renderList.Draw( programCache );
 
