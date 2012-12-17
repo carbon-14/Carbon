@@ -103,6 +103,53 @@ namespace Graphic
         WT_MIRROR
     };
 
+    enum ClearMode
+    {
+        CM_COLOR            = 1 << 0,
+        CM_DEPTH            = 1 << 1,
+        CM_STENCIL          = 1 << 2
+    };
+
+    enum ColorMode
+    {
+        CM_RED      = 1 << 0,
+        CM_GREEN    = 1 << 1,
+        CM_BLUE     = 1 << 2,
+        CM_ALPHA    = 1 << 3,
+        CM_RGB      = CM_RED | CM_GREEN | CM_BLUE,
+        CM_RGBA     = CM_RGB | CM_ALPHA
+    };
+
+    enum Func
+    {
+        F_NEVER,
+        F_LESS,
+        F_EQUAL,
+        F_LEQUAL,
+        F_GREATER,
+        F_NOTEQUAL,
+        F_GEQUAL,
+        F_ALWAYS
+    };
+
+    enum Operator
+    {
+        O_KEEP,
+        O_ZERO,
+        O_REPLACE,
+        O_INCR,
+        O_INCR_WRAP,
+        O_DECR,
+        O_DECR_WRAP,
+        O_INVERT
+    };
+
+    enum CullFace
+    {
+        CF_FRONT,
+        CF_BACK
+    };
+
     struct VertexArray;
 
     typedef U32 Handle;
@@ -141,7 +188,29 @@ namespace Graphic
         static void             Draw( PrimitiveType primitive, SizeT vertexCount );
         static void             DrawIndexed( PrimitiveType primitive, SizeT indexCount, DataType indexType );
 
-        static void             ClearColor( F32 r, F32 g, F32 b, F32 a );
+        // Render State
+
+        static void             SetClearColor( F32 r, F32 g, F32 b, F32 a );
+        static void             SetClearDepth( F32 d );
+        static void             SetClearStencil( U8 s );
+        static void             Clear( U32 mask );
+
+        static void             SetColorWrite( U32 mask );
+        static void             SetDepthWrite( Bool enable );
+        static void             SetStencilWrite( U8 mask );
+
+        static void             EnableDepthTest( Bool enable );
+        static void             SetDepthFunc( Func f );
+        static void             SetStencilOp( Operator stencilFail, Operator depthFail, Operator depthPass );
+        static void             SetStencilFunc( Func f, U8 ref, U8 mask );
+
+        static void             EnableCullFace( Bool enable );
+        static void             SetCullFace( CullFace face );
+
+        //static void             SetBlendFunc( BlendFunc src, BlendFunc dst );
+        //static void             SetBlendFuncSeparate( BlendFunc srcRGB, BlendFunc dstRGB, BlendFunc srcAlpha, BlendFunc dstAlpha );
+        //static void             SetBlendMode( BlendMode mode );
+
         static void             SetSRGBWrite( Bool enable );
     };
 }

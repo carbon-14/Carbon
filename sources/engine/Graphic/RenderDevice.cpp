@@ -70,6 +70,48 @@ namespace Graphic
         GL_MIRRORED_REPEAT  // WT_MIRROR
     };
 
+    const GLenum ToGLClearMask[] =
+    {
+        0,
+        GL_COLOR_BUFFER_BIT,                                                // CM_COLOR
+        GL_DEPTH_BUFFER_BIT,                                                // CM_DEPTH
+        GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
+        GL_STENCIL_BUFFER_BIT,                                              // CM_STENCIL
+        GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT,
+        GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT,
+        GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
+    };
+
+    const GLenum ToGLFunc[] =
+    {
+        GL_NEVER,       // F_NEVER
+        GL_LESS,        // F_LESS
+        GL_LEQUAL,      // F_LEQUAL
+        GL_GREATER,     // F_GREATER
+        GL_GEQUAL,      // F_GEQUAL
+        GL_EQUAL,       // F_EQUAL
+        GL_NOTEQUAL,    // F_NOTEQUAL
+        GL_ALWAYS       // F_ALWAYS
+    };
+
+    const GLenum ToGLOperator[] =
+    {
+        GL_KEEP,        // O_KEEP
+        GL_ZERO,        // O_ZERO
+        GL_REPLACE,     // O_REPLACE
+        GL_INCR,        // O_INCR
+        GL_INCR_WRAP,   // O_INCR_WRAP
+        GL_DECR,        // O_DECR
+        GL_DECR_WRAP,   // O_DECR_WRAP
+        GL_INVERT       // O_INVERT
+    };
+
+    const GLenum ToGLCullFace[] =
+    {
+        GL_FRONT,       // CF_FRONT
+        GL_BACK         // CF_BACK
+    };
+
     const GLuint ToVertexSemanticMap[] =
     {
         1 << VS_POSITION,
@@ -400,21 +442,68 @@ namespace Graphic
         glDrawElements( ToGLPrimitiveType[ primitive ], indexCount, ToGLDataType[ indexType ], (GLvoid*)0 );
     }
 
-    void IRenderDevice::ClearColor( F32 r, F32 g, F32 b, F32 a )
+    void IRenderDevice::SetClearColor( F32 r, F32 g, F32 b, F32 a )
     {
-        glEnable( GL_CULL_FACE );
-        glEnable( GL_DEPTH_TEST );
-
         glClearColor( r, g, b, a );
-        glClearDepth( 1.0 );
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    }
+
+    void IRenderDevice::SetClearDepth( F32 depth )
+    {
+        glClearDepth( depth );
+    }
+
+    void IRenderDevice::SetClearStencil( U8 s )
+    {
+        glClearStencil( s );
+    }
+
+    void IRenderDevice::Clear( U32 mask )
+    {
+        glClear( ToGLClearMask[mask] );
+    }
+
+    void IRenderDevice::SetColorWrite( U32 mask )
+    {
+        glColorMask( mask & CM_RED, mask & CM_GREEN, mask & CM_BLUE, mask & CM_ALPHA );
+    }
+
+    void IRenderDevice::SetDepthWrite( Bool enable )
+    {
+        glDepthMask( enable );
+    }
+
+    void IRenderDevice::EnableDepthTest( Bool enable )
+    {
+        enable ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
+    }
+
+    void IRenderDevice::SetDepthFunc( Func f )
+    {
+        glDepthFunc( ToGLFunc[f] );
+    }
+
+    void IRenderDevice::SetStencilOp( Operator stencilFail, Operator depthFail, Operator depthPass )
+    {
+        glStencilOp( ToGLOperator[ stencilFail ], ToGLOperator[ depthFail ], ToGLOperator[ depthPass ] );
+    }
+
+    void IRenderDevice::SetStencilFunc( Func f, U8 ref, U8 mask )
+    {
+        glStencilFunc( ToGLFunc[f], ref, mask );
+    }
+
+    void IRenderDevice::EnableCullFace( Bool enable )
+    {
+        enable ? glEnable( GL_CULL_FACE ) : glDisable( GL_CULL_FACE );
+    }
+
+    void IRenderDevice::SetCullFace( CullFace face )
+    {
+        glCullFace( ToGLCullFace[ face ] );
     }
 
     void IRenderDevice::SetSRGBWrite( Bool enable )
     {
-        if ( enable )
-            glEnable( GL_FRAMEBUFFER_SRGB );
-        else
-            glDisable( GL_FRAMEBUFFER_SRGB );
+        enable ? glEnable( GL_FRAMEBUFFER_SRGB ) : glDisable( GL_FRAMEBUFFER_SRGB );
     }
 }
