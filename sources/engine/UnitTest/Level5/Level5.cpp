@@ -749,7 +749,11 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
                         ,hInstance
                         ,NULL );
 
-    if ( !hwnd ) return FALSE;
+    if ( !hwnd )
+    {
+           MessageBox( hwnd, "Cannot create the window !", "Fatal Error", MB_OK );
+           return FALSE;
+    }
 
     RECT rcClient, rcWind;
     POINT ptDiff;
@@ -776,12 +780,14 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
+        MessageBox( hwnd, "Cannot initialize the 3D device !", "Fatal Error", MB_OK );
         return FALSE;
     }
 
     if ( ! programCache.Initialize( "shaders\\" ) )
     {
         device3d.Destroy();
+        MessageBox( hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );
         return FALSE;
     }
 
