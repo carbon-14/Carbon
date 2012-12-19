@@ -82,7 +82,7 @@ namespace Graphic
         GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
     };
 
-    const GLenum ToGLFunc[] =
+    const GLenum ToGLFunction[] =
     {
         GL_NEVER,       // F_NEVER
         GL_LESS,        // F_LESS
@@ -94,7 +94,7 @@ namespace Graphic
         GL_ALWAYS       // F_ALWAYS
     };
 
-    const GLenum ToGLOperator[] =
+    const GLenum ToGLOperation[] =
     {
         GL_KEEP,        // O_KEEP
         GL_ZERO,        // O_ZERO
@@ -110,6 +110,38 @@ namespace Graphic
     {
         GL_FRONT,       // CF_FRONT
         GL_BACK         // CF_BACK
+    };
+
+    const GLenum ToGLBlendFunction[] =
+    {
+        GL_ZERO,                        // BF_ZERO
+        GL_ONE,                         // BF_ONE,
+        GL_SRC_COLOR,                   // BF_SRC_COLOR
+        GL_ONE_MINUS_SRC_COLOR,         // BF_ONE_MINUS_SRC_COLOR
+        GL_DST_COLOR,                   // BF_DST_COLOR
+        GL_ONE_MINUS_DST_COLOR,         // BF_ONE_MINUS_DST_COLOR
+        GL_SRC_ALPHA,                   // BF_SRC_ALPHA
+        GL_ONE_MINUS_SRC_ALPHA,         // BF_ONE_MINUS_SRC_ALPHA
+        GL_DST_ALPHA,                   // BF_DST_ALPHA
+        GL_ONE_MINUS_DST_ALPHA,         // BF_ONE_MINUS_DST_ALPHA
+        GL_CONSTANT_COLOR,              // BF_CONSTANT_COLOR
+        GL_ONE_MINUS_CONSTANT_COLOR,    // BF_ONE_MINUS_CONSTANT_COLOR
+        GL_CONSTANT_ALPHA,              // BF_CONSTANT_ALPHA
+        GL_ONE_MINUS_CONSTANT_ALPHA,    // BF_ONE_MINUS_CONSTANT_ALPHA
+        GL_SRC_ALPHA_SATURATE,          // BF_SRC_ALPHA_SATURATE
+        GL_SRC1_COLOR,                  // BF_SRC1_COLOR
+        GL_ONE_MINUS_SRC1_COLOR,        // BF_ONE_MINUS_SRC1_COLOR
+        GL_SRC1_ALPHA,                  // BF_SR1_ALPHA
+        GL_ONE_MINUS_SRC1_ALPHA         // BF_ONE_MINUS_SRC1_ALPHA
+    };
+
+    const GLenum ToGLBlendMode[] =
+    {
+        GL_FUNC_ADD,                // BM_ADD
+        GL_FUNC_SUBTRACT,           // BM_SUBSTRACT
+        GL_FUNC_REVERSE_SUBTRACT,   // BM_REVERSE_SUBSTRACT
+        GL_MIN,                     // BM_MIN
+        GL_MAX                      // BM_MAX
     };
 
     const GLuint ToVertexSemanticMap[] =
@@ -178,6 +210,11 @@ namespace Graphic
     {
         GLboolean test = glUnmapBuffer( GL_UNIFORM_BUFFER );
         glBindBuffer( GL_UNIFORM_BUFFER, 0 );
+    }
+
+    void IRenderDevice::BindUniformBuffer( Handle ubuffer, SizeT location )
+    {
+        glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
     }
 
     Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
@@ -376,6 +413,12 @@ namespace Graphic
         glDeleteTextures( 1, (GLuint*)&texture );
     }
 
+    void IRenderDevice::BindTexture( Handle texture, SizeT unit )
+    {
+        glActiveTexture( GL_TEXTURE0 + unit );
+        glBindTexture( GL_TEXTURE_2D, texture );
+    }
+
     Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
     {
         GLuint sampler;
@@ -393,16 +436,9 @@ namespace Graphic
         glDeleteSamplers( 1, (GLuint*)&sampler );
     }
 
-    void IRenderDevice::SampleTexture( Handle texture, Handle sampler, SizeT unit )
+    void IRenderDevice::BindSampler( Handle sampler, SizeT unit )
     {
-        glActiveTexture( GL_TEXTURE0 + unit );
-        glBindTexture( GL_TEXTURE_2D, texture );
         glBindSampler( unit, sampler );
-    }
-
-    void IRenderDevice::BindUniformBuffer( Handle ubuffer, SizeT location )
-    {
-        glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
     }
 
     void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )
@@ -472,24 +508,29 @@ namespace Graphic
         glDepthMask( enable );
     }
 
+    void IRenderDevice::SetStencilWrite( U8 mask )
+    {
+        glStencilMask( mask );
+    }
+
     void IRenderDevice::EnableDepthTest( Bool enable )
     {
         enable ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
     }
 
-    void IRenderDevice::SetDepthFunc( Func f )
+    void IRenderDevice::SetDepthFunc( Function f )
     {
-        glDepthFunc( ToGLFunc[f] );
+        glDepthFunc( ToGLFunction[f] );
     }
 
-    void IRenderDevice::SetStencilOp( Operator stencilFail, Operator depthFail, Operator depthPass )
+    void IRenderDevice::SetStencilOp( Operation stencilFail, Operation depthFail, Operation depthPass )
     {
-        glStencilOp( ToGLOperator[ stencilFail ], ToGLOperator[ depthFail ], ToGLOperator[ depthPass ] );
+        glStencilOp( ToGLOperation[ stencilFail ], ToGLOperation[ depthFail ], ToGLOperation[ depthPass ] );
     }
 
-    void IRenderDevice::SetStencilFunc( Func f, U8 ref, U8 mask )
+    void IRenderDevice::SetStencilFunc( Function f, U8 ref, U8 mask )
     {
-        glStencilFunc( ToGLFunc[f], ref, mask );
+        glStencilFunc( ToGLFunction[f], ref, mask );
     }
 
     void IRenderDevice::EnableCullFace( Bool enable )
@@ -500,6 +541,26 @@ namespace Graphic
     void IRenderDevice::SetCullFace( CullFace face )
     {
         glCullFace( ToGLCullFace[ face ] );
+    }
+
+    void IRenderDevice::SetBlendColor( F32 r, F32 g, F32 b, F32 a )
+    {
+        glBlendColor( r, g, b, a );
+    }
+
+    void IRenderDevice::SetBlendFunc( BlendFunction src, BlendFunction dst )
+    {
+        glBlendFunc( ToGLBlendFunction[ src ], ToGLBlendFunction[ dst ] );
+    }
+
+    void IRenderDevice::SetBlendFuncSeparate( BlendFunction srcRGB, BlendFunction dstRGB, BlendFunction srcAlpha, BlendFunction dstAlpha )
+    {
+        glBlendFuncSeparate( ToGLBlendFunction[ srcRGB ], ToGLBlendFunction[ dstRGB ], ToGLBlendFunction[ srcAlpha ], ToGLBlendFunction[ dstAlpha ] );
+    }
+
+    void IRenderDevice::SetBlendMode( BlendMode mode )
+    {
+        glBlendEquation( ToGLBlendMode[ mode ] );
     }
 
     void IRenderDevice::SetSRGBWrite( Bool enable )

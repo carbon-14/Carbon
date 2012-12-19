@@ -1,5 +1,7 @@
 #include "Graphic/RenderList.h"
 
+#include "Graphic/RenderGeometry.h"
+
 namespace Graphic
 {
     RenderList::RenderList()
@@ -22,7 +24,7 @@ namespace Graphic
         m_sRGBWrite = enable;
     }
 
-    void RenderList::Draw( const ProgramCache& programCache )
+    void RenderList::Draw( RenderCache& renderCache )
     {
         // BEGIN
         RenderDevice::SetSRGBWrite( m_sRGBWrite );
@@ -32,47 +34,24 @@ namespace Graphic
         Core::Array< RenderElement >::Iterator end = m_list.End();
         for ( ; it != end; ++it )
         {
-            RenderElement& e = *it;
+            const RenderElement& e = *it;
 
-            programCache.UseProgram( e.m_program );
+            renderCache.SetProgram( e.m_program );
+            renderCache.SetRenderState( e.m_renderState );
+            renderCache.SetTextureUnits( e.m_textureUnits, e.m_textureUnitCount );
+            renderCache.SetUniformBuffers( e.m_uniformBuffers, e.m_uniformBufferCount );
 
-            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
-            {
-                RenderDevice::BindUniformBuffer( e.m_uniformBuffers[ i ], i );
-            }
-
-            for ( SizeT i=0; i<e.m_unitCount; ++i )
-            {
-                RenderDevice::SampleTexture( e.m_textures[ i ], e.m_samplers[ i ], i );
-            }
-
-            for ( SizeT i=0; i<e.m_geom.m_subGeomCount; ++i )
-            {
-                const SubGeometry& sub = e.m_geom.m_subGeoms[ i ];
-                RenderDevice::BeginGeometry( e.m_geom.m_vertexDecl, sub.m_vertexArray, sub.m_indexBuffer );
-                RenderDevice::DrawIndexed( e.m_primitive, sub.m_indexCount, e.m_geom.m_indexType );
-                RenderDevice::EndGeometry( e.m_geom.m_vertexDecl );
-            }
-
-            for ( SizeT i=0; i<e.m_unitCount; ++i )
-            {
-                RenderDevice::SampleTexture( 0, 0, i );
-            }
-
-            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
-            {
-                RenderDevice::BindUniformBuffer( 0, i );
-            }
+            e.m_geometry->Draw();
         }
 
         // END
-        m_list.Clear();
-        RenderDevice::UseProgram( 0 );
+        Clear();
+
         RenderDevice::SetSRGBWrite( !m_sRGBWrite );
     }
 
     void RenderList::Clear()
     {
-        m_list.Clear();
+        m_list.Reserve(0);
     }
 }

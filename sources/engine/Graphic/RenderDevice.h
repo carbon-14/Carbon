@@ -59,23 +59,6 @@ namespace Graphic
         BA_READ_WRITE
     };
 
-    struct AttribDeclaration
-    {
-        VertexSemantic  m_semantic;
-        DataType        m_type;
-        SizeT           m_size;
-        Bool            m_normalized;
-        SizeT           m_offset;
-    };
-
-    static const SizeT s_MaxVertexAttribCount = 16;
-    struct VertexDeclaration
-    {
-        AttribDeclaration   m_attributes[ s_MaxVertexAttribCount ];
-        SizeT               m_size;
-        SizeT               m_count;
-    };
-
     enum PrimitiveType
     {
         PT_POINTS,
@@ -120,7 +103,7 @@ namespace Graphic
         CM_RGBA     = CM_RGB | CM_ALPHA
     };
 
-    enum Func
+    enum Function
     {
         F_NEVER,
         F_LESS,
@@ -132,7 +115,7 @@ namespace Graphic
         F_ALWAYS
     };
 
-    enum Operator
+    enum Operation
     {
         O_KEEP,
         O_ZERO,
@@ -150,9 +133,62 @@ namespace Graphic
         CF_BACK
     };
 
-    struct VertexArray;
+    enum BlendFunction
+    {
+        BF_ZERO,
+        BF_ONE,
+        BF_SRC_COLOR,
+        BF_ONE_MINUS_SRC_COLOR,
+        BF_DST_COLOR,
+        BF_ONE_MINUS_DST_COLOR,
+        BF_SRC_ALPHA,
+        BF_ONE_MINUS_SRC_ALPHA,
+        BF_DST_ALPHA,
+        BF_ONE_MINUS_DST_ALPHA,
+        BF_CONSTANT_COLOR,
+        BF_ONE_MINUS_CONSTANT_COLOR,
+        BF_CONSTANT_ALPHA,
+        BF_ONE_MINUS_CONSTANT_ALPHA,
+        BF_SRC_ALPHA_SATURATE,
+        BF_SRC1_COLOR,
+        BF_ONE_MINUS_SRC1_COLOR,
+        BF_SRC1_ALPHA,
+        BF_ONE_MINUS_SRC1_ALPHA
+    };
+
+    enum BlendMode
+    {
+        BM_ADD,
+        BM_SUBSTRACT,
+        BM_REVERSE_SUBSTRACT,
+        BM_MIN,
+        BM_MAX
+    };
 
     typedef U32 Handle;
+
+    struct AttribDeclaration
+    {
+        VertexSemantic  m_semantic;
+        DataType        m_type;
+        SizeT           m_size;
+        Bool            m_normalized;
+        SizeT           m_offset;
+    };
+
+    static const SizeT s_MaxVertexAttribCount = 16;
+    struct VertexDeclaration
+    {
+        AttribDeclaration   m_attributes[ s_MaxVertexAttribCount ];
+        SizeT               m_size;
+        SizeT               m_count;
+    };
+
+    struct TextureUnit
+    {
+        Handle  m_texture;
+        Handle  m_sampler;
+    };
 
     class _GraphicExport IRenderDevice
     {
@@ -164,6 +200,7 @@ namespace Graphic
 
         static void *           MapUniformBuffer( Handle buffer, BufferAccess access );
         static void             UnmapUniformBuffer( );
+        static void             BindUniformBuffer( Handle ubuffer, SizeT location );
 
         static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer );
         static void             DestroyVertexArray( Handle varray );
@@ -176,11 +213,11 @@ namespace Graphic
 
         static Handle           CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
         static void             DestroyTexture( Handle texture );
+        static void             BindTexture( Handle texture, SizeT unit );
+
         static Handle           CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap );
         static void             DestroySampler( Handle sampler );
-        static void             SampleTexture( Handle texture, Handle sampler, SizeT unit );
-
-        static void             BindUniformBuffer( Handle ubuffer, SizeT location );
+        static void             BindSampler( Handle sampler, SizeT unit );
 
         static void             BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer );
         static void             EndGeometry( const VertexDeclaration& vDecl );
@@ -188,30 +225,36 @@ namespace Graphic
         static void             Draw( PrimitiveType primitive, SizeT vertexCount );
         static void             DrawIndexed( PrimitiveType primitive, SizeT indexCount, DataType indexType );
 
-        // Render State
-
         static void             SetClearColor( F32 r, F32 g, F32 b, F32 a );
         static void             SetClearDepth( F32 d );
         static void             SetClearStencil( U8 s );
         static void             Clear( U32 mask );
+
+        // Render State
 
         static void             SetColorWrite( U32 mask );
         static void             SetDepthWrite( Bool enable );
         static void             SetStencilWrite( U8 mask );
 
         static void             EnableDepthTest( Bool enable );
-        static void             SetDepthFunc( Func f );
-        static void             SetStencilOp( Operator stencilFail, Operator depthFail, Operator depthPass );
-        static void             SetStencilFunc( Func f, U8 ref, U8 mask );
+        static void             SetDepthFunc( Function f );
+        static void             SetStencilOp( Operation stencilFail, Operation depthFail, Operation depthPass );
+        static void             SetStencilFunc( Function f, U8 ref, U8 mask );
 
         static void             EnableCullFace( Bool enable );
         static void             SetCullFace( CullFace face );
 
-        //static void             SetBlendFunc( BlendFunc src, BlendFunc dst );
-        //static void             SetBlendFuncSeparate( BlendFunc srcRGB, BlendFunc dstRGB, BlendFunc srcAlpha, BlendFunc dstAlpha );
-        //static void             SetBlendMode( BlendMode mode );
+        static void             SetBlendColor( F32 r, F32 g, F32 b, F32 a );
+        static void             SetBlendFunc( BlendFunction src, BlendFunction dst );
+        static void             SetBlendFuncSeparate( BlendFunction srcRGB, BlendFunction dstRGB, BlendFunction srcAlpha, BlendFunction dstAlpha );
+        static void             SetBlendMode( BlendMode mode );
 
         static void             SetSRGBWrite( Bool enable );
+
+        // Constants
+
+        static const SizeT      ms_maxTextureUnitCount      = 8;
+        static const SizeT      ms_maxUniformBufferCount    = 8;
     };
 }
 

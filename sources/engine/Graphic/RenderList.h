@@ -2,43 +2,23 @@
 #ifndef _GRAPHIC_RENDERLIST_H
 #define _GRAPHIC_RENDERLIST_H
 
-#include "Graphic/RenderDevice.h"
-#include "Graphic/ProgramCache.h"
+#include "Graphic/RenderCache.h"
 
 #include "Core/Array.h"
 
 namespace Graphic
 {
-    struct SubGeometry
-    {
-        Handle  m_vertexArray;
-        Handle  m_indexBuffer;
-        SizeT   m_indexCount;
-    };
-
-    struct Geometry
-    {
-        Handle              m_vertexBuffer;
-        VertexDeclaration   m_vertexDecl;
-        SizeT               m_vertexCount;
-        DataType            m_indexType;
-        SizeT               m_subGeomCount;
-        SubGeometry         m_subGeoms[32];
-    };
+    class RenderGeometry;
 
     struct RenderElement
     {
-        PrimitiveType   m_primitive;
-        ProgramHandle   m_program;
-
-        Geometry        m_geom;
-
-        Handle *        m_samplers;
-        Handle *        m_textures;
-        SizeT           m_unitCount;
-
-        Handle *        m_uniformBuffers;
-        SizeT           m_uniformBufferCout;
+        ProgramHandle       m_program;
+        RenderGeometry *    m_geometry;
+        RenderState         m_renderState;
+        TextureUnit         m_textureUnits[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT               m_textureUnitCount;
+        Handle              m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
+        SizeT               m_uniformBufferCount;
     };
 
     class _GraphicExport RenderList
@@ -53,12 +33,13 @@ namespace Graphic
 
         template < typename Pred >
         void Sort();
-        void Draw( const ProgramCache& programCache );
+        void Draw( RenderCache& renderCache );
         void Clear();
 
     private:
-        Core::Array< RenderElement >    m_list;
-        Bool                            m_sRGBWrite;
+        Core::Array< RenderElement, Core::FrameAllocator >  m_list;
+
+        Bool m_sRGBWrite;
     };
 
     template< typename Pred >
