@@ -6,6 +6,7 @@
 #include "Graphic/RenderDevice.h"
 #include "Graphic/ProgramCache.h"
 #include "Graphic/RenderList.h"
+#include "Graphic/RenderGeometry.h"
 
 #include "Core/TimeUtils.h"
 
@@ -84,6 +85,26 @@ namespace Level4_NS
         return texture;
     }
 
+    class RenderSimple : public RenderGeometry
+    {
+    public:
+        void Draw()
+        {
+            RenderDevice::BeginGeometry( m_vertexDecl, m_vertexArray, m_indexBuffer );
+            RenderDevice::DrawIndexed( m_primitive, m_indexCount, m_indexType );
+            RenderDevice::EndGeometry( m_vertexDecl );
+        }
+
+        PrimitiveType       m_primitive;
+        Handle              m_vertexBuffer;
+        VertexDeclaration   m_vertexDecl;
+        SizeT               m_vertexCount;
+        DataType            m_indexType;
+        Handle              m_vertexArray;
+        Handle              m_indexBuffer;
+        SizeT               m_indexCount;
+    };
+
     class FullScreenQuadRenderer
     {
     public:
@@ -93,12 +114,11 @@ namespace Level4_NS
 
         void Initialize()
         {
-            m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "level4" );
+            m_program   = programCache.GetProgram( "level4" );
 
-            Geometry& geom = m_renderElement.m_geom;
+            m_geom.m_primitive = PT_TRIANGLES;
 
-            VertexDeclaration& vDecl            = geom.m_vertexDecl;
+            VertexDeclaration& vDecl            = m_geom.m_vertexDecl;
             vDecl.m_attributes[0].m_semantic    = VS_POSITION;
             vDecl.m_attributes[0].m_type        = DT_F32;
             vDecl.m_attributes[0].m_size        = 4;
@@ -107,7 +127,7 @@ namespace Level4_NS
             vDecl.m_size                        = 16;
             vDecl.m_count                       = 1;
 
-            geom.m_vertexCount = 4;
+            m_geom.m_vertexCount = 4;
             const F32 vb[4][4] =
             {
                 { -1.0f, -1.0f, -frameRatio, -1.0f },
@@ -116,9 +136,9 @@ namespace Level4_NS
                 { +1.0f, +1.0f, +frameRatio, +1.0f }
             };
 
-            geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(vb), vb, BU_STATIC );
+            m_geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(vb), vb, BU_STATIC );
 
-            geom.m_indexType = DT_U8;
+            m_geom.m_indexType = DT_U8;
 
             const U8 ib[2][3] =
             {
@@ -126,49 +146,52 @@ namespace Level4_NS
                 2, 1, 3,
             };
 
-            geom.m_subGeomCount = 1;
-            geom.m_subGeoms[ 0 ].m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
-            geom.m_subGeoms[ 0 ].m_vertexArray = RenderDevice::CreateVertexArray( vDecl, geom.m_vertexBuffer, geom.m_subGeoms[ 0 ].m_indexBuffer );
-            geom.m_subGeoms[ 0 ].m_indexCount  = 6;
+            m_geom.m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
+            m_geom.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, m_geom.m_vertexBuffer, m_geom.m_indexBuffer );
+            m_geom.m_indexCount  = 6;
 
-            m_renderElement.m_samplers = m_samplers;
-            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
-            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
+            m_textureUnits[0].m_sampler = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
+            m_textureUnits[1].m_sampler = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
 
-            m_renderElement.m_textures = m_textures;
-            m_textures[0] = LoadTexture( "carbon_c.btx" );
-            m_textures[1] = LoadTexture( "carbon_n.btx" );
-            m_renderElement.m_unitCount = 2;
-
-            m_renderElement.m_uniformBufferCout = 0;
+            m_textureUnits[0].m_texture = LoadTexture( "carbon_c.btx" );
+            m_textureUnits[1].m_texture = LoadTexture( "carbon_n.btx" );
         }
 
         void Render()
         {
-            renderList.Push( m_renderElement );
+            RenderElement element;
+
+            element.m_program       = m_program;
+            element.m_renderState   = m_renderState;
+
+            for ( element.m_textureUnitCount = 0; element.m_textureUnitCount<2; ++element.m_textureUnitCount )
+            {
+                element.m_textureUnits[ element.m_textureUnitCount ] = m_textureUnits[ element.m_textureUnitCount ];
+            }
+
+            element.m_uniformBufferCount    = 0;
+            element.m_geometry              = &m_geom;
+
+            renderList.Push( element );
         }
 
         void Destroy()
         {
-            RenderDevice::DestroySampler( m_samplers[0] );
-            RenderDevice::DestroySampler( m_samplers[1] );
-            RenderDevice::DestroyTexture( m_textures[0] );
-            RenderDevice::DestroyTexture( m_textures[1] );
+            RenderDevice::DestroySampler( m_textureUnits[0].m_sampler );
+            RenderDevice::DestroySampler( m_textureUnits[1].m_sampler );
+            RenderDevice::DestroyTexture( m_textureUnits[0].m_texture );
+            RenderDevice::DestroyTexture( m_textureUnits[1].m_texture );
 
-            Geometry& geom = m_renderElement.m_geom;
-            for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
-            {
-                RenderDevice::DestroyVertexArray( geom.m_subGeoms[ i ].m_vertexArray );
-                RenderDevice::DestroyBuffer( geom.m_subGeoms[ i ].m_indexBuffer );
-            }
-            RenderDevice::DestroyBuffer( geom.m_vertexBuffer );
+            RenderDevice::DestroyVertexArray( m_geom.m_vertexArray );
+            RenderDevice::DestroyBuffer( m_geom.m_indexBuffer );
+            RenderDevice::DestroyBuffer( m_geom.m_vertexBuffer );
         }
 
     private:
-        RenderElement   m_renderElement;
-        
-        Handle          m_textures[2];
-        Handle          m_samplers[2];
+        ProgramHandle   m_program;
+        RenderState     m_renderState;
+        RenderSimple    m_geom;
+        TextureUnit     m_textureUnits[2];
     };
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -293,6 +316,8 @@ WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
+    RenderCache renderCache( programCache );
+
     renderList.SetSRGBWrite( true );
 
     FullScreenQuadRenderer fsqRenderer;
@@ -310,7 +335,9 @@ WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
 
         fsqRenderer.Render();
 
-        renderList.Draw( programCache );
+        renderList.Draw( renderCache );
+
+        renderCache.Clear();
 
         device3d.Swap();
 
