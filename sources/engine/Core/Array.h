@@ -288,6 +288,27 @@ namespace Core
         {
             IncreaseCapacity( capacity );
         }
+        else
+        {
+            if ( capacity == 0 )
+            {
+                Clear();
+                DoFree( m_begin );
+                m_begin = m_end = m_capacity = 0;
+            }
+            else
+            {
+                Pointer ptr = DoAllocate( capacity );
+                MemoryUtils::Copy( m_begin, m_begin + capacity, ptr );
+                if ( ! IsPOD< T >::value )
+                {
+                    for ( Iterator it=m_begin; it!=m_end; ++it ) { it->~ValueType(); }
+                }
+                DoFree( m_begin );
+                m_begin = ptr;
+                m_end = m_capacity = ptr + capacity;
+            }
+        }
     }
 
     template< typename T, typename Alloc >
@@ -401,12 +422,15 @@ namespace Core
     void Array< T, Alloc >::IncreaseCapacity( SizeType capacity )
     {
         Pointer ptr = DoAllocate( capacity );
-        MemoryUtils::Copy( m_begin, m_end, ptr );
-        if ( ! IsPOD< T >::value )
+        if ( capacity > 1 )
         {
-            for ( Iterator it=m_begin; it!=m_end; ++it ) { it->~ValueType(); }
+            MemoryUtils::Copy( m_begin, m_end, ptr );
+            if ( ! IsPOD< T >::value )
+            {
+                for ( Iterator it=m_begin; it!=m_end; ++it ) { it->~ValueType(); }
+            }
+            DoFree( m_begin );
         }
-        DoFree( m_begin );
         m_end = ptr + Size();
         m_begin = ptr;
         m_capacity = ptr + capacity;

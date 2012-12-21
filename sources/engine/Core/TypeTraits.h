@@ -39,6 +39,12 @@ namespace Core
 
     template< typename T >
     struct IsPOD : public IntegralConstant< Bool, IsIntegral< T >::value || IsFloating< T >::value > { };
+
+    template< typename T >
+    struct IsPOD< T* >  : public TrueType { };
+
+    template< typename T >
+    struct IsPOD< T* const >  : public TrueType { };
 }
 
 #define CARBON_DECLARE_POD_TYPE( T ) \
