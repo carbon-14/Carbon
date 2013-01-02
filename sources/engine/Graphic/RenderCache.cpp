@@ -7,23 +7,34 @@ namespace Graphic
         , m_program( 0 )
         , m_textureUnitCount( 0 )
         , m_uniformBufferCount( 0 )
+        , m_clearDepth( 1.0f )
+        , m_clearStencil( 0 )
+        , m_sRGBWrite( false )
     {
+        m_clearColor[0] = 0.0f;
+        m_clearColor[1] = 0.0f;
+        m_clearColor[2] = 0.0f;
+        m_clearColor[3] = 0.0f;
     }
 
     RenderCache::~RenderCache()
     {
-        Clear();
     }
 
     void RenderCache::Clear()
     {
-        for ( SizeT i=0; i<m_uniformBufferCount; ++i )
+        SetClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+        SetClearDepth( 1.0f );
+        SetClearStencil( 0 );
+        SetSRGBWrite( false );
+
+        for ( SizeT i=0; i<RenderDevice::ms_maxUniformBufferCount; ++i )
         {
             RenderDevice::BindUniformBuffer( 0, i );
         }
         m_uniformBufferCount = 0;
 
-        for ( SizeT i=0; i<m_textureUnitCount; ++i )
+        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
         {
             RenderDevice::BindTexture( 0, i );
             RenderDevice::BindSampler( 0, i );
@@ -33,6 +44,49 @@ namespace Graphic
         SetRenderState( RenderState() );
 
         SetProgram( 0 );
+    }
+
+    void RenderCache::SetClearColor( F32 r, F32 g, F32 b, F32 a )
+    {
+        if (
+            r != m_clearColor[0] ||
+            g != m_clearColor[1] ||
+            b != m_clearColor[2] ||
+            a != m_clearColor[3] )
+        {
+            RenderDevice::SetClearColor( r, g, b, a );
+            m_clearColor[0] = r;
+            m_clearColor[1] = g;
+            m_clearColor[2] = b;
+            m_clearColor[3] = a;
+        }
+    }
+
+    void RenderCache::SetClearDepth( F32 depth )
+    {
+        if ( depth != m_clearDepth )
+        {
+            RenderDevice::SetClearDepth( depth );
+            m_clearDepth = depth;
+        }
+    }
+
+    void RenderCache::SetClearStencil( U8 stencil )
+    {
+        if ( stencil != m_clearStencil )
+        {
+            RenderDevice::SetClearStencil( stencil );
+            m_clearStencil = stencil;
+        }
+    }
+
+    void RenderCache::SetSRGBWrite( Bool enable )
+    {
+        if ( m_sRGBWrite != enable )
+        {
+            RenderDevice::SetSRGBWrite( enable );
+            m_sRGBWrite = enable;
+        }
     }
 
     void RenderCache::SetProgram( ProgramHandle program )
@@ -141,12 +195,6 @@ namespace Graphic
                     m_textureUnits[i].m_sampler = textureUnits[ i ].m_sampler;
                 }
             }
-
-            for ( SizeT i=count; i<m_textureUnitCount; ++i )
-            {
-                RenderDevice::BindTexture( 0, i );
-                RenderDevice::BindSampler( 0, i );
-            }
         }
         else
         {
@@ -189,11 +237,6 @@ namespace Graphic
                     RenderDevice::BindUniformBuffer( uniformBuffers[ i ], i );
                     m_uniformBuffers[i] = uniformBuffers[ i ];
                 }
-            }
-
-            for ( SizeT i=count; i<m_uniformBufferCount; ++i )
-            {
-                RenderDevice::BindUniformBuffer( 0, i );
             }
         }
         else

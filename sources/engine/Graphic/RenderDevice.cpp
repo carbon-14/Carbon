@@ -168,6 +168,38 @@ namespace Graphic
 
     //===================================================================================
 
+    void TraceProgramInfoLog( GLuint program )
+    {
+        GLint logLength;
+        GLchar buffer[ 1024 ];
+
+        glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
+        if ( logLength > 1024 || logLength < 0 )
+        {
+            logLength = 1024;
+        }
+
+        glGetProgramInfoLog( program, logLength, 0, buffer );
+        buffer[ logLength ] = '\n';
+        CARBON_TRACE( buffer );
+    }
+
+    void TraceShaderInfoLog( GLuint shader )
+    {
+        GLint logLength;
+        GLchar buffer[ 1024 ];
+
+        glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
+        if ( logLength > 1024 )
+        {
+            logLength = 1024;
+        }
+
+        glGetShaderInfoLog( shader, logLength, 0, buffer );
+        buffer[ logLength ] = '\n';
+		CARBON_TRACE( buffer );
+    }
+
     Handle CreateBuffer( SizeT size, const void * data, GLenum usage, GLenum target )
     {
         GLuint buffer;
@@ -264,7 +296,7 @@ namespace Graphic
             CARBON_ASSERT( srcSizes[ i ] > 0 );
 
             GLuint shader = glCreateShader( ToGLShaderType[ srcTypes[ i ] ] );
-            glShaderSource( shader, 1, &srcBuffers[ i ], NULL );
+            glShaderSource( shader, 1, &srcBuffers[ i ], 0 );
             glCompileShader( shader );
 
             GLint compileStatus = GL_FALSE;
@@ -272,19 +304,7 @@ namespace Graphic
 
             if ( compileStatus == GL_FALSE )
             {
-                GLint logLength;
-                GLchar buffer[ 1024 ];
-
-                glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
-                if ( logLength > 1024 )
-                {
-                    logLength = 1024;
-                }
-
-                glGetShaderInfoLog( shader, logLength, NULL, buffer );
-                buffer[ logLength ] = '\n';
-			    CARBON_TRACE( buffer );
-
+                TraceShaderInfoLog( shader );
                 return 0;
             }
 
@@ -304,19 +324,7 @@ namespace Graphic
 
         if ( linkStatus == GL_FALSE )
         {
-            GLint logLength;
-            GLchar buffer[ 1024 ];
-
-            glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
-            if ( logLength > 1024 || logLength < 0 )
-            {
-                logLength = 1024;
-            }
-
-            glGetProgramInfoLog( program, logLength, NULL, buffer );
-            buffer[ logLength ] = '\n';
-            CARBON_TRACE( buffer );
-
+            TraceProgramInfoLog( program );
             return 0;
         }
 
@@ -339,7 +347,7 @@ namespace Graphic
         GLenum * fmt    = (GLenum*)binary;
         void * buffer   = fmt + 1;
 
-        glGetProgramBinary( program, binLength, NULL, fmt, buffer );
+        glGetProgramBinary( program, binLength, 0, fmt, buffer );
     }
 
     U32 IRenderDevice::CreateProgramBinary( const void * binary, SizeT size )
@@ -356,20 +364,7 @@ namespace Graphic
 		
 		if ( linkStatus == GL_FALSE )
 		{
-            GLint logLength;
-            GLchar buffer[ 1024 ];
-
-            glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
-            if ( logLength > 1024 )
-            {
-                logLength = 1024;
-            }
-
-            glGetProgramInfoLog( program, logLength, NULL, buffer );
-            buffer[ logLength ] = '\n';
-
-            CARBON_TRACE( buffer );
-
+            TraceProgramInfoLog( program );
             return 0;
 		}
 
