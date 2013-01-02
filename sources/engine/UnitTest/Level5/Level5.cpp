@@ -2,6 +2,8 @@
 #include "UnitTest/Utils.h"
 
 #include "Core/FileSystem.h"
+#include "Core/ResourceManager.h"
+#include "Core/Resource.h"
 
 #include "Graphic/RenderDevice.h"
 #include "Graphic/ProgramCache.h"
@@ -105,6 +107,13 @@ namespace Level5_NS
         Vector  direction;
         Vector  color;
         F32     radius;
+    };
+
+    class FakeResource : public Resource
+    {
+    public:
+        FakeResource( const Char * name ) : Resource(name) { m_state = CREATED; }
+        void Load( void * ) { m_state = LOADED; }
     };
 
     struct TextureHeader
@@ -844,6 +853,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     MemoryManager::Initialize( frameAllocatorSize );
     FileSystem::Initialize( "..\\..\\..\\" );
+    ResourceManager::Initialize();
 
     if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
@@ -858,8 +868,11 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
+    SharedPtr< FakeResource > test_res = ResourceManager::Create< FakeResource >( "crack_c.btx" );
+
     RenderCache renderCache( programCache );
 
+    renderList.SetClearMask( CM_COLOR | CM_DEPTH );
     renderList.SetSRGBWrite( true );
 
     cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
@@ -903,13 +916,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         meshRenderer.Render();
         sphereRenderer.Render();
 
-        RenderDevice::SetClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-        RenderDevice::SetClearDepth( 1.0f );
-        RenderDevice::Clear( CM_COLOR | CM_DEPTH );
-
         renderList.Draw( renderCache );
-
-        renderCache.Clear();
 
         device3d.Swap();
 
@@ -921,6 +928,8 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     }
 
     UNIT_TEST_MESSAGE( "Carbon Engine : Destroy\n" );
+
+    renderCache.Clear();
 
     RenderDevice::DestroyBuffer( flashParameters );
     RenderDevice::DestroyBuffer( lightParameters );
@@ -934,6 +943,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     device3d.Destroy();
 
+    ResourceManager::Destroy();
     FileSystem::Destroy();
     MemoryManager::Destroy();
 
