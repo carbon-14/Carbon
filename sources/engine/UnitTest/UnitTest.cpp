@@ -6,6 +6,7 @@
 #include "UnitTest/Level3/Level3.h"
 #include "UnitTest/Level4/Level4.h"
 #include "UnitTest/Level5/Level5.h"
+#include "UnitTest/Level6/Level6.h"
 
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
@@ -15,6 +16,23 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
     //return Level3( hInstance, nCmdShow );
     //return Level4( hInstance, nCmdShow );
-    return Level5( hInstance, nCmdShow );
+    //return Level5( hInstance, nCmdShow );
+
+    RenderWindow window;
+    if ( ! CreateRenderWindow( hInstance, window ) )
+    {
+        return FALSE;
+    }
+
+    ShowWindow(window.hwnd, nCmdShow);
+    UpdateWindow(window.hwnd);
+
+    Level6 test( window );
+
+    int r = test.Run();
+
+    DestroyRenderWindow( window );
+
+    return r;
 }
 

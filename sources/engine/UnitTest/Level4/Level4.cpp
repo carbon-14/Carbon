@@ -161,8 +161,7 @@ namespace Level4_NS
         {
             RenderElement element;
 
-            element.m_program       = m_program;
-            element.m_renderState   = m_renderState;
+            element.m_program = m_program;
 
             for ( element.m_textureUnitCount = 0; element.m_textureUnitCount<2; ++element.m_textureUnitCount )
             {
@@ -189,7 +188,6 @@ namespace Level4_NS
 
     private:
         ProgramHandle   m_program;
-        RenderState     m_renderState;
         RenderSimple    m_geom;
         TextureUnit     m_textureUnits[2];
     };

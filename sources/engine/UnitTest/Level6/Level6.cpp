@@ -1,11 +1,7 @@
-#include "UnitTest/Level5/Level5.h"
-#include "UnitTest/Utils.h"
+#include "UnitTest/Level6/Level6.h"
 
-#include "Core/FileSystem.h"
 #include "Core/ResourceManager.h"
 
-#include "Graphic/RenderDevice.h"
-#include "Graphic/ProgramCache.h"
 #include "Graphic/RenderList.h"
 #include "Graphic/RenderGeometry.h"
 #include "Graphic/TextureResource.h"
@@ -20,21 +16,8 @@
 using namespace Core;
 using namespace Graphic;
 
-#ifndef HID_USAGE_PAGE_GENERIC
-#define HID_USAGE_PAGE_GENERIC         ((USHORT) 0x01)
-#endif
-#ifndef HID_USAGE_GENERIC_MOUSE
-#define HID_USAGE_GENERIC_MOUSE        ((USHORT) 0x02)
-#endif
-
-namespace Level5_NS
+namespace Level6_NS
 {
-    const U32 FRAME_MAX_COUNT = 60;
-    U64 clockTicks = 0;
-    U32 frameCount = 0;
-    U64 frameTime = 0;
-    F32 time = 0.0f;
-
     enum CameraMode
     {
         CM_Demo = 0,
@@ -74,16 +57,6 @@ namespace Level5_NS
     F32 bodyJumpForce   = 10.0f;
 
     Bool useFlashLight  = false;
-
-    const SizeT frameAllocatorSize = 10 * 1024;
-
-    const U32 frameWidth    = 1280;
-    const U32 frameHeight   = 720;
-    const F32 frameRatio    = (F32)frameWidth/(F32)frameHeight;
-
-    RenderDevice device3d;
-    ProgramCache programCache;
-    RenderList renderList;
 
     Handle cameraParameters;
     Handle ambientParameters;
@@ -135,7 +108,7 @@ namespace Level5_NS
         {
         }
 
-        void Initialize()
+        void Initialize( const ProgramCache& programCache )
         {
             m_program           = programCache.GetProgram( "level5" );
             m_mesh              = ResourceManager::Create< MeshResource >( "sibenik.bmh" );
@@ -145,7 +118,7 @@ namespace Level5_NS
             m_uniformBuffers[3] = flashParameters;
         }
 
-        void Render()
+        void Render( RenderList& renderList )
         {
             RenderElement element;
 
@@ -190,7 +163,7 @@ namespace Level5_NS
         {
         }
 
-        void Initialize()
+        void Initialize( const ProgramCache& programCache )
         {
             m_program           = programCache.GetProgram( "sphere" );
             m_mesh              = ResourceManager::Create< MeshResource >( "sphere.bmh" );
@@ -212,7 +185,7 @@ namespace Level5_NS
             m_orientation       = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
         }
 
-        void Render()
+        void Render( RenderList& renderList, F32 time )
         {
             m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
 
@@ -282,145 +255,11 @@ namespace Level5_NS
         Vector          m_orientation;
     };
 
-    LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-    {
-        switch(msg)
-        {
-            case WM_CLOSE:
-                DestroyWindow(hwnd);
-            break;
-            case WM_DESTROY:
-                PostQuitMessage(0);
-            break;
-            case WM_KEYDOWN:
-		    switch ( wParam )
-		    {
-                case VK_ESCAPE:
-                    PostQuitMessage(0);
-                    break;
-		        case VK_F4:
-                    programCache.NotifySourceChange();
-                    break;
-                case VK_F1:
-                    cameraMode = CM_Demo;
-                    break;
-                case VK_F2:
-                    cameraMode = CM_Free;
-                    break;
-                case VK_F3:
-                    cameraMode = CM_FPS;
-                    bodyPosition = cameraPosition - bodyOffset;
-                    bodySpeed = Zero4();
-                    bodyFall = true;
-                    break;
-                case VK_SHIFT:
-                    bodyMaxSpeed = bodyRunSpeed;
-                    break;
-                case VK_SPACE:
-                    if ( !bodyFall )
-                        bodyJump = true;
-                    break;
-                case 'Z':
-                    moveY = Min( 1.0f, moveY + 1.0f );
-                    break;
-                case 'Q':
-                    moveX = Max( -1.0f, moveX - 1.0f );
-                    break;
-                case 'S':
-                    moveY = Max( -1.0f, moveY - 1.0f );
-                    break;
-                case 'D':
-                    moveX = Min( 1.0f, moveX + 1.0f );
-                    break;
-                case 'F' :
-                    useFlashLight = ! useFlashLight;
-                    break;
-		    }
-		    break;
-            case WM_KEYUP:
-            switch ( wParam )
-            {
-                case VK_SHIFT:
-                    bodyMaxSpeed = bodyWalkSpeed;
-                    break;
-                case 'Z':
-                    moveY = Max( -1.0f, moveY - 1.0f );
-                    break;
-                case 'Q':
-                    moveX = Min( 1.0f, moveX + 1.0f );
-                    break;
-                case 'S':
-                    moveY = Min( 1.0f, moveY + 1.0f );
-                    break;
-                case 'D':
-                    moveX = Max( -1.0f, moveX - 1.0f );
-                    break;
-            }
-            break;
-            case WM_INPUT:
-            {
-                UINT dwSize = 40;
-                static BYTE lpb[40];
+    MeshRenderer    meshRenderer;
+    SphereRenderer  sphereRenderer;
 
-                GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
-                RAWINPUT* raw = (RAWINPUT*)lpb;
-                if ( raw->header.dwType == RIM_TYPEMOUSE )
-                {
-                    mousedX = (F32)raw->data.mouse.lLastX;
-                    mousedY = (F32)raw->data.mouse.lLastY;
-                }
-                break;
-            }
-            default:
-                return DefWindowProc(hwnd, msg, wParam, lParam);
-        }
-        return 0;
-    }
-
-    Bool MessagePump( MSG * msg )
-    {
-        // check for messages
-        while ( PeekMessage( msg, NULL, 0, 0, PM_REMOVE ) )
-        {
-            // handle or dispatch messages
-            if ( msg->message == WM_QUIT )
-            {
-                return false;
-            }
-            else
-            {
-                TranslateMessage( msg );
-                DispatchMessage( msg );
-            }
-        }
-
-        return true;
-    }
-
-    void DisplayFramerate( HWND hwnd )
-    {
-        ++frameCount;
-        if ( frameCount == FRAME_MAX_COUNT )
-        {
-            U64 currentTicks    = Core::TimeUtils::ClockTime();
-            F64 fps             = FRAME_MAX_COUNT * Core::TimeUtils::ClockFrequency() / ( currentTicks - clockTicks );
-            clockTicks          = currentTicks;
-            frameCount          = 0;
-
-            Char text[ 32 ];
-            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level5 - [ %0.0f fps ]", fps ) );
-        }
-    }
-
-    void UpdateGlobalUniformData()
-    {
-        U64 currentTime = Core::TimeUtils::ClockTime();
-        U64 diff = currentTime - frameTime;
-        frameTime = currentTime;
-
-        time = static_cast< F32 >( frameTime * Core::TimeUtils::ClockPeriod() );
-        F32 elapsedTime = static_cast< F32 >( diff * Core::TimeUtils::ClockPeriod() );
-        
+    void UpdateGlobalUniformData( F32 time, F32 elapsedTime, F32 frameRatio )
+    {        
         F32 lightRatio = 0.5f + 0.5f * Sin( time );
         const Vector color = Vector4( 1.0f, 0.6881f, 0.5317f, 1.0f );
 
@@ -567,95 +406,99 @@ namespace Level5_NS
     }
 }
 
-using namespace Level5_NS;
+using namespace Level6_NS;
 
-WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
+Level6::Level6( const RenderWindow& window )
+    : Application( window )
+    , m_renderCache( m_programCache )
 {
-    UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 5 #\n###########\n\n" );
-    UNIT_TEST_MESSAGE( "Window Creation\n" );
+}
 
-    MSG msg;
-    HWND hwnd;
-    WNDCLASS wc;
-
-    wc.style = 0;
-    wc.lpfnWndProc = WndProc;
-    wc.cbClsExtra = 0;
-    wc.cbWndExtra = 0;
-    wc.hInstance = hInstance;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(1 + COLOR_BTNFACE);
-    wc.lpszMenuName =  NULL;
-    wc.lpszClassName = "CarbonWndClass";
-
-    if ( !RegisterClass(&wc) ) return FALSE;
-
-    hwnd = CreateWindow( "CarbonWndClass"
-                        ,"Level5"
-                        ,WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU
-                        ,CW_USEDEFAULT
-                        ,CW_USEDEFAULT
-                        ,frameWidth
-                        ,frameHeight
-                        ,NULL
-                        ,NULL
-                        ,hInstance
-                        ,NULL );
-
-    if ( !hwnd )
+void Level6::ProcessInputs( RAWINPUT * raw )
+{
+    if ( raw->header.dwType == RIM_TYPEKEYBOARD ) 
     {
-           MessageBox( hwnd, "Cannot create the window !", "Fatal Error", MB_OK );
-           return FALSE;
+        if ( raw->data.keyboard.Message == WM_KEYDOWN )
+        {
+            switch ( raw->data.keyboard.VKey )
+            {
+            case VK_F4:
+                m_programCache.NotifySourceChange();
+                break;
+            case VK_F1:
+                cameraMode = CM_Demo;
+                break;
+            case VK_F2:
+                cameraMode = CM_Free;
+                break;
+            case VK_F3:
+                cameraMode = CM_FPS;
+                bodyPosition = cameraPosition - bodyOffset;
+                bodySpeed = Zero4();
+                bodyFall = true;
+                break;
+            case VK_SHIFT:
+                bodyMaxSpeed = bodyRunSpeed;
+                break;
+            case VK_SPACE:
+                if ( !bodyFall )
+                    bodyJump = true;
+                break;
+            case 'Z':
+                moveY = Min( 1.0f, moveY + 1.0f );
+                break;
+            case 'Q':
+                moveX = Max( -1.0f, moveX - 1.0f );
+                break;
+            case 'S':
+                moveY = Max( -1.0f, moveY - 1.0f );
+                break;
+            case 'D':
+                moveX = Min( 1.0f, moveX + 1.0f );
+                break;
+            case 'F' :
+                useFlashLight = ! useFlashLight;
+                break;
+            }
+        }
+        else if ( raw->data.keyboard.Message == WM_KEYUP )
+        {
+            switch ( raw->data.keyboard.VKey )
+            {
+                case VK_SHIFT:
+                    bodyMaxSpeed = bodyWalkSpeed;
+                    break;
+                case 'Z':
+                    moveY = Max( -1.0f, moveY - 1.0f );
+                    break;
+                case 'Q':
+                    moveX = Min( 1.0f, moveX + 1.0f );
+                    break;
+                case 'S':
+                    moveY = Min( 1.0f, moveY + 1.0f );
+                    break;
+                case 'D':
+                    moveX = Max( -1.0f, moveX - 1.0f );
+                    break;
+            }
+        }
     }
-
-    RECT rcClient, rcWind;
-    POINT ptDiff;
-    GetClientRect(hwnd, &rcClient);
-    GetWindowRect(hwnd, &rcWind);
-    ptDiff.x = (rcWind.right - rcWind.left) - rcClient.right;
-    ptDiff.y = (rcWind.bottom - rcWind.top) - rcClient.bottom;
-    MoveWindow(hwnd,rcWind.left, rcWind.top, frameWidth + ptDiff.x, frameHeight + ptDiff.y, TRUE);
-
-    ShowWindow(hwnd, nCmdShow);
-    UpdateWindow(hwnd);
-
-    RAWINPUTDEVICE Rid[1];
-    Rid[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
-    Rid[0].usUsage = HID_USAGE_GENERIC_MOUSE;
-    Rid[0].dwFlags = RIDEV_INPUTSINK;
-    Rid[0].hwndTarget = hwnd;
-    RegisterRawInputDevices(Rid, 1, sizeof(Rid[0]));
-
-    UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
-
-    MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "..\\..\\..\\" );
-
-    if ( ! device3d.Initialize( hInstance, hwnd ) )
+    else if ( raw->header.dwType == RIM_TYPEMOUSE )
     {
-        MessageBox( hwnd, "Cannot initialize the 3D device !", "Fatal Error", MB_OK );
-        return FALSE;
+        mousedX = (F32)raw->data.mouse.lLastX;
+        mousedY = (F32)raw->data.mouse.lLastY;
     }
+}
 
-    if ( ! programCache.Initialize( "shaders\\" ) )
-    {
-        device3d.Destroy();
-        MessageBox( hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );
-        return FALSE;
-    }
-
-    ResourceManager::Initialize();
-
-    RenderCache renderCache( programCache );
-
+void Level6::PreExecute()
+{
     RenderState opaque;
     opaque.m_enableDepthTest = true;
     opaque.m_enableCullFace  = true;
 
-    renderList.SetRenderState( opaque );
-    renderList.SetClearMask( CM_COLOR | CM_DEPTH );
-    renderList.SetSRGBWrite( true );
+    m_renderList.SetRenderState( opaque );
+    m_renderList.SetClearMask( CM_COLOR | CM_DEPTH );
+    m_renderList.SetSRGBWrite( true );
 
     cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
 
@@ -677,62 +520,35 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_STREAM );
 
-    MeshRenderer meshRenderer;
-    meshRenderer.Initialize();
+    meshRenderer.Initialize( m_programCache );
 
-    SphereRenderer sphereRenderer;
-    sphereRenderer.Initialize();
+    sphereRenderer.Initialize( m_programCache );
+}
 
-    UNIT_TEST_MESSAGE( "Carbon Engine : Run\n" );
-
-    while ( 1 )
-    {
-        if ( ! MessagePump( &msg ) ) break;
-
-        /////////////////////////////////////////////////////////////////////////////
-
-        programCache.Update();
-
-        UpdateGlobalUniformData();
-
-        meshRenderer.Render();
-        sphereRenderer.Render();
-
-        renderList.Draw( renderCache );
-
-        device3d.Swap();
-
-        ResourceManager::Update();
-        MemoryManager::FrameUpdate();
-
-        /////////////////////////////////////////////////////////////////////////////
-
-        DisplayFramerate( hwnd );
-    }
-
-    UNIT_TEST_MESSAGE( "Carbon Engine : Destroy\n" );
-
+void Level6::PostExecute()
+{
     sphereRenderer.Destroy();
     meshRenderer.Destroy();
 
-    renderCache.Clear();
+    m_renderCache.Clear();
 
     RenderDevice::DestroyBuffer( flashParameters );
     RenderDevice::DestroyBuffer( lightParameters );
     RenderDevice::DestroyBuffer( ambientParameters );
     RenderDevice::DestroyBuffer( cameraParameters );
-
-    ResourceManager::Destroy();
-
-    programCache.Destroy();
-
-    device3d.Destroy();
-
-    FileSystem::Destroy();
-    MemoryManager::Destroy();
-
-    DestroyWindow( hwnd );
-    UnregisterClass( "CarbonWndClass", hInstance );
-
-    return msg.wParam;
 }
+
+void Level6::Execute()
+{
+    F32 time        = static_cast< F32 >( m_clockTicks * TimeUtils::ClockPeriod() );
+    F32 elapsedTime = static_cast< F32 >( m_frameTicks * TimeUtils::ClockPeriod() );
+    F32 frameRatio  = static_cast< F32 >( m_window.width ) / static_cast< F32 >( m_window.height );
+
+    UpdateGlobalUniformData( time, elapsedTime, frameRatio );
+
+    meshRenderer.Render( m_renderList );
+    sphereRenderer.Render( m_renderList, time );
+
+    m_renderList.Draw( m_renderCache );
+}
+

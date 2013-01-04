@@ -97,7 +97,6 @@ namespace Level3_NS
             RenderElement element;
 
             element.m_program               = m_program;
-            element.m_renderState           = m_renderState;
             element.m_textureUnitCount      = 0;
             element.m_uniformBufferCount    = 0;
             element.m_geometry              = &m_geom;
@@ -114,7 +113,6 @@ namespace Level3_NS
 
     private:
         ProgramHandle   m_program;
-        RenderState     m_renderState;
         RenderSimple    m_geom;
     };
 
