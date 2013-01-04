@@ -4,7 +4,7 @@ namespace Graphic
 {
     RenderCache::RenderCache( const ProgramCache& programCache )
         : m_programCache( programCache )
-        , m_program( 0 )
+        , m_program( ProgramCache::ms_invalidHandle )
         , m_textureUnitCount( 0 )
         , m_uniformBufferCount( 0 )
         , m_clearDepth( 1.0f )

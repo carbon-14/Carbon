@@ -26,6 +26,11 @@ namespace Graphic
         m_list.PushBack( element );
     }
 
+    void RenderList::SetRenderState( const RenderState& state )
+    {
+        m_renderState = state;
+    }
+
     void RenderList::SetClearMask( U32 mask )
     {
         m_clearMask = mask;
@@ -68,6 +73,7 @@ namespace Graphic
             RenderDevice::Clear( m_clearMask );
         }
         renderCache.SetSRGBWrite( m_sRGBWrite );
+        renderCache.SetRenderState( m_renderState );
 
         // DRAW
         Core::Array< RenderElement >::Iterator it = m_list.Begin();
@@ -77,7 +83,6 @@ namespace Graphic
             const RenderElement& e = *it;
 
             renderCache.SetProgram( e.m_program );
-            renderCache.SetRenderState( e.m_renderState );
             renderCache.SetTextureUnits( e.m_textureUnits, e.m_textureUnitCount );
             renderCache.SetUniformBuffers( e.m_uniformBuffers, e.m_uniformBufferCount );
 

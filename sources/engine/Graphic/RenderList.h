@@ -14,7 +14,6 @@ namespace Graphic
     {
         ProgramHandle       m_program;
         RenderGeometry *    m_geometry;
-        RenderState         m_renderState;
         TextureUnit         m_textureUnits[ RenderDevice::ms_maxTextureUnitCount ];
         SizeT               m_textureUnitCount;
         Handle              m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
@@ -29,6 +28,7 @@ namespace Graphic
 
         void Push( const RenderElement& element );
 
+        void SetRenderState( const RenderState& state );
         void SetClearMask( U32 mask );
         void SetClearColor( F32 r, F32 g, F32 b, F32 a );
         void SetClearDepth( F32 depth );
@@ -43,11 +43,12 @@ namespace Graphic
     private:
         Core::Array< RenderElement, Core::FrameAllocator >  m_list;
 
-        U32     m_clearMask;
-        F32     m_clearColor[4];
-        F32     m_clearDepth;
-        U8      m_clearStencil;
-        Bool    m_sRGBWrite;
+        RenderState m_renderState;
+        U32         m_clearMask;
+        F32         m_clearColor[4];
+        F32         m_clearDepth;
+        U8          m_clearStencil;
+        Bool        m_sRGBWrite;
     };
 
     template< typename Pred >
