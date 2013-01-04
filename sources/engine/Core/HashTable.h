@@ -42,7 +42,22 @@ namespace Core
         void                Remove( KeyType key );
 
         void                Clear();
-        void                Dump( Array< ValueType >& dmp );
+
+        template< typename ArrayAlloc >
+        void                Dump( Array< ValueType, ArrayAlloc >& dmp )
+        {
+            BucketType * b = m_table;
+            BucketType * bEnd = m_table + S;
+            for ( ; b != bEnd; ++b )
+            {
+                BucketType::Iterator p = b->Begin();
+                BucketType::ConstIterator pEnd = b->End();
+                for ( ; p != pEnd; ++p )
+                {
+                    dmp.PushBack( p->m_value );
+                }
+            }
+        }
 
     private:
         BucketType          m_table[ S ];
@@ -141,22 +156,6 @@ namespace Core
         for ( ; b != end; ++b )
         {
             b->Clear();
-        }
-    }
-
-    template< typename T, typename K, SizeT S, typename Alloc >
-    void HashTable< T, K, S, Alloc >::Dump( Array< ValueType >& dmp )
-    {
-        BucketType * b = m_table;
-        BucketType * bEnd = m_table + S;
-        for ( ; b != bEnd; ++b )
-        {
-            BucketType::Iterator p = b->Begin();
-            BucketType::ConstIterator pEnd = b->End();
-            for ( ; p != pEnd; ++p )
-            {
-                dmp.PushBack( p->m_value );
-            }
         }
     }
 

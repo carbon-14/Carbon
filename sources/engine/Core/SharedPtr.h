@@ -60,6 +60,8 @@ namespace Core
         const T& operator*() const;
         T& operator*();
 
+        operator Bool();
+
     private :
         void Release();
         void Lock();
@@ -157,6 +159,12 @@ namespace Core
     {
         CARBON_ASSERT( m_ptr );
         return *m_ptr;
+    }
+
+    template< typename T >
+    SharedPtr< T >::operator Bool()
+    {
+        return m_ptr != 0;
     }
 
     template< typename T >

@@ -9,6 +9,8 @@ namespace Core
 {
     class _CoreExport Resource : public RefCounted
     {
+        friend class ResourceManager;
+
     public:
         enum State
         {
@@ -17,26 +19,36 @@ namespace Core
             LOADED
         };
 
-        Resource( const Char * name );
+        Resource();
+        virtual ~Resource();
 
-        Bool IsValid() const;
-        Bool IsLoaded() const;
+        State           GetState() const;
+        Bool            IsValid() const;
+        Bool            IsLoaded() const;
 
-        U32 GetHashCode() const;
+        U32             GetId() const;
 
 #if defined( CARBON_DEBUG )
-        const Char * GetName() const;
+        const Char *    GetName() const;
 #endif
 
-        virtual void Load( void * data ) = 0;
+        static U32      MakeIdFromName( const Char * name );
 
     protected:
-        void SelfDelete();
-
-        State       m_state;
-        U32         m_hashCode;
+        void            SetId( U32 id );
 #if defined( CARBON_DEBUG )
-        PathString  m_name;
+        void            SetName( const Char * name );
+#endif
+
+        virtual void    Load( const void * data ) = 0;
+
+        void            SelfDelete();
+
+        State           m_state;
+        U32             m_id;
+
+#if defined( CARBON_DEBUG )
+        PathString      m_name;
 #endif
     };
 }

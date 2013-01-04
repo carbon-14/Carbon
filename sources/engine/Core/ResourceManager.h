@@ -22,10 +22,16 @@ namespace Core
         template < typename T > static T * Create( const Char * name );
         template < typename T > static void Destroy( T * res );
 
+        static void             Update();
+
+        static const Resource * FindByName( const Char * name );
+        static const Resource * FindById( U32 id );
+
     private:
-        static Resource *   Find( const Char * name );
-        static void         Add( Resource * res );
-        static void         Remove( Resource * res );
+        static Resource *       Find( U32 id );
+        static void             Add( const Char * name, Resource * res );
+        static void             Remove( Resource * res );
+        static void             ProcessRequests();
     };
 
     //==================================================================== ResourceManager
@@ -33,24 +39,20 @@ namespace Core
     template < typename T >
     T * ResourceManager::Create( const Char * name )
     {
-        Resource * res = Find( name );
+        U32 id = Resource::MakeIdFromName( name );
+
+        Resource * res = Find( id );
         if ( !res )
         {
             res = static_cast< Resource * >( UnknownAllocator::Allocate( sizeof(T), MemoryUtils::AlignOf< T >() ) );
-            ::new( res ) T( name );
+            ::new( res ) T();
 
-            PathString path;
-            FileSystem::BuildPathName( name, path, FileSystem::PT_CACHE );
+            res->SetId( id );
+#if defined( CARBON_DEBUG )
+            res->SetName( name );
+#endif
 
-            void * data = 0;
-            SizeT size;
-            FileSystem::Load( path, data, size );
-            
-            res->Load( data );
-
-            UnknownAllocator::Deallocate( data );
-
-            Add( res );
+            Add( name, res );
         }
 
         return static_cast< T * >( res );

@@ -5,13 +5,18 @@
 
 namespace Core
 {
-    Resource::Resource( const Char * name )
-        : m_state( INVALID )
-        , m_hashCode( HashString( name ) )
-#if defined( CARBON_DEBUG )
-        , m_name( name )
-#endif
+    Resource::Resource()
+        : m_state( CREATED )
     {
+    }
+
+    Resource::~Resource()
+    {
+    }
+
+    Resource::State Resource::GetState() const
+    {
+        return m_state;
     }
 
     Bool Resource::IsValid() const
@@ -24,15 +29,32 @@ namespace Core
         return m_state == LOADED;
     }
 
-    U32 Resource::GetHashCode() const
+    U32 Resource::GetId() const
     {
-        return m_hashCode;
+        return m_id;
     }
 
 #if defined( CARBON_DEBUG )
     const Char * Resource::GetName() const
     {
         return m_name.ConstPtr();
+    }
+#endif
+
+    U32 Resource::MakeIdFromName( const Char * name )
+    {
+        return HashString( name );
+    }
+
+    void Resource::SetId( U32 id )
+    {
+        m_id = id;
+    }
+
+#if defined( CARBON_DEBUG )
+    void Resource::SetName( const Char * name )
+    {
+        m_name = name;
     }
 #endif
 
