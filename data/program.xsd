@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema" >
+
+<xs:complexType name="TextureType">
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+    <xs:attribute name="sampler" type="xs:string" use="required"/>
+    <xs:attribute name="layout" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="default" type="xs:string" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="ParameterType">
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+    <xs:attribute name="layout" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="desc" type="xs:string" use="optional"/>
+</xs:complexType>
+
+<xs:complexType name="ValueType">
+    <xs:simpleContent>
+        <xs:extension base="xs:string">
+            <xs:attribute name="ref" type="xs:IDREF" use="required"/>
+        </xs:extension>
+     </xs:simpleContent>
+</xs:complexType>
+
+<xs:simpleType name="ColorType">
+    <xs:restriction base="xs:string"/>
+</xs:simpleType>
+
+<xs:complexType name="PhongType">
+    <xs:all>
+        <xs:element name="diffuse" type="ColorType" default="1 1 1 1"/>
+        <xs:element name="specular" type="ColorType" default="1 1 1 1"/>
+        <xs:element name="ambient" type="ColorType" default="1 1 1 1"/>
+        <xs:element name="emission" type="ColorType" default="0 0 0 0"/>
+        <xs:element name="shininess" type="xs:decimal" default="1"/>
+    </xs:all>
+</xs:complexType>
+
+<xs:complexType name="SetType">
+    <xs:sequence>
+        <xs:element name="value" type="ValueType" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="phong" type="PhongType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="DescriptionType">
+    <xs:sequence>
+        <xs:element name="texture" type="TextureType" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="parameter" type="ParameterType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="SetList">
+    <xs:sequence>
+        <xs:element name="set" type="SetType" minOccurs="1" maxOccurs="unbounded"/>
+    </xs:sequence>
+</xs:complexType>
+
+<xs:element name="program">
+    <xs:complexType>
+        <xs:all>
+            <xs:element name="description" type="DescriptionType"/>
+            <xs:element name="sets" type="SetList"/>
+        </xs:all>
+    </xs:complexType>
+</xs:element>
+
+</xs:schema>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<program xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="program.xsd">
+    <description>
+        <texture id="colorMap" sampler="LinearSampler" layout="0" default="default_c.png"/>
+        <texture id="normalMap" sampler="LinearSampler" layout="1" default="default_n.png"/>
+        <parameter id="specParams" layout="0" desc="intensity, shininess, unused, unused"/>
+        <parameter id="emissiveColor" layout="1" desc="rgba"/>
+    </description>
+    <sets>
+        <set id="wall">
+            <value ref="specParams">0.25 4</value>
+            <value ref="emissiveColor">0 0 0 1</value>
+            <phong>
+                <diffuse>1 1 1 1</diffuse>
+                <specular>0.25 0.25 0.25 1</specular>
+                <ambient>1 1 1 1</ambient>
+                <emission>0 0 0 1</emission>
+                <shininess>6</shininess>
+            </phong>
+        </set>
+        <set id="sphere">
+            <value ref="specParams">1 32</value>
+            <value ref="emissiveColor">1 0.5 0.25</value>
+            <phong>
+                <diffuse>1 1 1 1</diffuse>
+                <specular>1 1 1 1</specular>
+                <ambient>1 1 1 1</ambient>
+                <emission>1 0.5 0.25 1</emission>
+                <shininess>50</shininess>
+            </phong>
+        </set>
+    </sets>
+</program>
