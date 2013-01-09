@@ -149,15 +149,15 @@ namespace Level5_NS
         {
             RenderElement element;
 
-            element.m_program           = m_program;
-            element.m_textureUnitCount  = 0;
+            element.m_program       = m_program;
+            element.m_textureCount  = 0;
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<4; ++element.m_uniformBufferCount )
             {
                 element.m_uniformBuffers[ element.m_uniformBufferCount ]  = m_uniformBuffers[ element.m_uniformBufferCount ];
             }
 
-            for ( SizeT i=0; i<m_mesh->GetSubMeshes().Size(); ++i )
+            for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
             {
                 element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
                 ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
@@ -198,9 +198,6 @@ namespace Level5_NS
             m_textures[0]       = ResourceManager::Create< TextureResource >( "crack_c.btx" );
             m_textures[1]       = ResourceManager::Create< TextureResource >( "crack_n.btx" );
 
-            m_samplers[0]       = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-            m_samplers[1]       = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-
             m_uniformBuffers[0] = cameraParameters;
             m_uniformBuffers[1] = ambientParameters;
             m_uniformBuffers[2] = lightParameters;
@@ -232,12 +229,11 @@ namespace Level5_NS
 
             element.m_program = m_program;
 
-            for ( element.m_textureUnitCount = 0; element.m_textureUnitCount<2; ++element.m_textureUnitCount )
+            for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
             {
-                if ( m_textures[ element.m_textureUnitCount ] && m_textures[ element.m_textureUnitCount ]->IsLoaded() )
+                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsLoaded() )
                 {
-                    TextureUnit u = { m_textures[ element.m_textureUnitCount ]->GetTexture(), m_samplers[ element.m_textureUnitCount ] };
-                    element.m_textureUnits[ element.m_textureUnitCount ] = u;
+                    element.m_textures[ element.m_textureCount ] = m_textures[ element.m_textureCount ]->GetTexture();
                 }
             }
 
@@ -246,7 +242,7 @@ namespace Level5_NS
                 element.m_uniformBuffers[ element.m_uniformBufferCount ] = m_uniformBuffers[ element.m_uniformBufferCount ];
             }
 
-            for ( SizeT i=0; i<m_mesh->GetSubMeshes().Size(); ++i )
+            for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
             {
                 element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
                 ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
@@ -263,9 +259,6 @@ namespace Level5_NS
             m_textures[1] = 0;
 
             RenderDevice::DestroyBuffer( m_uniformBuffers[3] );
-
-            RenderDevice::DestroySampler( m_samplers[0] );
-            RenderDevice::DestroySampler( m_samplers[1] );
         }
 
     private:
@@ -274,7 +267,6 @@ namespace Level5_NS
         SharedPtr< MeshResource >       m_mesh;
 
         SharedPtr< TextureResource >    m_textures[2];
-        Handle                          m_samplers[2];
         Handle                          m_uniformBuffers[5];
 
         Vector          m_position;

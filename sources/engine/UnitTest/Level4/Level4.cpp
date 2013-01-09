@@ -150,11 +150,8 @@ namespace Level4_NS
             m_geom.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, m_geom.m_vertexBuffer, m_geom.m_indexBuffer );
             m_geom.m_indexCount  = 6;
 
-            m_textureUnits[0].m_sampler = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
-            m_textureUnits[1].m_sampler = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_CLAMP );
-
-            m_textureUnits[0].m_texture = LoadTexture( "carbon_c.btx" );
-            m_textureUnits[1].m_texture = LoadTexture( "carbon_n.btx" );
+            m_textures[0] = LoadTexture( "carbon_c.btx" );
+            m_textures[1] = LoadTexture( "carbon_n.btx" );
         }
 
         void Render()
@@ -163,9 +160,9 @@ namespace Level4_NS
 
             element.m_program = m_program;
 
-            for ( element.m_textureUnitCount = 0; element.m_textureUnitCount<2; ++element.m_textureUnitCount )
+            for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
             {
-                element.m_textureUnits[ element.m_textureUnitCount ] = m_textureUnits[ element.m_textureUnitCount ];
+                element.m_textures[ element.m_textureCount ] = m_textures[ element.m_textureCount ];
             }
 
             element.m_uniformBufferCount    = 0;
@@ -176,10 +173,8 @@ namespace Level4_NS
 
         void Destroy()
         {
-            RenderDevice::DestroySampler( m_textureUnits[0].m_sampler );
-            RenderDevice::DestroySampler( m_textureUnits[1].m_sampler );
-            RenderDevice::DestroyTexture( m_textureUnits[0].m_texture );
-            RenderDevice::DestroyTexture( m_textureUnits[1].m_texture );
+            RenderDevice::DestroyTexture( m_textures[0] );
+            RenderDevice::DestroyTexture( m_textures[1] );
 
             RenderDevice::DestroyVertexArray( m_geom.m_vertexArray );
             RenderDevice::DestroyBuffer( m_geom.m_indexBuffer );
@@ -189,7 +184,7 @@ namespace Level4_NS
     private:
         ProgramHandle   m_program;
         RenderSimple    m_geom;
-        TextureUnit     m_textureUnits[2];
+        Handle          m_textures[2];
     };
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)

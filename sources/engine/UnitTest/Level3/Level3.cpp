@@ -97,7 +97,7 @@ namespace Level3_NS
             RenderElement element;
 
             element.m_program               = m_program;
-            element.m_textureUnitCount      = 0;
+            element.m_textureCount          = 0;
             element.m_uniformBufferCount    = 0;
             element.m_geometry              = &m_geom;
 
