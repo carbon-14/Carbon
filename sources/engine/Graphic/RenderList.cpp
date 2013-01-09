@@ -83,7 +83,7 @@ namespace Graphic
             const RenderElement& e = *it;
 
             renderCache.SetProgram( e.m_program );
-            renderCache.SetTextureUnits( e.m_textureUnits, e.m_textureUnitCount );
+            renderCache.SetTextures( e.m_textures, e.m_textureCount );
             renderCache.SetUniformBuffers( e.m_uniformBuffers, e.m_uniformBufferCount );
 
             e.m_geometry->Draw();

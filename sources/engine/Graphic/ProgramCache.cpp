@@ -31,14 +31,24 @@ namespace Graphic
 
         BuildCache();
 
+        m_programCache = 0;
+        m_samplerCacheCount = 0;
+        m_uniformBufferCache = 0;
+
         return true;
     }
 
     void ProgramCache::Destroy()
     {
+        SetProgram( 0 );
+        SetSamplers( NULL, 0 );
+        SetUniformBuffer( 0 );
+
         m_dataPath.Clear();
         m_cachePath.Clear();
-        m_cache.Clear();
+        m_programs.Clear();
+        m_programSets.Clear();
+        m_samplers.Clear();
     }
 
     void ProgramCache::Update()
@@ -50,19 +60,24 @@ namespace Graphic
         }
     }
 
-    ProgramHandle ProgramCache::GetProgram( const Char * name ) const
+    ProgramHandle ProgramCache::GetProgram( const Char * name, const Char * set ) const
     {
-        U32 id = CreateId( name );
+        U32 nameId = CreateId( name );
 
-        return FindById( id );
+        ProgramHandle handle = FindById( nameId ) << 4;
+
+        return handle;
     }
 
-    void ProgramCache::UseProgram( ProgramHandle handle ) const
+    void ProgramCache::UseProgram( ProgramHandle handle )
     {
         CARBON_ASSERT( handle != ms_invalidHandle );
 
-        const Program& p = m_cache[ handle ];
-        RenderDevice::UseProgram( p.m_handle );
+        const Program& p = m_programs[ handle >> 4 ];
+
+        SetProgram( p.m_handle );
+        SetSamplers( p.m_samplers, p.m_samplerCount );
+        SetUniformBuffer( m_programSets[ handle ].m_uniformBuffer );
     }
 
     void ProgramCache::NotifySourceChange()
@@ -117,19 +132,19 @@ namespace Graphic
             Program * program = 0;
             if ( index == ms_invalidHandle )
             {
-                m_cache.PushBack( Program( id, typeMask, name.ConstPtr() ) );
-                program = m_cache.End() - 1;
+                m_programs.PushBack( Program( id, typeMask, name.ConstPtr() ) );
+                program = m_programs.End() - 1;
             }
             else
             {
-                program = &m_cache[ index ];
+                program = &m_programs[ index ];
             }
 
             program->m_type |= typeMask;
         }
 
-        ProgramArray::Iterator pIt   = m_cache.Begin();
-        ProgramArray::Iterator pEnd  = m_cache.End();
+        ProgramArray::Iterator pIt   = m_programs.Begin();
+        ProgramArray::Iterator pEnd  = m_programs.End();
         for ( ; pIt != pEnd; ++pIt )
         {
             Program& program = *pIt;
@@ -139,8 +154,8 @@ namespace Graphic
 
     void ProgramCache::ReloadCache()
     {
-        ProgramArray::Iterator it   = m_cache.Begin();
-        ProgramArray::Iterator end  = m_cache.End();
+        ProgramArray::Iterator it   = m_programs.Begin();
+        ProgramArray::Iterator end  = m_programs.End();
         for ( ; it != end; ++it )
         {
             Program& program = *it;
@@ -221,11 +236,8 @@ namespace Graphic
 
     void ProgramCache::LoadProgramFromBinaries( Program& program )
     {
-        Char id[9];
-        StringUtils::FormatString( id, 9, "%08x", program.m_id );
-
         PathString binFileName = m_cachePath;
-        binFileName += id;
+        binFileName += program.m_name;
         binFileName += ".bin";
 
         if ( FileSystem::Exists( binFileName ) )
@@ -267,20 +279,72 @@ namespace Graphic
         }
     }
 
-    U32 ProgramCache::CreateId( const Char * name )
+    U32 ProgramCache::CreateId( const Char * str )
     {
-        return Core::HashString( name );
+        return Core::HashString( str );
     }
 
     ProgramHandle ProgramCache::FindById( U32 id ) const
     {
-        ProgramArray::ConstIterator it  = m_cache.Begin();
-        ProgramArray::ConstIterator end = m_cache.End();
+        ProgramArray::ConstIterator it  = m_programs.Begin();
+        ProgramArray::ConstIterator end = m_programs.End();
         for ( ; it != end; ++it )
         {
             if ( it->m_id == id )
-                return it - m_cache.Begin();
+                return it - m_programs.Begin();
         }
         return ms_invalidHandle;
+    }
+
+    void ProgramCache::SetProgram( Handle program )
+    {
+        if ( program != m_programCache )
+        {
+            RenderDevice::UseProgram( program );
+            m_programCache = program;
+        }
+    }
+
+    void ProgramCache::SetSamplers( const SizeT * samplers, SizeT count )
+    {
+        if ( count <= m_samplerCacheCount )
+        {
+            for ( SizeT i=0; i<count; ++i )
+            {
+                if ( samplers[i] != m_samplers[i] )
+                {
+                    RenderDevice::BindTexture( samplers[i], i );
+                    m_samplers[i] = samplers[ i ];
+                }
+            }
+        }
+        else
+        {
+            for ( SizeT i=0; i<m_samplerCacheCount; ++i )
+            {
+                if ( samplers[i] != m_samplers[i] )
+                {
+                    RenderDevice::BindTexture( samplers[ i ], i );
+                    m_samplers[i] = samplers[ i ];
+                }
+            }
+
+            for ( SizeT i=m_samplerCacheCount; i<count; ++i )
+            {
+                RenderDevice::BindTexture( m_samplers[ i ], i );
+                m_samplers[i] = samplers[ i ];
+            }
+        }
+
+        m_samplerCacheCount = count;
+    }
+
+    void ProgramCache::SetUniformBuffer( Handle uniformBuffer )
+    {
+        if ( uniformBuffer != m_uniformBufferCache )
+        {
+            RenderDevice::BindUniformBuffer( uniformBuffer, RenderDevice::ms_maxUniformBufferCount );
+            m_uniformBufferCache = uniformBuffer;
+        }
     }
 }

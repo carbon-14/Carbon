@@ -6,11 +6,12 @@
 
 #include "Core/Resource.h"
 #include "Graphic/RenderDevice.h"
-
-#include "Core/FixedArray.h"
+#include "Graphic/MaterialResource.h"
 
 namespace Graphic
 {
+    class MaterialResource;
+
     class _GraphicExport MeshResource : public Core::Resource
     {
     public:
@@ -18,12 +19,11 @@ namespace Graphic
 
         struct SubMesh
         {
-            Handle  m_vertexArray;
-            Handle  m_indexBuffer;
-            SizeT   m_indexCount;
+            Handle                              m_vertexArray;
+            Handle                              m_indexBuffer;
+            SizeT                               m_indexCount;
+            Core::SharedPtr< MaterialResource > m_material;
         };
-
-        typedef Core::FixedArray< SubMesh, ms_maxSubMeshCount >   SubMeshArray;
 
     public:
         MeshResource();
@@ -34,7 +34,8 @@ namespace Graphic
         const VertexDeclaration&    GetVertexDecl() const;
         SizeT                       GetVertexCount() const;
         DataType                    GetIndexType() const;
-        const SubMeshArray&         GetSubMeshes() const;
+        const SubMesh *             GetSubMeshes() const;
+        SizeT                       GetSubMeshCount() const;
 
     protected:
         void Load( const void * data );
@@ -45,7 +46,8 @@ namespace Graphic
         VertexDeclaration   m_vertexDecl;
         SizeT               m_vertexCount;
         DataType            m_indexType;
-        SubMeshArray        m_subMeshes;
+        SubMesh             m_subMeshes[ ms_maxSubMeshCount ];
+        SizeT               m_subMeshCount;
     };
 }
 

@@ -11,7 +11,7 @@ namespace Graphic
     class _GraphicExport RenderCache
     {
     public:
-        RenderCache( const ProgramCache& programCache );
+        RenderCache( ProgramCache& programCache );
         ~RenderCache();
 
         void Clear();
@@ -22,22 +22,22 @@ namespace Graphic
         void SetSRGBWrite( Bool enable );
         void SetProgram( ProgramHandle program );
         void SetRenderState( const RenderState& renderState );
-        void SetTextureUnits( const TextureUnit * textureUnits, SizeT count );
+        void SetTextures( const Handle * textures, SizeT count );
         void SetUniformBuffers( const Handle * uniformBuffers, SizeT count );
 
     private:
-        const ProgramCache& m_programCache;
+        ProgramCache&   m_programCache;
 
-        F32                 m_clearColor[4];
-        F32                 m_clearDepth;
-        U8                  m_clearStencil;
-        Bool                m_sRGBWrite;
-        ProgramHandle       m_program;
-        RenderState         m_renderState;
-        TextureUnit         m_textureUnits[ RenderDevice::ms_maxTextureUnitCount ];
-        SizeT               m_textureUnitCount;
-        Handle              m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
-        SizeT               m_uniformBufferCount;
+        F32             m_clearColor[4];
+        F32             m_clearDepth;
+        U8              m_clearStencil;
+        Bool            m_sRGBWrite;
+        ProgramHandle   m_program;
+        RenderState     m_renderState;
+        Handle          m_textures[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT           m_textureCount;
+        Handle          m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
+        SizeT           m_uniformBufferCount;
     };
 }
 

@@ -6,6 +6,12 @@
 
 namespace Graphic
 {
+    struct ProgramSet
+    {
+        U32     m_id;
+        Handle  m_uniformBuffer;
+    };
+
     class _GraphicExport Program
     {
     public:
@@ -18,8 +24,12 @@ namespace Graphic
 
         U32     m_id;
         U32     m_type;
-        Handle  m_handle;
         Char    m_name[32];
+
+        Handle  m_handle;
+
+        SizeT   m_samplers[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT   m_samplerCount;
     };
 }
 

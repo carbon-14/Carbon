@@ -2,10 +2,10 @@
 
 namespace Graphic
 {
-    RenderCache::RenderCache( const ProgramCache& programCache )
+    RenderCache::RenderCache( ProgramCache& programCache )
         : m_programCache( programCache )
         , m_program( ProgramCache::ms_invalidHandle )
-        , m_textureUnitCount( 0 )
+        , m_textureCount( 0 )
         , m_uniformBufferCount( 0 )
         , m_clearDepth( 1.0f )
         , m_clearStencil( 0 )
@@ -39,7 +39,7 @@ namespace Graphic
             RenderDevice::BindTexture( 0, i );
             RenderDevice::BindSampler( 0, i );
         }
-        m_textureUnitCount = 0;
+        m_textureCount = 0;
 
         SetRenderState( RenderState() );
 
@@ -177,53 +177,38 @@ namespace Graphic
         }
     }
 
-    void RenderCache::SetTextureUnits( const TextureUnit * textureUnits, SizeT count )
+    void RenderCache::SetTextures( const Handle * textures, SizeT count )
     {
-        if ( count <= m_textureUnitCount )
+        if ( count <= m_textureCount )
         {
             for ( SizeT i=0; i<count; ++i )
             {
-                if ( textureUnits[i].m_texture != m_textureUnits[i].m_texture )
+                if ( textures[i] != m_textures[i] )
                 {
-                    RenderDevice::BindTexture( textureUnits[ i ].m_texture, i );
-                    m_textureUnits[i].m_texture = textureUnits[ i ].m_texture;
-                }
-
-                if ( textureUnits[i].m_sampler != m_textureUnits[i].m_sampler )
-                {
-                    RenderDevice::BindSampler( textureUnits[ i ].m_sampler, i );
-                    m_textureUnits[i].m_sampler = textureUnits[ i ].m_sampler;
+                    RenderDevice::BindTexture( textures[i], i );
+                    m_textures[i] = textures[ i ];
                 }
             }
         }
         else
         {
-            for ( SizeT i=0; i<m_textureUnitCount; ++i )
+            for ( SizeT i=0; i<m_textureCount; ++i )
             {
-                if ( textureUnits[i].m_texture != m_textureUnits[i].m_texture )
+                if ( textures[i] != m_textures[i] )
                 {
-                    RenderDevice::BindTexture( textureUnits[ i ].m_texture, i );
-                    m_textureUnits[i].m_texture = textureUnits[ i ].m_texture;
-                }
-
-                if ( textureUnits[i].m_sampler != m_textureUnits[i].m_sampler )
-                {
-                    RenderDevice::BindSampler( textureUnits[ i ].m_sampler, i );
-                    m_textureUnits[i].m_sampler = textureUnits[ i ].m_sampler;
+                    RenderDevice::BindTexture( textures[ i ], i );
+                    m_textures[i] = textures[ i ];
                 }
             }
 
-            for ( SizeT i=m_textureUnitCount; i<count; ++i )
+            for ( SizeT i=m_textureCount; i<count; ++i )
             {
-                RenderDevice::BindTexture( textureUnits[ i ].m_texture, i );
-                m_textureUnits[i].m_texture = textureUnits[ i ].m_texture;
-
-                RenderDevice::BindSampler( textureUnits[ i ].m_sampler, i );
-                m_textureUnits[i].m_sampler = textureUnits[ i ].m_sampler;
+                RenderDevice::BindTexture( textures[ i ], i );
+                m_textures[i] = textures[ i ];
             }
         }
 
-        m_textureUnitCount = count;
+        m_textureCount = count;
     }
 
     void RenderCache::SetUniformBuffers( const Handle * uniformBuffers, SizeT count )

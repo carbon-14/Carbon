@@ -1,5 +1,7 @@
 #include "Graphic/MeshResource.h"
 
+#include "Graphic/MaterialResource.h"
+
 namespace Graphic
 {
     enum VType
@@ -77,17 +79,19 @@ namespace Graphic
 
     MeshResource::MeshResource()
         : Core::Resource()
+        , m_subMeshCount( 0 )
     {
     }
 
     MeshResource::~MeshResource()
     {
-        SubMeshArray::Iterator it = m_subMeshes.Begin();
-        SubMeshArray::Iterator end = m_subMeshes.End();
+        SubMesh * it = m_subMeshes;
+        SubMesh * end = m_subMeshes + m_subMeshCount;
         for ( ; it != end; ++it )
         {
             RenderDevice::DestroyVertexArray( it->m_vertexArray );
             RenderDevice::DestroyBuffer( it->m_indexBuffer );
+            it->m_material = 0;
         }
 
         RenderDevice::DestroyBuffer( m_vertexBuffer );
@@ -118,9 +122,14 @@ namespace Graphic
         return m_indexType;
     }
 
-    const MeshResource::SubMeshArray& MeshResource::GetSubMeshes() const
+    const MeshResource::SubMesh * MeshResource::GetSubMeshes() const
     {
         return m_subMeshes;
+    }
+
+    SizeT MeshResource::GetSubMeshCount() const
+    {
+        return m_subMeshCount;
     }
 
     void MeshResource::Load( const void * data )
@@ -154,19 +163,18 @@ namespace Graphic
 
         ptr += header->vertexDataSize;
 
-        for ( SizeT i=0; i<header->subMeshCount; ++i )
+        CARBON_ASSERT( header->subMeshCount < ms_maxSubMeshCount );
+        for ( m_subMeshCount=0; m_subMeshCount<header->subMeshCount; ++m_subMeshCount )
         {
             SizeT count = *((U32*)ptr);
             ptr += sizeof(U32);
 
             SizeT size = count * DataTypeSize[ m_indexType ];
 
-            SubMesh sub_mesh;
+            SubMesh& sub_mesh       = m_subMeshes[ m_subMeshCount ];
             sub_mesh.m_indexCount   = count;
             sub_mesh.m_indexBuffer  = RenderDevice::CreateIndexBuffer( size, ptr, BU_STATIC );
             sub_mesh.m_vertexArray  = RenderDevice::CreateVertexArray( m_vertexDecl, m_vertexBuffer, sub_mesh.m_indexBuffer );
-
-            m_subMeshes.PushBack( sub_mesh );
 
             ptr += size;
         }

@@ -184,12 +184,6 @@ namespace Graphic
         SizeT               m_count;
     };
 
-    struct TextureUnit
-    {
-        Handle  m_texture;
-        Handle  m_sampler;
-    };
-
     class _GraphicExport IRenderDevice
     {
     public:
@@ -254,7 +248,7 @@ namespace Graphic
         // Constants
 
         static const SizeT      ms_maxTextureUnitCount      = 8;
-        static const SizeT      ms_maxUniformBufferCount    = 8;
+        static const SizeT      ms_maxUniformBufferCount    = 7;    // the 8th slot is reserved for material uniform buffer through the ProgramCache
     };
 }
 

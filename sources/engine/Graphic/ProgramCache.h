@@ -9,7 +9,7 @@
 
 namespace Graphic
 {
-    typedef SizeT ProgramHandle;
+    typedef U16 ProgramHandle;
 
     class _GraphicExport ProgramCache
     {
@@ -23,9 +23,9 @@ namespace Graphic
         void            Destroy();
         void            Update();
 
-        ProgramHandle   GetProgram( const Char * name ) const;
+        ProgramHandle   GetProgram( const Char * name, const Char * set = NULL ) const;
 
-        void            UseProgram( ProgramHandle handle ) const;
+        void            UseProgram( ProgramHandle handle );
 
         static void     NotifySourceChange();
 
@@ -37,14 +37,28 @@ namespace Graphic
         void            LoadProgramFromSources( Program& program );
         void            LoadProgramFromBinaries( Program& program );
 
-        static U32      CreateId( const Char * name );
+        static U32      CreateId( const Char * str );
         ProgramHandle   FindById( U32 id ) const;
 
-        typedef Core::Array< Graphic::Program > ProgramArray;
+        void SetProgram( Handle program );
+        void SetSamplers( const SizeT * samplers, SizeT count );
+        void SetUniformBuffer( Handle uniformBuffer );
+
+        typedef Core::Array< Program > ProgramArray;
+        typedef Core::Array< ProgramSet > ProgramSetArray;
+        typedef Core::Array< Handle > SamplerArray;
 
         Core::PathString    m_dataPath;
         Core::PathString    m_cachePath;
-        ProgramArray        m_cache;
+
+        ProgramArray        m_programs;
+        ProgramSetArray     m_programSets;
+        SamplerArray        m_samplers;
+
+        Handle              m_programCache;
+        SizeT               m_samplerCache[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT               m_samplerCacheCount;
+        Handle              m_uniformBufferCache;
     };
 }
 
