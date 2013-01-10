@@ -515,7 +515,7 @@ xmlSAXHandler SAXHandler = {
     NULL                    //fatalErrorSAXFunc fatalError;
 };
 
-int LoadCollada( const char * filename )
+bool LoadCollada( const char * filename )
 {
     ParseState state = FINISH;
 
@@ -524,7 +524,7 @@ int LoadCollada( const char * filename )
     xmlCleanupParser();
     xmlMemoryDump();
     
-    return success;
+    return success == 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1140,9 +1140,11 @@ bool BuildMesh( const char * outFilename, int options )
 
 bool CompileMesh( const char * inFilename, const char * outFilename, int options )
 {
-    LoadCollada( inFilename );
+    if ( !LoadCollada( inFilename ) )
+        return false;
 
-    BuildMesh( outFilename, options );
+    if ( !BuildMesh( outFilename, options ) )
+        return false;
 
     return true;
 }
