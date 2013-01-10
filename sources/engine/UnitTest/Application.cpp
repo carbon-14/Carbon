@@ -148,7 +148,7 @@ Bool Application::Initialize()
         return false;
     }
 
-    if ( ! m_programCache.Initialize( "shaders\\" ) )
+    if ( ! m_programCache.Initialize( "shaders\\", "materials\\" ) )
     {
         m_renderDevice.Destroy();
         MessageBox( m_window.hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );

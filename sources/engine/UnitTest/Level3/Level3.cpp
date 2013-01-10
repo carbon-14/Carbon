@@ -235,7 +235,7 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
-    if ( ! programCache.Initialize( "shaders\\" ) )
+    if ( ! programCache.Initialize( "shaders\\", "materials\\" ) )
     {
         device3d.Destroy();
         return FALSE;

@@ -630,7 +630,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
-    if ( ! programCache.Initialize( "shaders\\" ) )
+    if ( ! programCache.Initialize( "shaders\\", "materials\\" ) )
     {
         device3d.Destroy();
         MessageBox( hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );
