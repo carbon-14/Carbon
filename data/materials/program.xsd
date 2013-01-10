@@ -11,6 +11,7 @@
 <xs:complexType name="ParameterType">
     <xs:attribute name="id" type="xs:ID" use="required"/>
     <xs:attribute name="layout" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="default" type="xs:string" use="required"/>
     <xs:attribute name="desc" type="xs:string" use="optional"/>
 </xs:complexType>
 
@@ -27,13 +28,11 @@
 </xs:simpleType>
 
 <xs:complexType name="PhongType">
-    <xs:all>
-        <xs:element name="diffuse" type="ColorType" default="1 1 1 1"/>
-        <xs:element name="specular" type="ColorType" default="1 1 1 1"/>
-        <xs:element name="ambient" type="ColorType" default="1 1 1 1"/>
-        <xs:element name="emission" type="ColorType" default="0 0 0 0"/>
-        <xs:element name="shininess" type="xs:decimal" default="1"/>
-    </xs:all>
+    <xs:attribute name="diffuse" type="ColorType" default="1 1 1 1"/>
+    <xs:attribute name="specular" type="ColorType" default="1 1 1 1"/>
+    <xs:attribute name="ambient" type="ColorType" default="1 1 1 1"/>
+    <xs:attribute name="emission" type="ColorType" default="0 0 0 0"/>
+    <xs:attribute name="shininess" type="xs:decimal" default="1"/>
 </xs:complexType>
 
 <xs:complexType name="SetType">
@@ -53,7 +52,7 @@
 
 <xs:complexType name="SetList">
     <xs:sequence>
-        <xs:element name="set" type="SetType" minOccurs="1" maxOccurs="unbounded"/>
+        <xs:element name="set" type="SetType" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
 </xs:complexType>
 

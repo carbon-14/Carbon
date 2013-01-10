@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<samplers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="samplers.xsd">
+<samplers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=". samplers.xsd">
     <sampler id="DefaultSampler" />
     <sampler id="LinearSampler" min="linear" mag="linear" mip="linear" />
 </samplers>
