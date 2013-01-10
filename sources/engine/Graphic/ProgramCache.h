@@ -19,7 +19,7 @@ namespace Graphic
     public:
         static const ProgramHandle ms_invalidHandle;
 
-        Bool            Initialize( const Char * relativePath );
+        Bool            Initialize( const Char * shaderPath, const Char * materialPath );
         void            Destroy();
         void            Update();
 
@@ -33,9 +33,11 @@ namespace Graphic
         void            BuildCache();
         void            ReloadCache();
 
+        void            LoadSamplerList();
         void            LoadProgram( Program& program );
         void            LoadProgramFromSources( Program& program );
         void            LoadProgramFromBinaries( Program& program );
+        void            LoadProgramSets();
 
         static U32      CreateId( const Char * str );
         ProgramHandle   FindById( U32 id ) const;
@@ -50,6 +52,7 @@ namespace Graphic
 
         Core::PathString    m_dataPath;
         Core::PathString    m_cachePath;
+        Core::PathString    m_materialPath;
 
         ProgramArray        m_programs;
         ProgramSetArray     m_programSets;

@@ -7,10 +7,8 @@ namespace Graphic
     MaterialResource::MaterialResource()
         : Core::Resource()
         , m_program( ProgramCache::ms_invalidHandle )
-        , m_uniformBuffer( 0 )
         , m_textureCount( 0 )
     {
-
     }
 
     MaterialResource::~MaterialResource()
@@ -20,11 +18,6 @@ namespace Graphic
     ProgramHandle MaterialResource::GetProgram() const
     {
         return m_program;
-    }
-
-    Handle MaterialResource::GetUniformBuffer() const
-    {
-        return m_uniformBuffer;
     }
 
     const TextureResource * MaterialResource::GetTexture( SizeT index ) const
@@ -40,6 +33,5 @@ namespace Graphic
 
     void MaterialResource::Load( const void * data )
     {
-
     }
 }

@@ -19,8 +19,8 @@ namespace Graphic
         Program( U32 id, U32 type, const Char * name );
         ~Program();
 
-        Bool operator<( const Program& other )   { return m_id < other.m_id; }
-        Bool operator==( const Program& other )  { return m_id == other.m_id;}
+        Bool operator<( const Program& other )   { return m_id < other.m_id;    }
+        Bool operator==( const Program& other )  { return m_id == other.m_id;   }
 
         U32     m_id;
         U32     m_type;
@@ -30,6 +30,8 @@ namespace Graphic
 
         SizeT   m_samplers[ RenderDevice::ms_maxTextureUnitCount ];
         SizeT   m_samplerCount;
+
+        SizeT   m_setCount;
     };
 }
 

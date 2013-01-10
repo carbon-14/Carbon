@@ -18,7 +18,6 @@ namespace Graphic
         ~MaterialResource();
 
         ProgramHandle           GetProgram() const;
-        Handle                  GetUniformBuffer() const;
         const TextureResource * GetTexture( SizeT index ) const;
         SizeT                   GetTextureCount() const;
 
@@ -27,7 +26,6 @@ namespace Graphic
 
     private:
         ProgramHandle                       m_program;
-        Handle                              m_uniformBuffer;
         Core::SharedPtr< TextureResource >  m_textures[ RenderDevice::ms_maxTextureUnitCount ];
         SizeT                               m_textureCount;
     };

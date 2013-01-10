@@ -17,17 +17,31 @@ namespace Graphic
 
     const Char Extensions[ ST_COUNT ][ 4 ] = { ".vs", ".fs", ".gs" };
 
+    const char samplersFileName[] = "samplers.bin";
+
+    struct SamplerDesc
+    {
+        FilterType m_min    : 1;
+        FilterType m_mag    : 1;
+        MipType m_mip       : 2;
+        WrapType m_wrap     : 2;
+    };
+
+    const SizeT maxProgramSetCount = 16;
+
     Bool dirtyCache = false;
 
     const ProgramHandle ProgramCache::ms_invalidHandle = -1;
 
-    Bool ProgramCache::Initialize( const Char * relativePath )
+    Bool ProgramCache::Initialize( const Char * shaderPath, const Char * materialPath )
     {
         CARBON_ASSERT( m_dataPath.Empty() );
         CARBON_ASSERT( m_cachePath.Empty() );
+        CARBON_ASSERT( m_materialPath.Empty() );
 
-        FileSystem::BuildPathName( relativePath, m_dataPath, FileSystem::PT_DATA );
-        FileSystem::BuildPathName( relativePath, m_cachePath, FileSystem::PT_CACHE );
+        FileSystem::BuildPathName( shaderPath, m_dataPath, FileSystem::PT_DATA );
+        FileSystem::BuildPathName( shaderPath, m_cachePath, FileSystem::PT_CACHE );
+        FileSystem::BuildPathName( materialPath, m_materialPath, FileSystem::PT_CACHE );
 
         BuildCache();
 
@@ -46,9 +60,37 @@ namespace Graphic
 
         m_dataPath.Clear();
         m_cachePath.Clear();
-        m_programs.Clear();
-        m_programSets.Clear();
-        m_samplers.Clear();
+        m_materialPath.Clear();
+
+        // Clear samplers
+        {
+            SamplerArray::Iterator it   = m_samplers.Begin();
+            SamplerArray::Iterator end  = m_samplers.End();
+            for ( ; it != end; ++it )
+            {
+                RenderDevice::DestroySampler( *it );
+            }
+            m_samplers.Clear();
+        }
+        // Clear programs
+        {
+            ProgramArray::Iterator it   = m_programs.Begin();
+            ProgramArray::Iterator end  = m_programs.End();
+            for ( ; it != end; ++it )
+            {
+                RenderDevice::DeleteProgram( it->m_handle );
+            }
+        }
+        // Clear program sets
+        {
+            ProgramSetArray::Iterator it   = m_programSets.Begin();
+            ProgramSetArray::Iterator end  = m_programSets.End();
+            for ( ; it != end; ++it )
+            {
+                RenderDevice::DestroyBuffer( it->m_uniformBuffer );
+            }
+            m_programSets.Clear();
+        }
     }
 
     void ProgramCache::Update()
@@ -87,6 +129,8 @@ namespace Graphic
 
     void ProgramCache::BuildCache()
     {
+        LoadSamplerList();
+
         PathString searchStr = m_dataPath;
         searchStr += "*";
 
@@ -150,23 +194,73 @@ namespace Graphic
             Program& program = *pIt;
             LoadProgram( program );
         }
+
+        LoadProgramSets();
     }
 
     void ProgramCache::ReloadCache()
     {
-        ProgramArray::Iterator it   = m_programs.Begin();
-        ProgramArray::Iterator end  = m_programs.End();
-        for ( ; it != end; ++it )
+        // Reload samplers
         {
-            Program& program = *it;
-
-            if ( program.m_handle )
+            SamplerArray::Iterator it   = m_samplers.Begin();
+            SamplerArray::Iterator end  = m_samplers.End();
+            for ( ; it != end; ++it )
             {
+                RenderDevice::DestroySampler( *it );
+            }
+            m_samplers.Clear();
+            LoadSamplerList();
+        }
+        // Reload programs
+        {
+            ProgramArray::Iterator it   = m_programs.Begin();
+            ProgramArray::Iterator end  = m_programs.End();
+            for ( ; it != end; ++it )
+            {
+                Program& program = *it;
                 RenderDevice::DeleteProgram( program.m_handle );
                 program.m_handle = 0;
+                LoadProgram( program );
+            }
+        }
+        // Reload program sets
+        {
+            ProgramSetArray::Iterator it   = m_programSets.Begin();
+            ProgramSetArray::Iterator end  = m_programSets.End();
+            for ( ; it != end; ++it )
+            {
+                RenderDevice::DestroyBuffer( it->m_uniformBuffer );
+            }
+            m_programSets.Clear();
+            LoadProgramSets();
+        }
+    }
+
+    void ProgramCache::LoadSamplerList()
+    {
+        PathString fileName = m_materialPath;
+        fileName += samplersFileName;
+
+        void * buffer;
+        SizeT size;
+
+        if ( FileSystem::Load( fileName, buffer, size ) )
+        {
+            U8 * ptr = (U8*)buffer;
+
+            SizeT count     = *((U32*)ptr);
+            ptr            += sizeof(U32);
+
+            m_samplers.Reserve( count );
+            while ( count )
+            {
+                SamplerDesc desc = *((SamplerDesc*)ptr);
+
+                m_samplers.PushBack( RenderDevice::CreateSampler( desc.m_min, desc.m_mag, desc.m_mip, desc.m_wrap ) );
+                --count;
             }
 
-            LoadProgram( program );
+            UnknownAllocator::Deallocate( buffer );
         }
     }
 
@@ -275,6 +369,58 @@ namespace Graphic
                     program.m_handle = RenderDevice::CreateProgramBinary( buffer, size ); 
                     UnknownAllocator::Deallocate( buffer );
                 }
+            }
+        }
+    }
+
+    void ProgramCache::LoadProgramSets()
+    {
+        m_programSets.Resize( m_programs.Size() * maxProgramSetCount );
+
+        for ( SizeT i=0; i<m_programs.Size(); ++i )
+        {
+            Program& program = m_programs[i];
+
+            PathString fileName = m_materialPath;
+            fileName += program.m_name;
+            fileName += ".bin";
+
+            SizeT handle = i << 4;
+
+            void * buffer;
+            SizeT size;
+
+            if ( FileSystem::Load( fileName, buffer, size ) )
+            {
+                U8 * ptr = (U8*)buffer;
+
+                SizeT samplerCount  = *((U32*)ptr);
+                ptr                 += sizeof(U32);
+
+                for ( program.m_samplerCount=0; program.m_samplerCount<samplerCount; ++program.m_samplerCount )
+                {
+                    program.m_samplers[ program.m_samplerCount ]    = *((U32*)ptr);
+                    ptr                                             += sizeof(U32);
+                }
+
+                SizeT setSize   = *((U32*)ptr);
+                ptr             += sizeof(U32);
+
+                SizeT setCount  = *((U32*)ptr);
+                ptr             += sizeof(U32);
+
+                for ( program.m_setCount=0; program.m_setCount<setCount; ++program.m_setCount )
+                {
+                    ProgramSet& set     = m_programSets[ handle + program.m_setCount ];
+
+                    set.m_id            = *((U32*)ptr);
+                    ptr                 += sizeof(U32);
+
+                    set.m_uniformBuffer = RenderDevice::CreateUniformBuffer( setSize, ptr, BU_STATIC );
+                    ptr                 += setSize;                    
+                }
+
+                UnknownAllocator::Deallocate( buffer );
             }
         }
     }
