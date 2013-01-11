@@ -6,6 +6,8 @@
 #include <vector>
 #include <map>
 
+#include <algorithm>
+
 #include <cassert>
 
 #if defined( CARBON_PLATFORM_WIN32 )
@@ -102,6 +104,22 @@ bool FindFiles( const char * searchStr, std::vector< std::string >& fileNames, b
 
     return true;
 }
+
+unsigned int HashString( const char * str )
+{
+    // FNV hash
+    // http://eternallyconfuzzled.com/tuts/algorithms/jsw_tut_hashing.aspx
+    // Thx !
+    //
+    unsigned int h = 2166136261;
+
+    char c;
+    while ( (c = *(++str)) != 0 ) // be sure that the string ends by '\0'
+    {
+        h = ( h * 16777619 ) ^ c;
+    }
+    return h;
+};
 
 /*enum ParseState
 {
@@ -1175,7 +1193,7 @@ bool BuildMesh( const char * outFilename, int options )
 }
 */
 
-const char samplersFileName[] = "samplers.xml";
+const char samplersFileName[] = "samplers";
 
 enum FilterType
 {
@@ -1203,14 +1221,14 @@ struct Sampler
 
     struct data
     {
-        unsigned min    : 1;
-        unsigned mag    : 1;
-        unsigned mip    : 2;
-        unsigned wrap   : 2;
+        unsigned char min   : 1;
+        unsigned char mag   : 1;
+        unsigned char mip   : 2;
+        unsigned char wrap  : 2;
     } d;
 };
 
-std::vector< Sampler > samplerList;
+std::vector< Sampler > samplers;
 
 void startElementSamplers( void * ctx, const xmlChar * name, const xmlChar ** atts )
 {
@@ -1255,11 +1273,15 @@ void startElementSamplers( void * ctx, const xmlChar * name, const xmlChar ** at
                 else if ( strcmp( str, "clamp" ) == 0 )
                     sampler.d.wrap = WT_CLAMP;
             }
+            else
+            {
+                ++a;
+            }
 
             ++a;
         }
 
-        samplerList.push_back( sampler );
+        samplers.push_back( sampler );
     }
 }
 
@@ -1294,6 +1316,7 @@ bool LoadSamplerList( const char * inDir )
 
     std::string filename = inDir;
     filename += samplersFileName;
+    filename += ".xml";
 
     int success = xmlSAXUserParseFile( &SAXHandler, NULL, filename.c_str() );
 
@@ -1313,6 +1336,54 @@ enum ParseState
     FINISH
 };
 
+struct Texture
+{
+    char            id[32];
+    char            sampler[32];
+    unsigned int    layout;
+    char            default[256];
+};
+
+struct Parameter
+{
+    char            id[32];
+    unsigned int    layout;
+    char            default[256];
+    char            desc[256];
+};
+
+struct Description
+{
+    std::vector< Texture >      textures;
+    std::vector< Parameter >    parameters;
+};
+
+struct Value
+{
+    char    ref[32];
+    char    data[256];
+};
+
+struct Set
+{
+    char                    id[32];
+    float                   diffuse[4];
+    float                   specular[4];
+    float                   ambient[4];
+    float                   emission[4];
+    float                   shininess;
+    std::vector< Value >    values;
+};
+
+struct Program
+{
+    char                id[32];
+    Description         desc;
+    std::vector< Set >  sets;
+};
+
+std::vector< Program > programs;
+
 void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** atts )
 {
     ParseState& state = *reinterpret_cast< ParseState * >( ctx );
@@ -1322,6 +1393,10 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
     case START :
         if ( strcmp( (const char*)name, "description" ) == 0 )
         {
+            Set s;
+            s.id[0] = 0;
+            programs.back().sets.push_back( s );
+
             state = DESCRIPTION;
         }
         else if ( strcmp( (const char*)name, "sets" ) == 0 )
@@ -1332,29 +1407,157 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
     case DESCRIPTION :
         if ( strcmp( (const char*)name, "texture" ) == 0 )
         {
+            Texture t;
+
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "id" ) == 0 )
+                {
+                    strcpy( t.id, (const char *)*(++a) );
+                }
+                else if ( strcmp( (const char *)*a, "sampler" ) == 0 )
+                {
+                    strcpy( t.sampler, (const char *)*(++a) );
+                }
+                else if ( strcmp( (const char *)*a, "layout" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%d", &t.layout );
+                }
+                else if ( strcmp( (const char *)*a, "default" ) == 0 )
+                {
+                    strcpy( t.default, (const char *)*(++a) );
+                }
+                else
+                {
+                    ++a;
+                }
+
+                ++a;
+            }
+
+            programs.back().desc.textures.push_back( t );
         }
         else if ( strcmp( (const char*)name, "parameter" ) == 0 )
         {
+            Parameter p;
+            p.desc[0] = 0;
+
+            Value v;
+
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "id" ) == 0 )
+                {
+                    strcpy( p.id, (const char *)*(++a) );
+                    strcpy( v.ref, p.id );
+                }
+                else if ( strcmp( (const char *)*a, "layout" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%d", &p.layout );
+                }
+                else if ( strcmp( (const char *)*a, "default" ) == 0 )
+                {
+                    strcpy( p.default, (const char *)*(++a) );
+                    strcpy( v.data, p.default );
+                }
+                else if ( strcmp( (const char *)*a, "desc" ) == 0 )
+                {
+                    strcpy( p.desc, (const char *)*(++a) );
+                }
+                else
+                {
+                    ++a;
+                }
+
+                ++a;
+            }
+
+            programs.back().desc.parameters.push_back( p );
+            programs.back().sets.back().values.push_back( v );
         }
         break;
     case SETS :
         if ( strcmp( (const char*)name, "set" ) == 0 )
         {
+            Set s;
+            memset( s.diffuse, 0, sizeof(s.diffuse) );
+            memset( s.specular, 0, sizeof(s.diffuse) );
+            memset( s.ambient, 0, sizeof(s.diffuse) );
+            memset( s.emission, 0, sizeof(s.diffuse) );
+            s.shininess = 0.0f;
+
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "id" ) == 0 )
+                {
+                    strcpy( s.id, (const char *)*(++a) );
+                }
+                else if ( strcmp( (const char *)*a, "diffuse" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%f %f %f %f", s.diffuse, s.diffuse+1, s.diffuse+2, s.diffuse+3 );
+                }
+                else if ( strcmp( (const char *)*a, "specular" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%f %f %f %f", s.specular, s.specular+1, s.specular+2, s.specular+3 );
+                }
+                else if ( strcmp( (const char *)*a, "ambient" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%f %f %f %f", s.ambient, s.ambient+1, s.ambient+2, s.ambient+3 );
+                }
+                else if ( strcmp( (const char *)*a, "emission" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%f %f %f %f", s.emission, s.emission+1, s.emission+2, s.emission+3 );
+                }
+                else if ( strcmp( (const char *)*a, "shininess" ) == 0 )
+                {
+                    sscanf( (const char *)*(++a), "%f", &s.shininess );
+                }
+                else
+                {
+                    ++a;
+                }
+
+                ++a;
+            }
+
+            programs.back().sets.push_back( s );
+
             state = SET;
         }
         break;
     case SET :
         if ( strcmp( (const char*)name, "value" ) == 0 )
         {
+            Value v;
+
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "ref" ) == 0 )
+                {
+                    strcpy( v.ref, (const char *)*(++a) );
+                }
+                else
+                {
+                    ++a;
+                }
+
+                ++a;
+            }
+
+            programs.back().sets.back().values.push_back( v );
+
             state = VALUE;
-        }
-        else if ( strcmp( (const char*)name, "phong" ) == 0 )
-        {
         }
         break;
     case FINISH :
         if ( strcmp( (const char*)name, "program" ) == 0 )
         {
+            programs.push_back( Program() );
+
             state = START;
         }
         break;
@@ -1408,6 +1611,9 @@ void endElementPrograms( void * ctx, const xmlChar * name )
     case VALUE :
         if ( strcmp( (const char*)name, "value" ) == 0 )
         {
+            strcpy( programs.back().sets.back().values.back().data, programs_characters.c_str() );
+            programs_characters.clear();
+
             state = SET;
         }
         break;
@@ -1451,19 +1657,25 @@ bool LoadProgramSets( const char * inDir )
     search_str += "*.xml";
 
     std::vector< std::string > filenames;
-    if ( !FindFiles( search_str.c_str(), filenames, true ) )
+    if ( !FindFiles( search_str.c_str(), filenames, false ) )
         return false;
 
     std::vector< std::string >::const_iterator it = filenames.begin();
     std::vector< std::string >::const_iterator end = filenames.end();
     for ( ; it != end; ++it )
     {
-        const char * filename = it->c_str();
-        if ( strcmp( samplersFileName, filename + it->length() - strlen(samplersFileName) ) == 0 )
+        std::string name = it->substr( 0, it->length() - 4 );
+
+        if ( strcmp( samplersFileName, name.c_str() ) == 0 )
             continue;
 
-        if ( xmlSAXUserParseFile( &SAXHandler, &state, filename ) != 0 )
+        std::string filename = inDir;
+        filename += *it;
+
+        if ( xmlSAXUserParseFile( &SAXHandler, &state, filename.c_str() ) != 0 )
             break;
+
+        strcpy( programs.back().id, name.c_str() );
     }
 
     xmlCleanupParser();
@@ -1474,7 +1686,127 @@ bool LoadProgramSets( const char * inDir )
 
 bool BuildMaterials( const char * outDir )
 {
-    return false;
+    // Compile sampler list
+    {
+        std::string filename = outDir;
+        filename += samplersFileName;
+        filename += ".bin";
+
+        if ( !BuildDirectory( filename.c_str() ) )
+        {
+            return false;
+        }
+
+        FILE *fp;
+
+        if (fopen_s(&fp, filename.c_str(), "wb"))
+        {
+            return false;
+        }
+
+        unsigned int sampler_count = samplers.size();
+
+        fwrite(&sampler_count,1,4,fp);
+
+        std::vector< Sampler >::const_iterator samplerIt    = samplers.cbegin();
+        std::vector< Sampler >::const_iterator samplerItEnd = samplers.cend();
+        for ( ; samplerIt != samplerItEnd; ++samplerIt )
+        {
+            fwrite( &samplerIt->d, 1, sizeof(Sampler::data), fp );
+        }
+
+        fclose(fp);
+    }
+
+    // Compile program list
+    std::vector< Program >::const_iterator programIt    = programs.cbegin();
+    std::vector< Program >::const_iterator programItEnd = programs.cend();
+    for ( ; programIt != programItEnd; ++programIt )
+    {
+        const Program& prg = *programIt;
+
+        std::string filename = outDir;
+        filename += prg.id;
+        filename += ".bin";
+
+        if ( !BuildDirectory( filename.c_str() ) )
+        {
+            return false;
+        }
+
+        FILE *fp;
+
+        if (fopen_s(&fp, filename.c_str(), "wb"))
+        {
+            return false;
+        }
+
+        unsigned int textureCount = prg.desc.textures.size();
+
+        fwrite( &textureCount, 1, 4, fp );
+
+        std::vector< Texture >::const_iterator textureIt    = prg.desc.textures.cbegin();
+        std::vector< Texture >::const_iterator textureItEnd = prg.desc.textures.cend();
+        for ( ; textureIt != textureItEnd; ++textureIt )
+        {
+            unsigned int i=0;
+            for ( ; i<samplers.size(); ++i )
+            {
+                if ( strcmp( textureIt->sampler, samplers[i].id ) == 0 )
+                {
+                    fwrite( &i, 1, 4, fp );
+                    break;
+                }
+            }
+
+            if ( i == samplers.size() )
+            {
+                fclose(fp);
+                return false;
+            }
+        }
+
+        unsigned int setSize = prg.desc.parameters.size() * sizeof(float[4]);
+
+        fwrite( &setSize, 1, 4, fp );
+
+        unsigned int setCount = prg.sets.size();
+        
+        fwrite( &setCount, 1, 4, fp );
+
+        std::vector< Set >::const_iterator setIt    = prg.sets.cbegin();
+        std::vector< Set >::const_iterator setItEnd = prg.sets.cend();
+        for ( ; setIt != setItEnd; ++setIt )
+        {
+            unsigned int id = HashString( setIt->id );
+
+            fwrite( &id, 1, 4, fp );
+
+            float uniform_buffer[512];
+            memset(uniform_buffer,0,setSize);
+
+            std::vector< Value >::const_iterator valueIt    = setIt->values.cbegin();
+            std::vector< Value >::const_iterator valueItEnd = setIt->values.cend();
+            for ( ; valueIt != valueItEnd; ++valueIt )
+            {
+                for ( unsigned int i=0; i<prg.desc.parameters.size(); ++i )
+                {
+                    if ( strcmp( valueIt->ref, prg.desc.parameters[i].id ) == 0 )
+                    {
+                        float * o = uniform_buffer + prg.desc.parameters[i].layout * 4;
+                        sscanf( valueIt->data, "%f %f %f %f", o, o+1, o+2, o+3 );
+                        break;
+                    }
+                }
+            }
+
+            fwrite( &uniform_buffer, 1, setSize, fp );
+        }
+
+        fclose(fp);
+    }
+
+    return true;
 }
 
 bool CompileMaterial( const char * inDir, const char * outDir )
