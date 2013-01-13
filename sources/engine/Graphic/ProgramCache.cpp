@@ -21,10 +21,10 @@ namespace Graphic
 
     struct SamplerDesc
     {
-        FilterType m_min    : 1;
-        FilterType m_mag    : 1;
-        MipType m_mip       : 2;
-        WrapType m_wrap     : 2;
+        unsigned char m_min     : 1;
+        unsigned char m_mag     : 1;
+        unsigned char m_mip     : 2;
+        unsigned char m_wrap    : 2;
     };
 
     const SizeT maxProgramSetCount = 16;
@@ -46,6 +46,7 @@ namespace Graphic
         BuildCache();
 
         m_programCache = 0;
+        memset( &m_samplerCache, -1, sizeof(m_samplerCache) );
         m_samplerCacheCount = 0;
         m_uniformBufferCache = 0;
 
@@ -80,6 +81,7 @@ namespace Graphic
             {
                 RenderDevice::DeleteProgram( it->m_handle );
             }
+            m_programs.Clear();
         }
         // Clear program sets
         {
@@ -104,12 +106,27 @@ namespace Graphic
 
     ProgramHandle ProgramCache::GetProgram( const Char * name, const Char * set ) const
     {
-        U32 nameId = CreateId( name );
+        CARBON_ASSERT( name );
+        CARBON_ASSERT( set );
 
-        ProgramHandle handle = FindById( nameId ) << 4;
-
-        return handle;
+        return GetProgram( CreateId( name ), CreateId( set ) );
     }
+
+    ProgramHandle ProgramCache::GetProgram( U32 nameId, U32 setId ) const
+    {
+        ProgramArray::ConstIterator prg = Find( nameId );
+
+        ProgramHandle handle = ( prg - m_programs.Begin() ) << 4;
+
+        if ( setId == CreateId( "" ) )
+            return handle;
+
+        ProgramSetArray::ConstIterator it = m_programSets.Begin() + handle;
+        ProgramSetArray::ConstIterator end = it + prg->m_setCount;
+        for ( ; it != end && it->m_id != setId; ++it );
+
+        return it - m_programSets.Begin();
+    };
 
     void ProgramCache::UseProgram( ProgramHandle handle )
     {
@@ -171,17 +188,12 @@ namespace Graphic
             *(name.End()) = 0;
 
             U32 id = CreateId( name.ConstPtr() );
-            SizeT index = FindById( id );
+            ProgramArray::Iterator program = Find( id );
 
-            Program * program = 0;
-            if ( index == ms_invalidHandle )
+            if ( program == m_programs.End() )
             {
                 m_programs.PushBack( Program( id, typeMask, name.ConstPtr() ) );
                 program = m_programs.End() - 1;
-            }
-            else
-            {
-                program = &m_programs[ index ];
             }
 
             program->m_type |= typeMask;
@@ -254,9 +266,10 @@ namespace Graphic
             m_samplers.Reserve( count );
             while ( count )
             {
-                SamplerDesc desc = *((SamplerDesc*)ptr);
+                SamplerDesc desc    = *((SamplerDesc*)ptr);
+                ptr                 += sizeof(SamplerDesc);
 
-                m_samplers.PushBack( RenderDevice::CreateSampler( desc.m_min, desc.m_mag, desc.m_mip, desc.m_wrap ) );
+                m_samplers.PushBack( RenderDevice::CreateSampler( (FilterType)desc.m_min, (FilterType)desc.m_mag, (MipType)desc.m_mip, (WrapType)desc.m_wrap ) );
                 --count;
             }
 
@@ -390,38 +403,44 @@ namespace Graphic
             void * buffer;
             SizeT size;
 
-            if ( FileSystem::Load( fileName, buffer, size ) )
+            CARBON_ASSERT( FileSystem::Load( fileName, buffer, size ) );
+
+            U8 * ptr = (U8*)buffer;
+
+            SizeT samplerCount  = *((U32*)ptr);
+            ptr                 += sizeof(U32);
+
+            for ( program.m_samplerCount=0; program.m_samplerCount<samplerCount; ++program.m_samplerCount )
             {
-                U8 * ptr = (U8*)buffer;
-
-                SizeT samplerCount  = *((U32*)ptr);
-                ptr                 += sizeof(U32);
-
-                for ( program.m_samplerCount=0; program.m_samplerCount<samplerCount; ++program.m_samplerCount )
-                {
-                    program.m_samplers[ program.m_samplerCount ]    = *((U32*)ptr);
-                    ptr                                             += sizeof(U32);
-                }
-
-                SizeT setSize   = *((U32*)ptr);
-                ptr             += sizeof(U32);
-
-                SizeT setCount  = *((U32*)ptr);
-                ptr             += sizeof(U32);
-
-                for ( program.m_setCount=0; program.m_setCount<setCount; ++program.m_setCount )
-                {
-                    ProgramSet& set     = m_programSets[ handle + program.m_setCount ];
-
-                    set.m_id            = *((U32*)ptr);
-                    ptr                 += sizeof(U32);
-
-                    set.m_uniformBuffer = RenderDevice::CreateUniformBuffer( setSize, ptr, BU_STATIC );
-                    ptr                 += setSize;                    
-                }
-
-                UnknownAllocator::Deallocate( buffer );
+                program.m_samplers[ program.m_samplerCount ]    = *((U32*)ptr);
+                ptr                                             += sizeof(U32);
             }
+
+            SizeT setSize   = *((U32*)ptr);
+            ptr             += sizeof(U32);
+
+            SizeT setCount  = *((U32*)ptr);
+            ptr             += sizeof(U32);
+
+            for ( program.m_setCount=0; program.m_setCount<setCount; ++program.m_setCount )
+            {
+                ProgramSet& set = m_programSets[ handle + program.m_setCount ];
+
+                set.m_id    = *((U32*)ptr);
+                ptr         += sizeof(U32);
+
+                if ( setSize )
+                {
+                    set.m_uniformBuffer = RenderDevice::CreateUniformBuffer( setSize, ptr, BU_STATIC );
+                    ptr                 += setSize;
+                }
+                else
+                {
+                    set.m_uniformBuffer = 0;
+                }
+            }
+
+            UnknownAllocator::Deallocate( buffer );
         }
     }
 
@@ -430,16 +449,22 @@ namespace Graphic
         return Core::HashString( str );
     }
 
-    ProgramHandle ProgramCache::FindById( U32 id ) const
+    ProgramCache::ProgramArray::ConstIterator ProgramCache::Find( U32 id ) const
     {
         ProgramArray::ConstIterator it  = m_programs.Begin();
         ProgramArray::ConstIterator end = m_programs.End();
-        for ( ; it != end; ++it )
-        {
-            if ( it->m_id == id )
-                return it - m_programs.Begin();
-        }
-        return ms_invalidHandle;
+        for ( ; it != end && it->m_id != id ; ++it );
+
+        return it;
+    }
+
+    ProgramCache::ProgramArray::Iterator ProgramCache::Find( U32 id )
+    {
+        ProgramArray::Iterator it  = m_programs.Begin();
+        ProgramArray::Iterator end = m_programs.End();
+        for ( ; it != end && it->m_id != id ; ++it );
+
+        return it;
     }
 
     void ProgramCache::SetProgram( Handle program )
@@ -457,10 +482,10 @@ namespace Graphic
         {
             for ( SizeT i=0; i<count; ++i )
             {
-                if ( samplers[i] != m_samplers[i] )
+                if ( samplers[i] != m_samplerCache[i] )
                 {
-                    RenderDevice::BindTexture( samplers[i], i );
-                    m_samplers[i] = samplers[ i ];
+                    RenderDevice::BindSampler( m_samplers[ samplers[i] ], i );
+                    m_samplerCache[i] = samplers[ i ];
                 }
             }
         }
@@ -468,17 +493,17 @@ namespace Graphic
         {
             for ( SizeT i=0; i<m_samplerCacheCount; ++i )
             {
-                if ( samplers[i] != m_samplers[i] )
+                if ( samplers[i] != m_samplerCache[i] )
                 {
-                    RenderDevice::BindTexture( samplers[ i ], i );
-                    m_samplers[i] = samplers[ i ];
+                    RenderDevice::BindSampler( m_samplers[ samplers[i] ], i );
+                    m_samplerCache[i] = samplers[ i ];
                 }
             }
 
             for ( SizeT i=m_samplerCacheCount; i<count; ++i )
             {
-                RenderDevice::BindTexture( m_samplers[ i ], i );
-                m_samplers[i] = samplers[ i ];
+                RenderDevice::BindSampler( m_samplers[ samplers[i] ], i );
+                m_samplerCache[i] = samplers[ i ];
             }
         }
 

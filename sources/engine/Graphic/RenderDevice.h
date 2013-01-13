@@ -54,34 +54,34 @@ namespace Graphic
 
     enum BufferAccess
     {
-        BA_READ_ONLY,
+        BA_READ_ONLY = 0,
         BA_WRITE_ONLY,
         BA_READ_WRITE
     };
 
     enum PrimitiveType
     {
-        PT_POINTS,
+        PT_POINTS = 0,
         PT_LINES,
         PT_TRIANGLES
     };
 
     enum FilterType
     {
-        FT_POINT,
+        FT_POINT = 0,
         FT_LINEAR
     };
 
     enum MipType
     {
-        MT_NONE,
+        MT_NONE = 0,
         MT_POINT,
         MT_LINEAR
     };
 
     enum WrapType
     {
-        WT_REPEAT,
+        WT_REPEAT = 0,
         WT_CLAMP,
         WT_MIRROR
     };
