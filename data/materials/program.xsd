@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema" >
 
+<xs:simpleType name="TextureSemanticType">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="color"/>
+        <xs:enumeration value="normal"/>
+        <xs:enumeration value="ambient"/>
+        <xs:enumeration value="gloss"/>
+    </xs:restriction>
+</xs:simpleType>
+
 <xs:complexType name="TextureType">
     <xs:attribute name="id" type="xs:ID" use="required"/>
     <xs:attribute name="sampler" type="xs:string" use="required"/>
     <xs:attribute name="layout" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="semantic" type="TextureSemanticType" use="optional"/>
     <xs:attribute name="default" type="xs:string" use="required"/>
 </xs:complexType>
 
