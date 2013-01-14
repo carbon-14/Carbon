@@ -266,11 +266,18 @@ enum ParseState
     FINISH
 };
 
+template< typename T >
+bool CmpByLayout( const T& l, const T& r )
+{
+    return l.layout < r.layout;
+}
+
 struct Texture
 {
     char            id[32];
     char            sampler[32];
     unsigned int    layout;
+    char            semantic[32];
     char            default[256];
 };
 
@@ -280,6 +287,11 @@ struct Parameter
     unsigned int    layout;
     char            desc[256];
 };
+
+bool CmpParameter( const Texture& l, const Texture& r )
+{
+    return l.layout < r.layout;
+}
 
 struct Description
 {
@@ -377,6 +389,7 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
         if ( strcmp( (const char*)name, "texture" ) == 0 )
         {
             Texture t;
+            t.semantic[0] = 0;
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -392,6 +405,10 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
                 else if ( strcmp( (const char *)*a, "layout" ) == 0 )
                 {
                     sscanf( (const char *)*(++a), "%d", &t.layout );
+                }
+                else if ( strcmp( (const char *)*a, "semantic" ) == 0 )
+                {
+                    strcpy( t.semantic, (const char *)*(++a) );
                 }
                 else if ( strcmp( (const char *)*a, "default" ) == 0 )
                 {
@@ -697,11 +714,14 @@ bool BuildMaterials( const char * outDir )
     }
 
     // Compile program list
-    std::vector< Program >::const_iterator programIt    = programs.cbegin();
-    std::vector< Program >::const_iterator programItEnd = programs.cend();
+    std::vector< Program >::iterator programIt    = programs.begin();
+    std::vector< Program >::iterator programItEnd = programs.end();
     for ( ; programIt != programItEnd; ++programIt )
     {
-        const Program& prg = *programIt;
+        Program& prg = *programIt;
+
+        std::sort( prg.desc.textures.begin(), prg.desc.textures.end(), CmpByLayout< Texture > );
+        std::sort( prg.desc.parameters.begin(), prg.desc.parameters.end(), CmpByLayout< Parameter > );
 
         std::string filename = outDir;
         filename += prg.id;
