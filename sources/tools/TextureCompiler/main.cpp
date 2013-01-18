@@ -9,7 +9,7 @@ int main( int argc, char* argv[] )
         goto exit;
 
     char * inFile = argv[--argc];
-    char * outFile = argv[--argc];
+    char * root = argv[--argc];
 
     int options = 0;
     while ( argc > 2 )
@@ -35,7 +35,7 @@ int main( int argc, char* argv[] )
     else
         goto exit;
 
-    if ( ! CompileTexture( inFile, outFile, profile, options ) )
+    if ( ! CompileTexture( inFile, root, profile, options ) )
     {
         printf( "COMPILATION FAILED !\n" );
         return EXIT_FAILURE;
@@ -44,11 +44,11 @@ int main( int argc, char* argv[] )
     return EXIT_SUCCESS;
 
 exit :
-    printf( "usage: TextureCompiler [profile] [-cmp|-mipmap] <output> <input>\n\n" );
+    printf( "usage: TextureCompiler [profile] [-cmp|-mipmap] <root> <input>\n\n" );
     printf( "    profile    color, linear, normal       ( required )\n" );
     printf( "    cmp        compress texture            ( optional )\n" );
     printf( "    mipmap     generate mip map levels     ( optional )\n" );
-    printf( "    output     output file name            ( required )\n" );
+    printf( "    root       root directory              ( required )\n" );
     printf( "    input      input file name             ( required )\n" );
     return 0;
 }

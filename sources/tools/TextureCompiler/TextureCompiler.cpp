@@ -689,8 +689,11 @@ bool BuildTexture( const char * outFilename, TextureProfile profile, int options
     return true;
 }
 
-bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, int options )
+bool CompileTexture( const char * filename, const char * dir, TextureProfile profile, int options )
 {
+    char inFilename[256];
+    sprintf( inFilename, "%s/data/%s", dir, filename );
+
     size_t len = strlen( inFilename );
 
     if ( len < 5 )
@@ -701,8 +704,8 @@ bool CompileTexture( const char * inFilename, const char * outFilename, TextureP
     // only png files for now
     if ( strcmp( ext, "png" ) == 0 || strcmp( ext, "PNG" ) == 0 )
     {
-         if ( ! LoadPNG( inFilename ) )
-             return false;
+        if ( ! LoadPNG( inFilename ) )
+            return false;
     }
     else
     {
@@ -720,6 +723,11 @@ bool CompileTexture( const char * inFilename, const char * outFilename, TextureP
         free( data );
         return false;
     }
+
+    char outFilename[256];
+    sprintf( outFilename, "%s/cache/%s", dir, filename );
+    len = strlen( outFilename );
+    strcpy( outFilename + len - 3, "btx" );
 
     bool success = BuildTexture( outFilename, profile, options );
 

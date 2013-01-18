@@ -60,6 +60,6 @@ enum OptionType
     OT_MIPMAPGEN    = 1 << 1
 };
 
-bool CompileTexture( const char * inFilename, const char * outFilename, TextureProfile profile, int options );
+bool CompileTexture( const char * filename, const char * dir, TextureProfile profile, int options );
 
 #endif // _TEXTURECOMPILER_TEXTURECOMPILER_H
