@@ -17,6 +17,6 @@ enum OptionType
     OT_GENERATE_TANGENT_SPACE   = CT_COUNT
 };
 
-bool CompileMesh( const char * inFilename, const char * outFilename, int options );
+bool CompileMesh( const char * filename, const char * dir, int options );
 
 #endif // _MESHCOMPILER_MESHCOMPILER_H
