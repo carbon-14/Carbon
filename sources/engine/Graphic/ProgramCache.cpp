@@ -1,5 +1,8 @@
 #include "Graphic/ProgramCache.h"
 
+#include "Graphic/MaterialResource.h"
+
+#include "Core/ResourceManager.h"
 #include "Core/FileSystem.h"
 #include "Core/Hash.h"
 #include "Core/Trace.h"
@@ -18,6 +21,7 @@ namespace Graphic
     const Char Extensions[ ST_COUNT ][ 4 ] = { ".vs", ".fs", ".gs" };
 
     const char samplersFileName[] = "samplers.bin";
+    const char materialDir[] = "materials";
 
     struct SamplerDesc
     {
@@ -31,9 +35,21 @@ namespace Graphic
 
     Bool dirtyCache = false;
 
-    const ProgramHandle ProgramCache::ms_invalidHandle = -1;
+    const ProgramHandle             ProgramCache::ms_invalidHandle = -1;
 
-    Bool ProgramCache::Initialize( const Char * shaderPath, const Char * materialPath )
+    Core::PathString                ProgramCache::m_dataPath;
+    Core::PathString                ProgramCache::m_cachePath;
+    Core::PathString                ProgramCache::m_materialPath;
+
+    ProgramCache::ProgramArray      ProgramCache::m_programs;
+    ProgramCache::ProgramSetArray   ProgramCache::m_programSets;
+    ProgramCache::SamplerArray      ProgramCache::m_samplers;
+
+    Handle                          ProgramCache::m_programCache;
+    Handle                          ProgramCache::m_samplerCache[ RenderDevice::ms_maxTextureUnitCount ];
+    Handle                          ProgramCache::m_uniformBufferCache;
+
+    Bool ProgramCache::Initialize( const Char * shaderPath )
     {
         CARBON_ASSERT( m_dataPath.Empty() );
         CARBON_ASSERT( m_cachePath.Empty() );
@@ -41,13 +57,12 @@ namespace Graphic
 
         FileSystem::BuildPathName( shaderPath, m_dataPath, FileSystem::PT_DATA );
         FileSystem::BuildPathName( shaderPath, m_cachePath, FileSystem::PT_CACHE );
-        FileSystem::BuildPathName( materialPath, m_materialPath, FileSystem::PT_CACHE );
+        FileSystem::BuildPathName( materialDir, m_materialPath, FileSystem::PT_CACHE );
 
         BuildCache();
 
         m_programCache = 0;
-        memset( &m_samplerCache, -1, sizeof(m_samplerCache) );
-        m_samplerCacheCount = 0;
+        memset( &m_samplerCache, 0, sizeof(m_samplerCache) );
         m_uniformBufferCache = 0;
 
         return true;
@@ -56,7 +71,10 @@ namespace Graphic
     void ProgramCache::Destroy()
     {
         SetProgram( 0 );
-        SetSamplers( NULL, 0 );
+        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
+        {
+            SetSampler( 0, i );
+        }
         SetUniformBuffer( 0 );
 
         m_dataPath.Clear();
@@ -104,15 +122,12 @@ namespace Graphic
         }
     }
 
-    ProgramHandle ProgramCache::GetProgram( const Char * name, const Char * set ) const
+    U32 ProgramCache::CreateId( const Char * str )
     {
-        CARBON_ASSERT( name );
-        CARBON_ASSERT( set );
-
-        return GetProgram( CreateId( name ), CreateId( set ) );
+        return Core::HashString( str );
     }
 
-    ProgramHandle ProgramCache::GetProgram( U32 nameId, U32 setId ) const
+    ProgramHandle ProgramCache::GetProgram( U32 nameId, U32 setId )
     {
         ProgramArray::ConstIterator prg = Find( nameId );
 
@@ -125,8 +140,19 @@ namespace Graphic
         ProgramSetArray::ConstIterator end = it + prg->m_setCount;
         for ( ; it != end && it->m_id != setId; ++it );
 
+        CARBON_ASSERT( it != end );
+
         return it - m_programSets.Begin();
     };
+
+    MaterialResource * ProgramCache::CreateMaterial( U32 materialId )
+    {
+        Char filename[256];
+
+        Core::StringUtils::FormatString( filename, 256, "%s/%08x.bin", materialDir, materialId );
+
+        return Core::ResourceManager::Create< MaterialResource >( filename );
+    }
 
     void ProgramCache::UseProgram( ProgramHandle handle )
     {
@@ -135,7 +161,11 @@ namespace Graphic
         const Program& p = m_programs[ handle >> 4 ];
 
         SetProgram( p.m_handle );
-        SetSamplers( p.m_samplers, p.m_samplerCount );
+        for ( SizeT i=0; i<p.m_samplerCount; ++i )
+        {
+            const LayoutObject& sampler = p.m_samplers[i];
+            SetSampler( sampler.m_handle, sampler.m_index );
+        }
         SetUniformBuffer( m_programSets[ handle ].m_uniformBuffer );
     }
 
@@ -149,7 +179,7 @@ namespace Graphic
         LoadSamplerList();
 
         PathString searchStr = m_dataPath;
-        searchStr += "*";
+        searchStr += "/*";
 
         Array< PathString > shaderFileNames;
         FileSystem::Find( searchStr.ConstPtr(), shaderFileNames, false );
@@ -212,6 +242,13 @@ namespace Graphic
 
     void ProgramCache::ReloadCache()
     {
+        SetProgram( 0 );
+        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
+        {
+            SetSampler( 0, i );
+        }
+        SetUniformBuffer( 0 );
+
         // Reload samplers
         {
             SamplerArray::Iterator it   = m_samplers.Begin();
@@ -251,6 +288,7 @@ namespace Graphic
     void ProgramCache::LoadSamplerList()
     {
         PathString fileName = m_materialPath;
+        fileName += "/";
         fileName += samplersFileName;
 
         void * buffer;
@@ -305,6 +343,7 @@ namespace Graphic
             if ( program.m_type & mask )
             {
                 PathString fileName = m_dataPath;
+                fileName += "/";
                 fileName += program.m_name;
                 fileName += Extensions[ i ];
 
@@ -330,6 +369,7 @@ namespace Graphic
         if ( program.m_handle )
         {
             PathString fileName = m_cachePath;
+            fileName += "/";
             fileName += program.m_name;
             fileName += ".bin";
 
@@ -344,12 +384,14 @@ namespace Graphic
     void ProgramCache::LoadProgramFromBinaries( Program& program )
     {
         PathString binFileName = m_cachePath;
+        binFileName += "/";
         binFileName += program.m_name;
         binFileName += ".bin";
 
         if ( FileSystem::Exists( binFileName ) )
         {
             PathString searchStr = m_dataPath;
+            searchStr += "/";
             searchStr += program.m_name;
             searchStr += ".*";
 
@@ -395,6 +437,7 @@ namespace Graphic
             Program& program = m_programs[i];
 
             PathString fileName = m_materialPath;
+            fileName += "/";
             fileName += program.m_name;
             fileName += ".bin";
 
@@ -403,7 +446,7 @@ namespace Graphic
             void * buffer;
             SizeT size;
 
-            CARBON_ASSERT( FileSystem::Load( fileName, buffer, size ) );
+            FileSystem::Load( fileName, buffer, size );
 
             U8 * ptr = (U8*)buffer;
 
@@ -412,8 +455,10 @@ namespace Graphic
 
             for ( program.m_samplerCount=0; program.m_samplerCount<samplerCount; ++program.m_samplerCount )
             {
-                program.m_samplers[ program.m_samplerCount ]    = *((U32*)ptr);
-                ptr                                             += sizeof(U32);
+                program.m_samplers[ program.m_samplerCount ].m_index    = *((U32*)ptr);
+                ptr                                                     += sizeof(U32);
+                program.m_samplers[ program.m_samplerCount ].m_handle   = m_samplers[ *((U32*)ptr) ];
+                ptr                                                     += sizeof(U32);
             }
 
             SizeT setSize   = *((U32*)ptr);
@@ -444,20 +489,6 @@ namespace Graphic
         }
     }
 
-    U32 ProgramCache::CreateId( const Char * str )
-    {
-        return Core::HashString( str );
-    }
-
-    ProgramCache::ProgramArray::ConstIterator ProgramCache::Find( U32 id ) const
-    {
-        ProgramArray::ConstIterator it  = m_programs.Begin();
-        ProgramArray::ConstIterator end = m_programs.End();
-        for ( ; it != end && it->m_id != id ; ++it );
-
-        return it;
-    }
-
     ProgramCache::ProgramArray::Iterator ProgramCache::Find( U32 id )
     {
         ProgramArray::Iterator it  = m_programs.Begin();
@@ -476,38 +507,13 @@ namespace Graphic
         }
     }
 
-    void ProgramCache::SetSamplers( const SizeT * samplers, SizeT count )
+    void ProgramCache::SetSampler( Handle sampler, SizeT index )
     {
-        if ( count <= m_samplerCacheCount )
+        if ( sampler != m_samplerCache[index] )
         {
-            for ( SizeT i=0; i<count; ++i )
-            {
-                if ( samplers[i] != m_samplerCache[i] )
-                {
-                    RenderDevice::BindSampler( m_samplers[ samplers[i] ], i );
-                    m_samplerCache[i] = samplers[ i ];
-                }
-            }
+            RenderDevice::BindSampler( sampler, index );
+            m_samplerCache[index] = sampler;
         }
-        else
-        {
-            for ( SizeT i=0; i<m_samplerCacheCount; ++i )
-            {
-                if ( samplers[i] != m_samplerCache[i] )
-                {
-                    RenderDevice::BindSampler( m_samplers[ samplers[i] ], i );
-                    m_samplerCache[i] = samplers[ i ];
-                }
-            }
-
-            for ( SizeT i=m_samplerCacheCount; i<count; ++i )
-            {
-                RenderDevice::BindSampler( m_samplers[ samplers[i] ], i );
-                m_samplerCache[i] = samplers[ i ];
-            }
-        }
-
-        m_samplerCacheCount = count;
     }
 
     void ProgramCache::SetUniformBuffer( Handle uniformBuffer )

@@ -27,7 +27,7 @@ namespace Graphic
         RenderDevice::DestroyTexture( m_texture );
     }
 
-    Handle TextureResource::GetTexture()
+    Handle TextureResource::GetTexture() const
     {
         return m_texture;
     }

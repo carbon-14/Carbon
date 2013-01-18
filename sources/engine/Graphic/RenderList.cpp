@@ -83,8 +83,16 @@ namespace Graphic
             const RenderElement& e = *it;
 
             renderCache.SetProgram( e.m_program );
-            renderCache.SetTextures( e.m_textures, e.m_textureCount );
-            renderCache.SetUniformBuffers( e.m_uniformBuffers, e.m_uniformBufferCount );
+            for ( SizeT i=0; i<e.m_textureCount; ++i )
+            {
+                const LayoutObject& texture = e.m_textures[i];
+                renderCache.SetTexture( texture.m_handle, texture.m_index );
+            }
+            for ( SizeT i=0; i<e.m_uniformBufferCount; ++i )
+            {
+                const LayoutObject& uniformBuffer = e.m_uniformBuffers[i];
+                renderCache.SetUniformBuffer( uniformBuffer.m_handle, uniformBuffer.m_index );
+            }
 
             e.m_geometry->Draw();
         }

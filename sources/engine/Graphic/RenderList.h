@@ -14,9 +14,9 @@ namespace Graphic
     {
         ProgramHandle       m_program;
         RenderGeometry *    m_geometry;
-        Handle              m_textures[ RenderDevice::ms_maxTextureUnitCount ];
+        LayoutObject        m_textures[ RenderDevice::ms_maxTextureUnitCount ];
         SizeT               m_textureCount;
-        Handle              m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
+        LayoutObject        m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
         SizeT               m_uniformBufferCount;
     };
 

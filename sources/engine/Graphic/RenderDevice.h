@@ -184,6 +184,12 @@ namespace Graphic
         SizeT               m_count;
     };
 
+    struct LayoutObject
+    {
+        Handle  m_handle;
+        SizeT   m_index;
+    };
+
     class _GraphicExport IRenderDevice
     {
     public:

@@ -14,20 +14,27 @@ namespace Graphic
     class _GraphicExport MaterialResource : public Core::Resource
     {
     public:
+        struct Texture
+        {
+            Core::SharedPtr< TextureResource >  m_resource;
+            SizeT                               m_index;
+        };
+
+    public:
         MaterialResource();
         ~MaterialResource();
 
-        ProgramHandle           GetProgram() const;
-        const TextureResource * GetTexture( SizeT index ) const;
-        SizeT                   GetTextureCount() const;
+        ProgramHandle   GetProgram() const;
+        const Texture&  GetTexture( SizeT index ) const;
+        SizeT           GetTextureCount() const;
 
     protected:
         void Load( const void * data );
 
     private:
-        ProgramHandle                       m_program;
-        Core::SharedPtr< TextureResource >  m_textures[ RenderDevice::ms_maxTextureUnitCount ];
-        SizeT                               m_textureCount;
+        ProgramHandle   m_program;
+        Texture         m_textures[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT           m_textureCount;
     };
 }
 

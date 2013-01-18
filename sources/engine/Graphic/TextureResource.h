@@ -15,7 +15,7 @@ namespace Graphic
         TextureResource();
         ~TextureResource();
 
-        Handle GetTexture();
+        Handle GetTexture() const;
 
     protected:
         void Load( const void * data );

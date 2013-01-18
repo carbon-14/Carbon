@@ -2,11 +2,8 @@
 
 namespace Graphic
 {
-    RenderCache::RenderCache( ProgramCache& programCache )
-        : m_programCache( programCache )
-        , m_program( ProgramCache::ms_invalidHandle )
-        , m_textureCount( 0 )
-        , m_uniformBufferCount( 0 )
+    RenderCache::RenderCache()
+        : m_program( ProgramCache::ms_invalidHandle )
         , m_clearDepth( 1.0f )
         , m_clearStencil( 0 )
         , m_sRGBWrite( false )
@@ -15,6 +12,16 @@ namespace Graphic
         m_clearColor[1] = 0.0f;
         m_clearColor[2] = 0.0f;
         m_clearColor[3] = 0.0f;
+
+        for ( SizeT i=0; i<RenderDevice::ms_maxUniformBufferCount; ++i )
+        {
+            m_uniformBuffers[i] = 0;
+        }
+
+        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
+        {
+            m_textures[i] = 0;
+        }
     }
 
     RenderCache::~RenderCache()
@@ -31,15 +38,14 @@ namespace Graphic
         for ( SizeT i=0; i<RenderDevice::ms_maxUniformBufferCount; ++i )
         {
             RenderDevice::BindUniformBuffer( 0, i );
+            m_uniformBuffers[i] = 0;
         }
-        m_uniformBufferCount = 0;
 
         for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
         {
             RenderDevice::BindTexture( 0, i );
-            RenderDevice::BindSampler( 0, i );
+            m_textures[i] = 0;
         }
-        m_textureCount = 0;
 
         SetRenderState( RenderState() );
 
@@ -93,7 +99,7 @@ namespace Graphic
     {
         if ( program != m_program )
         {
-            m_programCache.UseProgram( program );
+            ProgramCache::UseProgram( program );
             m_program = program;
         }
     }
@@ -177,71 +183,21 @@ namespace Graphic
         }
     }
 
-    void RenderCache::SetTextures( const Handle * textures, SizeT count )
+    void RenderCache::SetTexture( Handle texture, SizeT index )
     {
-        if ( count <= m_textureCount )
-        {
-            for ( SizeT i=0; i<count; ++i )
-            {
-                if ( textures[i] != m_textures[i] )
-                {
-                    RenderDevice::BindTexture( textures[i], i );
-                    m_textures[i] = textures[ i ];
-                }
-            }
-        }
-        else
-        {
-            for ( SizeT i=0; i<m_textureCount; ++i )
-            {
-                if ( textures[i] != m_textures[i] )
-                {
-                    RenderDevice::BindTexture( textures[ i ], i );
-                    m_textures[i] = textures[ i ];
-                }
-            }
-
-            for ( SizeT i=m_textureCount; i<count; ++i )
-            {
-                RenderDevice::BindTexture( textures[ i ], i );
-                m_textures[i] = textures[ i ];
-            }
-        }
-
-        m_textureCount = count;
+       if ( texture != m_textures[index] )
+       {
+           RenderDevice::BindTexture( texture, index );
+           m_textures[index] = texture;
+       }
     }
 
-    void RenderCache::SetUniformBuffers( const Handle * uniformBuffers, SizeT count )
+    void RenderCache::SetUniformBuffer( Handle uniformBuffer, SizeT index )
     {
-        if ( count <= m_uniformBufferCount )
+        if ( uniformBuffer != m_uniformBuffers[index] )
         {
-            for ( SizeT i=0; i<count; ++i )
-            {
-                if ( uniformBuffers[i] != m_uniformBuffers[i] )
-                {
-                    RenderDevice::BindUniformBuffer( uniformBuffers[ i ], i );
-                    m_uniformBuffers[i] = uniformBuffers[ i ];
-                }
-            }
+            RenderDevice::BindUniformBuffer( uniformBuffer, index );
+            m_uniformBuffers[index] = uniformBuffer;
         }
-        else
-        {
-            for ( SizeT i=0; i<m_uniformBufferCount; ++i )
-            {
-                if ( uniformBuffers[i] != m_uniformBuffers[i] )
-                {
-                    RenderDevice::BindUniformBuffer( uniformBuffers[ i ], i );
-                    m_uniformBuffers[i] = uniformBuffers[ i ];
-                }
-            }
-
-            for ( SizeT i=m_uniformBufferCount; i<count; ++i )
-            {
-                RenderDevice::BindUniformBuffer( uniformBuffers[ i ], i );
-                m_uniformBuffers[i] = uniformBuffers[ i ];
-            }
-        }
-
-        m_uniformBufferCount = count;
     }
 }

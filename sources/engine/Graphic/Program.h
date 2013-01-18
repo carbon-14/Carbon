@@ -22,16 +22,16 @@ namespace Graphic
         Bool operator<( const Program& other )   { return m_id < other.m_id;    }
         Bool operator==( const Program& other )  { return m_id == other.m_id;   }
 
-        U32     m_id;
-        U32     m_type;
-        Char    m_name[32];
+        U32             m_id;
+        U32             m_type;
+        Char            m_name[32];
 
-        Handle  m_handle;
+        Handle          m_handle;
 
-        SizeT   m_samplers[ RenderDevice::ms_maxTextureUnitCount ];
-        SizeT   m_samplerCount;
+        LayoutObject    m_samplers[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT           m_samplerCount;
 
-        SizeT   m_setCount;
+        SizeT           m_setCount;
     };
 }
 

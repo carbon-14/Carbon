@@ -175,8 +175,12 @@ namespace Graphic
             sub_mesh.m_indexCount   = count;
             sub_mesh.m_indexBuffer  = RenderDevice::CreateIndexBuffer( size, ptr, BU_STATIC );
             sub_mesh.m_vertexArray  = RenderDevice::CreateVertexArray( m_vertexDecl, m_vertexBuffer, sub_mesh.m_indexBuffer );
-
             ptr += size;
+
+            U32 materialId = *((U32*)ptr);
+            ptr += sizeof(U32);
+
+            sub_mesh.m_material     = ProgramCache::CreateMaterial( materialId );
         }
     }
 }
