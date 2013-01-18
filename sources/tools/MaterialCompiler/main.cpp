@@ -6,13 +6,12 @@
 
 int main( int argc, char* argv[] )
 {
-    if ( argc != 3 )
+    if ( argc != 2 )
         goto exit;
 
-    char * inDir = argv[--argc];
-    char * outDir = argv[--argc];
+    char * root = argv[--argc];
 
-    if ( ! CompileMaterial( inDir, outDir ) )
+    if ( ! CompileMaterial( root ) )
     {
         printf( "COMPILATION FAILED !\n" );
         return EXIT_FAILURE;
@@ -21,8 +20,7 @@ int main( int argc, char* argv[] )
     return EXIT_SUCCESS;
 
 exit :
-    printf( "usage: MaterialCompiler <output> <input>\n\n" );
-    printf( "    output     output dir name ( required )\n" );
-    printf( "    input      input dir name  ( required )\n" );
+    printf( "usage: MaterialCompiler <root>\n\n" );
+    printf( "    root    root directory ( required )\n" );
     return 0;
 }

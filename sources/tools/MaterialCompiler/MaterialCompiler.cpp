@@ -114,10 +114,9 @@ unsigned int HashString( const char * str )
     //
     unsigned int h = 2166136261;
 
-    char c;
-    while ( (c = *(++str)) != 0 ) // be sure that the string ends by '\0'
+    while ( *(str++) != 0 ) // be sure that the string ends by '\0'
     {
-        h = ( h * 16777619 ) ^ c;
+        h = ( h * 16777619 ) ^ *str;
     }
     return h;
 };
@@ -243,11 +242,10 @@ bool LoadSamplerList( const char * inDir )
         NULL                    //fatalErrorSAXFunc fatalError;
     };
 
-    std::string filename = inDir;
-    filename += samplersFileName;
-    filename += ".xml";
+    char filename[256];
+    sprintf( filename, "%s/%s.xml", inDir, samplersFileName );
 
-    int success = xmlSAXUserParseFile( &SAXHandler, NULL, filename.c_str() );
+    int success = xmlSAXUserParseFile( &SAXHandler, NULL, filename );
 
     xmlCleanupParser();
     xmlMemoryDump();
@@ -287,11 +285,6 @@ struct Parameter
     unsigned int    layout;
     char            desc[256];
 };
-
-bool CmpParameter( const Texture& l, const Texture& r )
-{
-    return l.layout < r.layout;
-}
 
 struct Description
 {
@@ -335,7 +328,7 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
         if ( strcmp( (const char*)name, "description" ) == 0 )
         {
             Set s;
-            s.id[0] = 0;
+            *s.id = 0;
             memset( s.diffuse, 0, sizeof(s.diffuse) );
             memset( s.specular, 0, sizeof(s.diffuse) );
             memset( s.ambient, 0, sizeof(s.diffuse) );
@@ -389,7 +382,7 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
         if ( strcmp( (const char*)name, "texture" ) == 0 )
         {
             Texture t;
-            t.semantic[0] = 0;
+            *t.semantic = 0;
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -427,7 +420,7 @@ void startElementPrograms( void * ctx, const xmlChar * name, const xmlChar ** at
         else if ( strcmp( (const char*)name, "parameter" ) == 0 )
         {
             Parameter p;
-            p.desc[0] = 0;
+            *p.desc = 0;
 
             const xmlChar ** a = atts;
             while ( *a != NULL )
@@ -648,11 +641,11 @@ bool LoadProgramSets( const char * inDir )
 
     ParseState state = FINISH;
 
-    std::string search_str = inDir;
-    search_str += "*.xml";
+    char search_str[256];
+    sprintf( search_str, "%s/*.xml", inDir );
 
     std::vector< std::string > filenames;
-    if ( !FindFiles( search_str.c_str(), filenames, false ) )
+    if ( !FindFiles( search_str, filenames, false ) )
         return false;
 
     std::vector< std::string >::const_iterator it = filenames.begin();
@@ -664,10 +657,10 @@ bool LoadProgramSets( const char * inDir )
         if ( strcmp( samplersFileName, name.c_str() ) == 0 )
             continue;
 
-        std::string filename = inDir;
-        filename += *it;
+        char filename[256];
+        sprintf( filename, "%s/%s", inDir, it->c_str() );
 
-        if ( xmlSAXUserParseFile( &SAXHandler, &state, filename.c_str() ) != 0 )
+        if ( xmlSAXUserParseFile( &SAXHandler, &state, filename ) != 0 )
             break;
 
         strcpy( programs.back().id, name.c_str() );
@@ -683,18 +676,17 @@ bool BuildMaterials( const char * outDir )
 {
     // Compile sampler list
     {
-        std::string filename = outDir;
-        filename += samplersFileName;
-        filename += ".bin";
+        char filename[256];
+        sprintf( filename, "%s/%s.bin", outDir, samplersFileName );
 
-        if ( !BuildDirectory( filename.c_str() ) )
+        if ( !BuildDirectory( filename ) )
         {
             return false;
         }
 
         FILE *fp;
 
-        if (fopen_s(&fp, filename.c_str(), "wb"))
+        if (fopen_s(&fp, filename, "wb"))
         {
             return false;
         }
@@ -723,18 +715,17 @@ bool BuildMaterials( const char * outDir )
         std::sort( prg.desc.textures.begin(), prg.desc.textures.end(), CmpByLayout< Texture > );
         std::sort( prg.desc.parameters.begin(), prg.desc.parameters.end(), CmpByLayout< Parameter > );
 
-        std::string filename = outDir;
-        filename += prg.id;
-        filename += ".bin";
+        char filename[256];
+        sprintf( filename, "%s/%s.bin", outDir, prg.id );
 
-        if ( !BuildDirectory( filename.c_str() ) )
+        if ( !BuildDirectory( filename ) )
         {
             return false;
         }
 
         FILE *fp;
 
-        if (fopen_s(&fp, filename.c_str(), "wb"))
+        if (fopen_s(&fp, filename, "wb"))
         {
             return false;
         }
@@ -752,6 +743,7 @@ bool BuildMaterials( const char * outDir )
             {
                 if ( strcmp( textureIt->sampler, samplers[i].id ) == 0 )
                 {
+                    fwrite( &textureIt->layout, 1, 4, fp );
                     fwrite( &i, 1, 4, fp );
                     break;
                 }
@@ -807,13 +799,19 @@ bool BuildMaterials( const char * outDir )
     return true;
 }
 
-bool CompileMaterial( const char * inDir, const char * outDir )
+bool CompileMaterial( const char * dir )
 {
+    char inDir[256];
+    sprintf( inDir, "%s/data/materials", dir );
+
     if ( !LoadSamplerList( inDir ) )
         return false;
 
     if ( !LoadProgramSets( inDir ) )
         return false;
+
+    char outDir[256];
+    sprintf( outDir, "%s/cache/materials", dir );
 
     if ( !BuildMaterials( outDir ) )
         return false;
