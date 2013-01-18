@@ -137,8 +137,9 @@ namespace Level5_NS
 
         void Initialize()
         {
-            m_program           = programCache.GetProgram( "level5" );
-            m_mesh              = ResourceManager::Create< MeshResource >( "sibenik.bmh" );
+            U32 programId       = ProgramCache::CreateId( "level5" );
+            m_program           = programCache.GetProgram( programId );
+            m_mesh              = ResourceManager::Create< MeshResource >( "level5.bmh" );
             m_uniformBuffers[0] = cameraParameters;
             m_uniformBuffers[1] = ambientParameters;
             m_uniformBuffers[2] = lightParameters;
@@ -154,7 +155,8 @@ namespace Level5_NS
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<4; ++element.m_uniformBufferCount )
             {
-                element.m_uniformBuffers[ element.m_uniformBufferCount ]  = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
             }
 
             for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
@@ -192,7 +194,8 @@ namespace Level5_NS
 
         void Initialize()
         {
-            m_program           = programCache.GetProgram( "sphere" );
+            U32 programId       = ProgramCache::CreateId( "sphere" );
+            m_program           = programCache.GetProgram( programId );
             m_mesh              = ResourceManager::Create< MeshResource >( "sphere.bmh" );
 
             m_textures[0]       = ResourceManager::Create< TextureResource >( "crack_c.btx" );
@@ -233,13 +236,15 @@ namespace Level5_NS
             {
                 if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsLoaded() )
                 {
-                    element.m_textures[ element.m_textureCount ] = m_textures[ element.m_textureCount ]->GetTexture();
+                    element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
+                    element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
                 }
             }
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )
             {
-                element.m_uniformBuffers[ element.m_uniformBufferCount ] = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
             }
 
             for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
@@ -622,7 +627,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "..\\..\\..\\" );
+    FileSystem::Initialize( "../../.." );
 
     if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
@@ -630,7 +635,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
-    if ( ! programCache.Initialize( "shaders\\", "materials\\" ) )
+    if ( ! programCache.Initialize( "shaders" ) )
     {
         device3d.Destroy();
         MessageBox( hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );
@@ -639,7 +644,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     ResourceManager::Initialize();
 
-    RenderCache renderCache( programCache );
+    RenderCache renderCache;
 
     RenderState opaque;
     opaque.m_enableDepthTest = true;

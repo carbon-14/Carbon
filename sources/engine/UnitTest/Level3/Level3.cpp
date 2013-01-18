@@ -55,7 +55,8 @@ namespace Level3_NS
 
         void Initialize()
         {
-            m_program   = programCache.GetProgram( "level3" );
+            U32 programId   = ProgramCache::CreateId( "level3" );
+            m_program       = programCache.GetProgram( programId );
 
             m_geom.m_primitive = PT_TRIANGLES;
 
@@ -228,20 +229,20 @@ WPARAM Level3( HINSTANCE hInstance, int nCmdShow )
     UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "..\\..\\..\\" );
+    FileSystem::Initialize( "../../.." );
 
     if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
         return FALSE;
     }
 
-    if ( ! programCache.Initialize( "shaders\\", "materials\\" ) )
+    if ( ! programCache.Initialize( "shaders" ) )
     {
         device3d.Destroy();
         return FALSE;
     }
 
-    RenderCache renderCache( programCache );
+    RenderCache renderCache;
 
     FullScreenQuadRenderer fsqRenderer;
 

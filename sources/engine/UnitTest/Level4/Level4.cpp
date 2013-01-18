@@ -114,7 +114,8 @@ namespace Level4_NS
 
         void Initialize()
         {
-            m_program   = programCache.GetProgram( "level4" );
+            U32 programId   = ProgramCache::CreateId( "level4" );
+            m_program       = programCache.GetProgram( programId );
 
             m_geom.m_primitive = PT_TRIANGLES;
 
@@ -162,7 +163,8 @@ namespace Level4_NS
 
             for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
             {
-                element.m_textures[ element.m_textureCount ] = m_textures[ element.m_textureCount ];
+                element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ];
+                element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
             }
 
             element.m_uniformBufferCount    = 0;
@@ -296,20 +298,20 @@ WPARAM Level4( HINSTANCE hInstance, int nCmdShow )
     UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "..\\..\\..\\" );
+    FileSystem::Initialize( "../../.." );
 
     if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
         return FALSE;
     }
 
-    if ( ! programCache.Initialize( "shaders\\", "materials\\" ) )
+    if ( ! programCache.Initialize( "shaders" ) )
     {
         device3d.Destroy();
         return FALSE;
     }
 
-    RenderCache renderCache( programCache );
+    RenderCache renderCache;
 
     renderList.SetSRGBWrite( true );
 

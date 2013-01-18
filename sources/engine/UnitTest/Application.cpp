@@ -140,7 +140,7 @@ Bool Application::Initialize()
     }
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "..\\..\\..\\" );
+    FileSystem::Initialize( "../../.." );
 
     if ( ! m_renderDevice.Initialize( m_window.hInstance, m_window.hwnd ) )
     {
@@ -148,7 +148,7 @@ Bool Application::Initialize()
         return false;
     }
 
-    if ( ! m_programCache.Initialize( "shaders\\", "materials\\" ) )
+    if ( ! ProgramCache::Initialize( "shaders" ) )
     {
         m_renderDevice.Destroy();
         MessageBox( m_window.hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );
@@ -168,7 +168,7 @@ void Application::Destroy()
 
     ResourceManager::Destroy();
 
-    m_programCache.Destroy();
+    ProgramCache::Destroy();
 
     m_renderDevice.Destroy();
 
@@ -180,7 +180,7 @@ Bool Application::Update()
 {
     /////////////////////////////////////////////////////////////////////////////
 
-    m_programCache.Update();
+    ProgramCache::Update();
 
     Execute();
 

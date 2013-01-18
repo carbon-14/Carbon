@@ -47,7 +47,6 @@ private:
 protected:
     RenderWindow            m_window;
     Graphic::RenderDevice   m_renderDevice;
-    Graphic::ProgramCache   m_programCache;
 
     U64                     m_clockTicks;
     U64                     m_frameTicks;

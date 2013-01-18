@@ -108,10 +108,9 @@ namespace Level6_NS
         {
         }
 
-        void Initialize( const ProgramCache& programCache )
+        void Initialize()
         {
-            m_program           = programCache.GetProgram( "level5" );
-            m_mesh              = ResourceManager::Create< MeshResource >( "sibenik.bmh" );
+            m_mesh              = ResourceManager::Create< MeshResource >( "level6/level6.bmh" );
             m_uniformBuffers[0] = cameraParameters;
             m_uniformBuffers[1] = ambientParameters;
             m_uniformBuffers[2] = lightParameters;
@@ -122,16 +121,27 @@ namespace Level6_NS
         {
             RenderElement element;
 
-            element.m_program           = m_program;
             element.m_textureCount  = 0;
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<4; ++element.m_uniformBufferCount )
             {
-                element.m_uniformBuffers[ element.m_uniformBufferCount ]  = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
             }
 
             for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
             {
+                const MaterialResource * material = m_mesh->GetSubMeshes()[i].m_material.ConstPtr();
+                element.m_program = material->GetProgram();
+                for ( element.m_textureCount = 0; element.m_textureCount<material->GetTextureCount(); ++element.m_textureCount )
+                {
+                    const MaterialResource::Texture& texture = material->GetTexture( element.m_textureCount );
+                    if ( texture.m_resource.ConstPtr() && texture.m_resource->IsLoaded() )
+                    {
+                        element.m_textures[ element.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
+                        element.m_textures[ element.m_textureCount ].m_index    = texture.m_index;
+                    }
+                }
                 element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
                 ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
 
@@ -145,7 +155,6 @@ namespace Level6_NS
         }
 
     private:
-        ProgramHandle               m_program;
         SharedPtr< MeshResource >   m_mesh;
         Handle                      m_uniformBuffers[4];
     };
@@ -163,9 +172,8 @@ namespace Level6_NS
         {
         }
 
-        void Initialize( const ProgramCache& programCache )
+        void Initialize()
         {
-            m_program           = programCache.GetProgram( "sphere" );
             m_mesh              = ResourceManager::Create< MeshResource >( "sphere.bmh" );
 
             m_textures[0]       = ResourceManager::Create< TextureResource >( "crack_c.btx" );
@@ -200,23 +208,24 @@ namespace Level6_NS
 
             RenderElement element;
 
-            element.m_program = m_program;
-
             for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
             {
                 if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsLoaded() )
                 {
-                    element.m_textures[ element.m_textureCount ] = m_textures[ element.m_textureCount ]->GetTexture();
+                    element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
+                    element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
                 }
             }
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )
             {
-                element.m_uniformBuffers[ element.m_uniformBufferCount ] = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
             }
 
             for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
             {
+                element.m_program = m_mesh->GetSubMeshes()[i].m_material->GetProgram();
                 element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
                 ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
 
@@ -235,8 +244,6 @@ namespace Level6_NS
         }
 
     private:
-        ProgramHandle                   m_program;
-
         SharedPtr< MeshResource >       m_mesh;
 
         SharedPtr< TextureResource >    m_textures[2];
@@ -402,7 +409,6 @@ using namespace Level6_NS;
 
 Level6::Level6( const RenderWindow& window )
     : Application( window )
-    , m_renderCache( m_programCache )
 {
 }
 
@@ -415,7 +421,7 @@ void Level6::ProcessInputs( RAWINPUT * raw )
             switch ( raw->data.keyboard.VKey )
             {
             case VK_F4:
-                m_programCache.NotifySourceChange();
+                ProgramCache::NotifySourceChange();
                 break;
             case VK_F1:
                 cameraMode = CM_Demo;
@@ -512,9 +518,9 @@ void Level6::PreExecute()
 
     flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_STREAM );
 
-    meshRenderer.Initialize( m_programCache );
+    meshRenderer.Initialize();
 
-    sphereRenderer.Initialize( m_programCache );
+    sphereRenderer.Initialize();
 }
 
 void Level6::PostExecute()
