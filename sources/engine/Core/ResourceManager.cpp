@@ -20,19 +20,28 @@ namespace Core
     };
 
     typedef Array< ResourceRequest, FrameAllocator > ResourceRequestStack;
-    ResourceRequestStack resourceRequests;
+    ResourceRequestStack resourceRequests[2];
+    SizeT resourceRequestIndex = 0;
+    ResourceRequestStack * currentResourceRequests = 0;
 
     //====================================================================================
 
     void ResourceManager::Initialize()
     {
         CARBON_ASSERT( resourceTable.Count() == 0 );
-        CARBON_ASSERT( resourceRequests.Empty() );
+        CARBON_ASSERT( resourceRequests[0].Empty() );
+        CARBON_ASSERT( resourceRequests[1].Empty() );
+        CARBON_ASSERT( currentResourceRequests == 0 );
+
+        resourceRequestIndex = 0;
+        currentResourceRequests = &resourceRequests[resourceRequestIndex];
     }
 
     void ResourceManager::Destroy()
     {
         ProcessRequests();
+
+        currentResourceRequests = 0;
 
 #if defined( CARBON_DEBUG )
         if ( resourceTable.Count() )
@@ -92,7 +101,7 @@ namespace Core
         FileSystem::BuildPathName( name, path, FileSystem::PT_CACHE );
 
         ResourceRequest req = { res, path };
-        resourceRequests.PushBack( req );
+        currentResourceRequests->PushBack( req );
 
         resourceTable.Insert( res->GetId(), res );
     }
@@ -100,43 +109,43 @@ namespace Core
     void ResourceManager::Remove( Resource * res )
     {
         ResourceRequest req = { res, PathString() };
-        resourceRequests.PushBack( req );
+        currentResourceRequests->PushBack( req );
     }
 
     void ResourceManager::ProcessRequests()
     {
-        Array< Resource *, FrameAllocator > toDelete;
+        resourceRequestIndex = ( resourceRequestIndex + 1 ) % 2;
+        ResourceRequestStack * nextResourceRequests = &resourceRequests[resourceRequestIndex];
 
         // Proceed resource loading
-        while ( ! resourceRequests.Empty() )
+        while ( ! currentResourceRequests->Empty() )
         {
-            ResourceRequest& req = resourceRequests.Back();
+            ResourceRequest req = currentResourceRequests->Back();
+            currentResourceRequests->PopBack();
 
-            Resource * res = req.m_res;
-
-            if ( res->GetRefCount() == 0 )
+            if ( req.m_res->GetRefCount() == 0 )
             {
-                toDelete.PushBack( res );
+                nextResourceRequests->PushBack( req );
             }
-            else if ( res->GetState() == Resource::CREATED )
+            else if ( req.m_res->GetState() == Resource::CREATED )
             {
                 void * data = 0;
                 SizeT size;
 
                 FileSystem::Load( req.m_path, data, size );
-                res->Load( data );
+                req.m_res->Load( data );
                 UnknownAllocator::Deallocate( data );
             }
-
-            resourceRequests.PopBack();
         }
 
-        resourceRequests.Reserve( 0 );
+        currentResourceRequests->Reserve( 0 );
+        currentResourceRequests = nextResourceRequests;
 
         // Delete unreferenced resources
-        while ( ! toDelete.Empty() )
+        while ( ! currentResourceRequests->Empty() )
         {
-            Resource * res = toDelete.Back();
+            Resource * res = currentResourceRequests->Back().m_res;
+            currentResourceRequests->PopBack();
 
             if ( res->GetRefCount() == 0 )
             {
@@ -144,8 +153,6 @@ namespace Core
                 res->~Resource();
                 UnknownAllocator::Deallocate( res );
             }
-
-            toDelete.PopBack();
         }
     }
 }

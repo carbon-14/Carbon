@@ -1,6 +1,7 @@
 #include "Core/FileSystem.h"
 
 #include "Core/MemoryManager.h"
+#include "Core/Trace.h"
 
 #include <Windows.h>
 #include <cstdio>
@@ -53,12 +54,14 @@ namespace Core
         rootPath = root;
 
         dataPath = rootPath;
-        dataPath.Append( dataDir );
-        dataPath.Append( "\\" );
+        dataPath += "/";
+        dataPath += dataDir;
+        dataPath += "/";
 
         cachePath = rootPath;
-        cachePath.Append( cacheDir );
-        cachePath.Append( "\\" );
+        cachePath += "/";
+        cachePath += cacheDir;
+        cachePath += "/";
     }
 
     void FileSystem::Destroy()

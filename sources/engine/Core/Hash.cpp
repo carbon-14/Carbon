@@ -10,10 +10,9 @@ namespace Core
         //
         U32 h = 2166136261;
 
-        Char c;
-        while ( (c = *(++str)) != 0 ) // be sure that the string ends by '\0'
+        while ( *(str++) != 0 ) // be sure that the string ends by '\0'
         {
-            h = ( h * 16777619 ) ^ c;
+            h = ( h * 16777619 ) ^ (*str);
         }
         return h;
     };
