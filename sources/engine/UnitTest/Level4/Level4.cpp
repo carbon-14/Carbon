@@ -151,8 +151,8 @@ namespace Level4_NS
             m_geom.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, m_geom.m_vertexBuffer, m_geom.m_indexBuffer );
             m_geom.m_indexCount  = 6;
 
-            m_textures[0] = LoadTexture( "carbon_c.btx" );
-            m_textures[1] = LoadTexture( "carbon_n.btx" );
+            m_textures[0] = LoadTexture( "default_c.btx" );
+            m_textures[1] = LoadTexture( "default_n.btx" );
         }
 
         void Render()
