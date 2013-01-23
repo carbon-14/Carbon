@@ -6,7 +6,7 @@
 namespace Core
 {
     Resource::Resource()
-        : m_state( CREATED )
+        : m_state( 0 )
     {
     }
 
@@ -14,19 +14,19 @@ namespace Core
     {
     }
 
-    Resource::State Resource::GetState() const
+    bool Resource::IsValid() const
     {
-        return m_state;
+        return (m_state & VALID) != 0;
     }
 
-    Bool Resource::IsValid() const
+    bool Resource::IsLoaded() const
     {
-        return m_state != INVALID;
+        return (m_state & LOADED) != 0;
     }
 
-    Bool Resource::IsLoaded() const
+    bool Resource::IsReady() const
     {
-        return m_state == LOADED;
+        return (m_state & (VALID|LOADED)) != 0;
     }
 
     U32 Resource::GetId() const

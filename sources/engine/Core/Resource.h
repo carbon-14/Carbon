@@ -12,19 +12,12 @@ namespace Core
         friend class ResourceManager;
 
     public:
-        enum State
-        {
-            INVALID,
-            CREATED,
-            LOADED
-        };
-
         Resource();
         virtual ~Resource();
 
-        State           GetState() const;
-        Bool            IsValid() const;
-        Bool            IsLoaded() const;
+        bool            IsValid() const;    // valid
+        bool            IsLoaded() const;   // loaded
+        bool            IsReady() const;    // valid & loaded
 
         U32             GetId() const;
 
@@ -35,16 +28,23 @@ namespace Core
         static U32      MakeIdFromName( const Char * name );
 
     protected:
+        enum StateBit
+        {
+            VALID   = 1 << 0,
+            LOADED  = 1 << 1
+        };
+
         void            SetId( U32 id );
 #if defined( CARBON_DEBUG )
         void            SetName( const Char * name );
 #endif
 
-        virtual void    Load( const void * data ) = 0;
+        virtual bool    Load( const void * data ) = 0;
+        virtual void    Unload() = 0;
 
         void            SelfDelete();
 
-        State           m_state;
+        U32             m_state;
         U32             m_id;
 
 #if defined( CARBON_DEBUG )

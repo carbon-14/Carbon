@@ -51,6 +51,7 @@ namespace Core
 #if defined( CARBON_DEBUG )
             res->SetName( name );
 #endif
+            res->m_state |= Resource::VALID;
 
             Add( name, res );
         }

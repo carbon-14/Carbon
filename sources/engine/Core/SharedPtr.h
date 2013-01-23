@@ -60,7 +60,7 @@ namespace Core
         const T& operator*() const;
         T& operator*();
 
-        operator Bool();
+        operator Bool() const;
 
     private :
         void Release();
@@ -162,7 +162,7 @@ namespace Core
     }
 
     template< typename T >
-    SharedPtr< T >::operator Bool()
+    SharedPtr< T >::operator Bool() const
     {
         return m_ptr != 0;
     }

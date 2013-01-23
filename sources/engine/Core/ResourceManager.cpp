@@ -16,32 +16,26 @@ namespace Core
     struct ResourceRequest
     {
         Resource *  m_res;
-        PathString  m_path;
+        Char        m_path[256];
     };
+    CARBON_DECLARE_POD_TYPE( ResourceRequest );
 
     typedef Array< ResourceRequest, FrameAllocator > ResourceRequestStack;
-    ResourceRequestStack resourceRequests[2];
-    SizeT resourceRequestIndex = 0;
-    ResourceRequestStack * currentResourceRequests = 0;
+    ResourceRequestStack toCreateResources;
+    ResourceRequestStack toDeleteResources;
 
     //====================================================================================
 
     void ResourceManager::Initialize()
     {
         CARBON_ASSERT( resourceTable.Count() == 0 );
-        CARBON_ASSERT( resourceRequests[0].Empty() );
-        CARBON_ASSERT( resourceRequests[1].Empty() );
-        CARBON_ASSERT( currentResourceRequests == 0 );
-
-        resourceRequestIndex = 0;
-        currentResourceRequests = &resourceRequests[resourceRequestIndex];
+        CARBON_ASSERT( toCreateResources.Empty() );
+        CARBON_ASSERT( toDeleteResources.Empty() );
     }
 
     void ResourceManager::Destroy()
     {
         ProcessRequests();
-
-        currentResourceRequests = 0;
 
 #if defined( CARBON_DEBUG )
         if ( resourceTable.Count() )
@@ -100,59 +94,68 @@ namespace Core
         PathString path;
         FileSystem::BuildPathName( name, path, FileSystem::PT_CACHE );
 
-        ResourceRequest req = { res, path };
-        currentResourceRequests->PushBack( req );
+        ResourceRequest req;
+        req.m_res = res;
+        StringUtils::StrCpy( req.m_path, 256, path.ConstPtr() );
+        toCreateResources.PushBack( req );
 
         resourceTable.Insert( res->GetId(), res );
     }
 
     void ResourceManager::Remove( Resource * res )
     {
-        ResourceRequest req = { res, PathString() };
-        currentResourceRequests->PushBack( req );
+        ResourceRequest req = { res, 0 };
+        toDeleteResources.PushBack( req );
     }
 
     void ResourceManager::ProcessRequests()
     {
-        resourceRequestIndex = ( resourceRequestIndex + 1 ) % 2;
-        ResourceRequestStack * nextResourceRequests = &resourceRequests[resourceRequestIndex];
-
         // Proceed resource loading
-        while ( ! currentResourceRequests->Empty() )
+        while ( ! toCreateResources.Empty() )
         {
-            ResourceRequest req = currentResourceRequests->Back();
-            currentResourceRequests->PopBack();
+            ResourceRequest req = toCreateResources.Back();
+            toCreateResources.PopBack();
 
             if ( req.m_res->GetRefCount() == 0 )
             {
-                nextResourceRequests->PushBack( req );
+                toDeleteResources.PushBack( req );
             }
-            else if ( req.m_res->GetState() == Resource::CREATED )
+            else if ( req.m_res->IsValid() )
             {
                 void * data = 0;
                 SizeT size;
 
-                FileSystem::Load( req.m_path, data, size );
-                req.m_res->Load( data );
+                if ( ! ( FileSystem::Load( req.m_path, data, size ) && req.m_res->Load( data ) ) )
+                {
+                    req.m_res->m_state &= !Resource::VALID;
+                }
+
+                req.m_res->m_state |= Resource::LOADED;
+
                 UnknownAllocator::Deallocate( data );
             }
         }
 
-        currentResourceRequests->Reserve( 0 );
-        currentResourceRequests = nextResourceRequests;
+        toCreateResources.Reserve( 0 );
 
         // Delete unreferenced resources
-        while ( ! currentResourceRequests->Empty() )
+        while ( ! toDeleteResources.Empty() )
         {
-            Resource * res = currentResourceRequests->Back().m_res;
-            currentResourceRequests->PopBack();
+            Resource * res = toDeleteResources.Back().m_res;
+            toDeleteResources.PopBack();
 
             if ( res->GetRefCount() == 0 )
             {
                 resourceTable.Remove( res->GetId() );
+                if ( res->IsLoaded() )
+                    res->Unload();
                 res->~Resource();
                 UnknownAllocator::Deallocate( res );
             }
         }
+
+        toDeleteResources.Reserve( 0 );
+
+        CARBON_ASSERT( toCreateResources.Empty() );
     }
 }
