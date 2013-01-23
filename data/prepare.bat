@@ -3,8 +3,8 @@ cd ../bin/win32/Release
 MaterialCompiler ../../..
 
 REM Level 4
-TextureCompiler color -cmp -mipmap ../../.. carbon_c.png
-TextureCompiler normal -cmp -mipmap ../../.. carbon_n.png
+TextureCompiler color -cmp -mipmap ../../.. default_c.png
+TextureCompiler normal -cmp -mipmap ../../.. default_n.png
 
 REM Level 5
 TextureCompiler color -cmp -mipmap ../../.. crack_c.png
