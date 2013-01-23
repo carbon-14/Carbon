@@ -18,7 +18,8 @@ namespace Graphic
         Handle GetTexture() const;
 
     protected:
-        void Load( const void * data );
+        bool Load( const void * data );
+        void Unload();
 
     private:
         Handle  m_texture;

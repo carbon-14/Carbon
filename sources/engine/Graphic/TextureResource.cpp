@@ -24,7 +24,6 @@ namespace Graphic
 
     TextureResource::~TextureResource()
     {
-        RenderDevice::DestroyTexture( m_texture );
     }
 
     Handle TextureResource::GetTexture() const
@@ -32,7 +31,7 @@ namespace Graphic
         return m_texture;
     }
 
-    void TextureResource::Load( const void * data )
+    bool TextureResource::Load( const void * data )
     {
         U8 * ptr = (U8*)data;
 
@@ -61,6 +60,11 @@ namespace Graphic
 
         m_texture = RenderDevice::CreateTexture( header->internalFormat, header->externalFormat, count, header->compressed, sizes, widths, heights, datas );
 
-        m_state = m_texture ? LOADED : INVALID;
+        return m_texture ? true : false;
+    }
+
+    void TextureResource::Unload()
+    {
+        RenderDevice::DestroyTexture( m_texture );
     }
 }

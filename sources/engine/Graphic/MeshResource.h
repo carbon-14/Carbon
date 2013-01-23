@@ -38,7 +38,8 @@ namespace Graphic
         SizeT                       GetSubMeshCount() const;
 
     protected:
-        void Load( const void * data );
+        bool Load( const void * data );
+        void Unload();
 
     private:
         PrimitiveType       m_primitive;

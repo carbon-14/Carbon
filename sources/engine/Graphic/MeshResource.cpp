@@ -85,16 +85,6 @@ namespace Graphic
 
     MeshResource::~MeshResource()
     {
-        SubMesh * it = m_subMeshes;
-        SubMesh * end = m_subMeshes + m_subMeshCount;
-        for ( ; it != end; ++it )
-        {
-            RenderDevice::DestroyVertexArray( it->m_vertexArray );
-            RenderDevice::DestroyBuffer( it->m_indexBuffer );
-            it->m_material = 0;
-        }
-
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
     }
 
     PrimitiveType MeshResource::GetPrimitive() const
@@ -132,7 +122,7 @@ namespace Graphic
         return m_subMeshCount;
     }
 
-    void MeshResource::Load( const void * data )
+    bool MeshResource::Load( const void * data )
     {
         m_primitive = PT_TRIANGLES;
 
@@ -160,6 +150,8 @@ namespace Graphic
         }
 
         m_vertexBuffer = RenderDevice::CreateVertexBuffer( header->vertexDataSize, ptr, BU_STATIC );
+        if ( !m_vertexBuffer )
+            return false;
 
         ptr += header->vertexDataSize;
 
@@ -173,8 +165,15 @@ namespace Graphic
 
             SubMesh& sub_mesh       = m_subMeshes[ m_subMeshCount ];
             sub_mesh.m_indexCount   = count;
+
             sub_mesh.m_indexBuffer  = RenderDevice::CreateIndexBuffer( size, ptr, BU_STATIC );
+            if ( !sub_mesh.m_indexBuffer )
+                return false;
+
             sub_mesh.m_vertexArray  = RenderDevice::CreateVertexArray( m_vertexDecl, m_vertexBuffer, sub_mesh.m_indexBuffer );
+            if ( !sub_mesh.m_indexBuffer )
+                return false;
+
             ptr += size;
 
             U32 materialId = *((U32*)ptr);
@@ -182,5 +181,21 @@ namespace Graphic
 
             sub_mesh.m_material     = ProgramCache::CreateMaterial( materialId );
         }
+
+        return true;
+    }
+
+    void MeshResource::Unload()
+    {
+        SubMesh * it = m_subMeshes;
+        SubMesh * end = m_subMeshes + m_subMeshCount;
+        for ( ; it != end; ++it )
+        {
+            RenderDevice::DestroyVertexArray( it->m_vertexArray );
+            RenderDevice::DestroyBuffer( it->m_indexBuffer );
+            it->m_material = 0;
+        }
+
+        RenderDevice::DestroyBuffer( m_vertexBuffer );
     }
 }

@@ -29,7 +29,8 @@ namespace Graphic
         SizeT           GetTextureCount() const;
 
     protected:
-        void Load( const void * data );
+        bool Load( const void * data );
+        void Unload();
 
     private:
         ProgramHandle   m_program;

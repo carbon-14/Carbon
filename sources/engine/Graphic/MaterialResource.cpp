@@ -33,7 +33,7 @@ namespace Graphic
         return m_textureCount;
     }
 
-    void MaterialResource::Load( const void * data )
+    bool MaterialResource::Load( const void * data )
     {
         const U8 * ptr = (U8*)data;
 
@@ -44,6 +44,8 @@ namespace Graphic
         ptr += sizeof(U32);
 
         m_program = ProgramCache::GetProgram( programId, setId );
+        if ( m_program == ProgramCache::ms_invalidHandle )
+            return false;
 
         U32 texCount = *((U32*)ptr);
         ptr += sizeof(U32);
@@ -57,6 +59,16 @@ namespace Graphic
 
             tex.m_resource = Core::ResourceManager::Create< TextureResource >( (const Char*)ptr );
             ptr += 256;
+        }
+
+        return true;
+    }
+
+    void MaterialResource::Unload()
+    {
+        for ( SizeT i=0; i<m_textureCount; ++i )
+        {
+            m_textures[i].m_resource = 0;
         }
     }
 }
