@@ -136,7 +136,7 @@ namespace Level6_NS
                 for ( element.m_textureCount = 0; element.m_textureCount<material->GetTextureCount(); ++element.m_textureCount )
                 {
                     const MaterialResource::Texture& texture = material->GetTexture( element.m_textureCount );
-                    if ( texture.m_resource.ConstPtr() && texture.m_resource->IsLoaded() )
+                    if ( texture.m_resource && texture.m_resource->IsReady() )
                     {
                         element.m_textures[ element.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
                         element.m_textures[ element.m_textureCount ].m_index    = texture.m_index;
@@ -210,7 +210,7 @@ namespace Level6_NS
 
             for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
             {
-                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsLoaded() )
+                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsReady() )
                 {
                     element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
                     element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
@@ -225,6 +225,7 @@ namespace Level6_NS
 
             for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
             {
+
                 element.m_program = m_mesh->GetSubMeshes()[i].m_material->GetProgram();
                 element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
                 ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );

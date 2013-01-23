@@ -234,7 +234,7 @@ namespace Level5_NS
 
             for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
             {
-                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsLoaded() )
+                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsReady() )
                 {
                     element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
                     element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
