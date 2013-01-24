@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema" >
+
+<xs:simpleType name="FilterType">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="point"/>
+        <xs:enumeration value="linear"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="MipType">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="none"/>
+        <xs:enumeration value="point"/>
+        <xs:enumeration value="linear"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="WrapType">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="repeat"/>
+        <xs:enumeration value="clamp"/>
+        <xs:enumeration value="mirror"/>
+    </xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="SamplerType">
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+    <xs:attribute name="min" type="FilterType" default="point"/>
+    <xs:attribute name="mag" type="FilterType" default="point"/>
+    <xs:attribute name="mip" type="MipType" default="none"/>
+    <xs:attribute name="wrap" type="WrapType" default="repeat"/>
+</xs:complexType>
+
+<xs:element name="samplers">
+    <xs:complexType>
+        <xs:sequence>
+            <xs:element name="sampler" type="SamplerType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:element>
+
+</xs:schema>

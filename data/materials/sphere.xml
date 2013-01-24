@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<program xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=". program.xsd">
+    <description diffuse="1 1 1 1" specular="1 1 1 1" ambient="1 1 1 1" emission="0 0 0 1" shininess="1">
+        <textures>
+            <texture id="sphereColor" sampler="LinearSampler" layout="0" default="default_c.png"/>
+            <texture id="sphereNormal" sampler="LinearSampler" layout="1" default="default_n.png"/>
+        </textures>
+        <parameters/>
+    </description>
+    <sets/>
+</program>

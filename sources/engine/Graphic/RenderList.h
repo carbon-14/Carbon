@@ -2,43 +2,22 @@
 #ifndef _GRAPHIC_RENDERLIST_H
 #define _GRAPHIC_RENDERLIST_H
 
-#include "Graphic/RenderDevice.h"
-#include "Graphic/ProgramCache.h"
+#include "Graphic/RenderCache.h"
 
 #include "Core/Array.h"
 
 namespace Graphic
 {
-    struct SubGeometry
-    {
-        Handle  m_vertexArray;
-        Handle  m_indexBuffer;
-        SizeT   m_indexCount;
-    };
-
-    struct Geometry
-    {
-        Handle              m_vertexBuffer;
-        VertexDeclaration   m_vertexDecl;
-        SizeT               m_vertexCount;
-        DataType            m_indexType;
-        SizeT               m_subGeomCount;
-        SubGeometry         m_subGeoms[32];
-    };
+    class RenderGeometry;
 
     struct RenderElement
     {
-        PrimitiveType   m_primitive;
-        ProgramHandle   m_program;
-
-        Geometry        m_geom;
-
-        Handle *        m_samplers;
-        Handle *        m_textures;
-        SizeT           m_unitCount;
-
-        Handle *        m_uniformBuffers;
-        SizeT           m_uniformBufferCout;
+        ProgramHandle       m_program;
+        RenderGeometry *    m_geometry;
+        LayoutObject        m_textures[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT               m_textureCount;
+        LayoutObject        m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
+        SizeT               m_uniformBufferCount;
     };
 
     class _GraphicExport RenderList
@@ -49,16 +28,27 @@ namespace Graphic
 
         void Push( const RenderElement& element );
 
+        void SetRenderState( const RenderState& state );
+        void SetClearMask( U32 mask );
+        void SetClearColor( F32 r, F32 g, F32 b, F32 a );
+        void SetClearDepth( F32 depth );
+        void SetClearStencil( U8 stencil );
         void SetSRGBWrite( Bool enable );
 
         template < typename Pred >
         void Sort();
-        void Draw( const ProgramCache& programCache );
+        void Draw( RenderCache& renderCache );
         void Clear();
 
     private:
-        Core::Array< RenderElement >    m_list;
-        Bool                            m_sRGBWrite;
+        Core::Array< RenderElement, Core::FrameAllocator >  m_list;
+
+        RenderState m_renderState;
+        U32         m_clearMask;
+        F32         m_clearColor[4];
+        F32         m_clearDepth;
+        U8          m_clearStencil;
+        Bool        m_sRGBWrite;
     };
 
     template< typename Pred >

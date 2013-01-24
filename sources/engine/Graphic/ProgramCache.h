@@ -9,7 +9,9 @@
 
 namespace Graphic
 {
-    typedef SizeT ProgramHandle;
+    class MaterialResource;
+
+    typedef U16 ProgramHandle;
 
     class _GraphicExport ProgramCache
     {
@@ -17,34 +19,52 @@ namespace Graphic
         friend class RenderDevice;
 
     public:
-        static const ProgramHandle ms_invalidHandle;
+        static const ProgramHandle          ms_invalidHandle;
 
-        Bool            Initialize( const Char * relativePath );
-        void            Destroy();
-        void            Update();
+        static Bool                         Initialize( const Char * shaderPath );
+        static void                         Destroy();
+        static void                         Update();
 
-        ProgramHandle   GetProgram( const Char * name ) const;
+        static U32                          CreateId( const Char * str );
 
-        void            UseProgram( ProgramHandle handle ) const;
+        static ProgramHandle                GetProgram( U32 nameId, U32 setId = CreateId( "" ) );
+        static MaterialResource *           CreateMaterial( U32 materialId );
 
-        static void     NotifySourceChange();
+        static void                         UseProgram( ProgramHandle handle );
+
+        static void                         NotifySourceChange();
 
     private:
-        void            BuildCache();
-        void            ReloadCache();
+        typedef Core::Array< Program >      ProgramArray;
+        typedef Core::Array< ProgramSet >   ProgramSetArray;
+        typedef Core::Array< Handle >       SamplerArray;
 
-        void            LoadProgram( Program& program );
-        void            LoadProgramFromSources( Program& program );
-        void            LoadProgramFromBinaries( Program& program );
+        static void                         BuildCache();
+        static void                         ReloadCache();
 
-        static U32      CreateId( const Char * name );
-        ProgramHandle   FindById( U32 id ) const;
+        static void                         LoadSamplerList();
+        static void                         LoadProgram( Program& program );
+        static void                         LoadProgramFromSources( Program& program );
+        static void                         LoadProgramFromBinaries( Program& program );
+        static void                         LoadProgramSets();
 
-        typedef Core::Array< Graphic::Program > ProgramArray;
+        static ProgramArray::Iterator       Find( U32 id );
 
-        Core::PathString    m_dataPath;
-        Core::PathString    m_cachePath;
-        ProgramArray        m_cache;
+        static void                         SetProgram( Handle program );
+        static void                         SetSampler( Handle sampler, SizeT index );
+        static void                         SetUniformBuffer( Handle uniformBuffer );
+
+        static Core::PathString             m_dataPath;
+        static Core::PathString             m_cachePath;
+        static Core::PathString             m_materialPath;
+
+        static ProgramArray                 m_programs;
+        static ProgramSetArray              m_programSets;
+        static SamplerArray                 m_samplers;
+
+        static Handle                       m_programCache;
+        static Handle                       m_samplerCache[ RenderDevice::ms_maxTextureUnitCount ];
+        static Handle                       m_uniformBufferCache;
     };
 }
 

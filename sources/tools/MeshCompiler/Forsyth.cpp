@@ -203,7 +203,7 @@ void ReorderForsyth( std::vector< size_t >& indices, const size_t nVertices )
         SETADDED( bestTriangle );
         // Output this triangle.
         outTriangles[outPos++] = bestTriangle;
-        for ( size_t i=0; i<3; ++i )
+        for ( int i=0; i<3; ++i )
         {
             // Update thi svertex
             size_t v = indices[ 3 * bestTriangle + i ];

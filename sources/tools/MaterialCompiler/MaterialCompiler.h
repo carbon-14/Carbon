@@ -1,0 +1,7 @@
+#pragma once
+#ifndef _MATERIALCOMPILER_MATERIALCOMPILER_H
+#define _MATERIALCOMPILER_MATERIALCOMPILER_H
+
+bool CompileMaterial( const char * dir );
+
+#endif // _MATERIALCOMPILER_MATERIALCOMPILER_H

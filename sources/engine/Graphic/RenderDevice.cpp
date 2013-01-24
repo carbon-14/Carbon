@@ -70,6 +70,80 @@ namespace Graphic
         GL_MIRRORED_REPEAT  // WT_MIRROR
     };
 
+    const GLenum ToGLClearMask[] =
+    {
+        0,
+        GL_COLOR_BUFFER_BIT,                                                // CM_COLOR
+        GL_DEPTH_BUFFER_BIT,                                                // CM_DEPTH
+        GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
+        GL_STENCIL_BUFFER_BIT,                                              // CM_STENCIL
+        GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT,
+        GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT,
+        GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
+    };
+
+    const GLenum ToGLFunction[] =
+    {
+        GL_NEVER,       // F_NEVER
+        GL_LESS,        // F_LESS
+        GL_LEQUAL,      // F_LEQUAL
+        GL_GREATER,     // F_GREATER
+        GL_GEQUAL,      // F_GEQUAL
+        GL_EQUAL,       // F_EQUAL
+        GL_NOTEQUAL,    // F_NOTEQUAL
+        GL_ALWAYS       // F_ALWAYS
+    };
+
+    const GLenum ToGLOperation[] =
+    {
+        GL_KEEP,        // O_KEEP
+        GL_ZERO,        // O_ZERO
+        GL_REPLACE,     // O_REPLACE
+        GL_INCR,        // O_INCR
+        GL_INCR_WRAP,   // O_INCR_WRAP
+        GL_DECR,        // O_DECR
+        GL_DECR_WRAP,   // O_DECR_WRAP
+        GL_INVERT       // O_INVERT
+    };
+
+    const GLenum ToGLCullFace[] =
+    {
+        GL_FRONT,       // CF_FRONT
+        GL_BACK         // CF_BACK
+    };
+
+    const GLenum ToGLBlendFunction[] =
+    {
+        GL_ZERO,                        // BF_ZERO
+        GL_ONE,                         // BF_ONE,
+        GL_SRC_COLOR,                   // BF_SRC_COLOR
+        GL_ONE_MINUS_SRC_COLOR,         // BF_ONE_MINUS_SRC_COLOR
+        GL_DST_COLOR,                   // BF_DST_COLOR
+        GL_ONE_MINUS_DST_COLOR,         // BF_ONE_MINUS_DST_COLOR
+        GL_SRC_ALPHA,                   // BF_SRC_ALPHA
+        GL_ONE_MINUS_SRC_ALPHA,         // BF_ONE_MINUS_SRC_ALPHA
+        GL_DST_ALPHA,                   // BF_DST_ALPHA
+        GL_ONE_MINUS_DST_ALPHA,         // BF_ONE_MINUS_DST_ALPHA
+        GL_CONSTANT_COLOR,              // BF_CONSTANT_COLOR
+        GL_ONE_MINUS_CONSTANT_COLOR,    // BF_ONE_MINUS_CONSTANT_COLOR
+        GL_CONSTANT_ALPHA,              // BF_CONSTANT_ALPHA
+        GL_ONE_MINUS_CONSTANT_ALPHA,    // BF_ONE_MINUS_CONSTANT_ALPHA
+        GL_SRC_ALPHA_SATURATE,          // BF_SRC_ALPHA_SATURATE
+        GL_SRC1_COLOR,                  // BF_SRC1_COLOR
+        GL_ONE_MINUS_SRC1_COLOR,        // BF_ONE_MINUS_SRC1_COLOR
+        GL_SRC1_ALPHA,                  // BF_SR1_ALPHA
+        GL_ONE_MINUS_SRC1_ALPHA         // BF_ONE_MINUS_SRC1_ALPHA
+    };
+
+    const GLenum ToGLBlendMode[] =
+    {
+        GL_FUNC_ADD,                // BM_ADD
+        GL_FUNC_SUBTRACT,           // BM_SUBSTRACT
+        GL_FUNC_REVERSE_SUBTRACT,   // BM_REVERSE_SUBSTRACT
+        GL_MIN,                     // BM_MIN
+        GL_MAX                      // BM_MAX
+    };
+
     const GLuint ToVertexSemanticMap[] =
     {
         1 << VS_POSITION,
@@ -93,6 +167,38 @@ namespace Graphic
     };
 
     //===================================================================================
+
+    void TraceProgramInfoLog( GLuint program )
+    {
+        GLint logLength;
+        GLchar buffer[ 1024 ];
+
+        glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
+        if ( logLength > 1024 || logLength < 0 )
+        {
+            logLength = 1024;
+        }
+
+        glGetProgramInfoLog( program, logLength, 0, buffer );
+        buffer[ logLength ] = '\n';
+        CARBON_TRACE( buffer );
+    }
+
+    void TraceShaderInfoLog( GLuint shader )
+    {
+        GLint logLength;
+        GLchar buffer[ 1024 ];
+
+        glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
+        if ( logLength > 1024 )
+        {
+            logLength = 1024;
+        }
+
+        glGetShaderInfoLog( shader, logLength, 0, buffer );
+        buffer[ logLength ] = '\n';
+		CARBON_TRACE( buffer );
+    }
 
     Handle CreateBuffer( SizeT size, const void * data, GLenum usage, GLenum target )
     {
@@ -136,6 +242,11 @@ namespace Graphic
     {
         GLboolean test = glUnmapBuffer( GL_UNIFORM_BUFFER );
         glBindBuffer( GL_UNIFORM_BUFFER, 0 );
+    }
+
+    void IRenderDevice::BindUniformBuffer( Handle ubuffer, SizeT location )
+    {
+        glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
     }
 
     Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
@@ -185,7 +296,7 @@ namespace Graphic
             CARBON_ASSERT( srcSizes[ i ] > 0 );
 
             GLuint shader = glCreateShader( ToGLShaderType[ srcTypes[ i ] ] );
-            glShaderSource( shader, 1, &srcBuffers[ i ], NULL );
+            glShaderSource( shader, 1, &srcBuffers[ i ], 0 );
             glCompileShader( shader );
 
             GLint compileStatus = GL_FALSE;
@@ -193,19 +304,7 @@ namespace Graphic
 
             if ( compileStatus == GL_FALSE )
             {
-                GLint logLength;
-                GLchar buffer[ 1024 ];
-
-                glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logLength );
-                if ( logLength > 1024 )
-                {
-                    logLength = 1024;
-                }
-
-                glGetShaderInfoLog( shader, logLength, NULL, buffer );
-                buffer[ logLength ] = '\n';
-			    CARBON_TRACE( buffer );
-
+                TraceShaderInfoLog( shader );
                 return 0;
             }
 
@@ -225,19 +324,7 @@ namespace Graphic
 
         if ( linkStatus == GL_FALSE )
         {
-            GLint logLength;
-            GLchar buffer[ 1024 ];
-
-            glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
-            if ( logLength > 1024 || logLength < 0 )
-            {
-                logLength = 1024;
-            }
-
-            glGetProgramInfoLog( program, logLength, NULL, buffer );
-            buffer[ logLength ] = '\n';
-            CARBON_TRACE( buffer );
-
+            TraceProgramInfoLog( program );
             return 0;
         }
 
@@ -260,7 +347,7 @@ namespace Graphic
         GLenum * fmt    = (GLenum*)binary;
         void * buffer   = fmt + 1;
 
-        glGetProgramBinary( program, binLength, NULL, fmt, buffer );
+        glGetProgramBinary( program, binLength, 0, fmt, buffer );
     }
 
     U32 IRenderDevice::CreateProgramBinary( const void * binary, SizeT size )
@@ -277,20 +364,7 @@ namespace Graphic
 		
 		if ( linkStatus == GL_FALSE )
 		{
-            GLint logLength;
-            GLchar buffer[ 1024 ];
-
-            glGetShaderiv( program, GL_INFO_LOG_LENGTH, &logLength );
-            if ( logLength > 1024 )
-            {
-                logLength = 1024;
-            }
-
-            glGetProgramInfoLog( program, logLength, NULL, buffer );
-            buffer[ logLength ] = '\n';
-
-            CARBON_TRACE( buffer );
-
+            TraceProgramInfoLog( program );
             return 0;
 		}
 
@@ -334,6 +408,12 @@ namespace Graphic
         glDeleteTextures( 1, (GLuint*)&texture );
     }
 
+    void IRenderDevice::BindTexture( Handle texture, SizeT unit )
+    {
+        glActiveTexture( GL_TEXTURE0 + unit );
+        glBindTexture( GL_TEXTURE_2D, texture );
+    }
+
     Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
     {
         GLuint sampler;
@@ -351,16 +431,9 @@ namespace Graphic
         glDeleteSamplers( 1, (GLuint*)&sampler );
     }
 
-    void IRenderDevice::SampleTexture( Handle texture, Handle sampler, SizeT unit )
+    void IRenderDevice::BindSampler( Handle sampler, SizeT unit )
     {
-        glActiveTexture( GL_TEXTURE0 + unit );
-        glBindTexture( GL_TEXTURE_2D, texture );
         glBindSampler( unit, sampler );
-    }
-
-    void IRenderDevice::BindUniformBuffer( Handle ubuffer, SizeT location )
-    {
-        glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
     }
 
     void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )
@@ -400,21 +473,93 @@ namespace Graphic
         glDrawElements( ToGLPrimitiveType[ primitive ], indexCount, ToGLDataType[ indexType ], (GLvoid*)0 );
     }
 
-    void IRenderDevice::ClearColor( F32 r, F32 g, F32 b, F32 a )
+    void IRenderDevice::SetClearColor( F32 r, F32 g, F32 b, F32 a )
     {
-        glEnable( GL_CULL_FACE );
-        glEnable( GL_DEPTH_TEST );
-
         glClearColor( r, g, b, a );
-        glClearDepth( 1.0 );
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    }
+
+    void IRenderDevice::SetClearDepth( F32 depth )
+    {
+        glClearDepth( depth );
+    }
+
+    void IRenderDevice::SetClearStencil( U8 s )
+    {
+        glClearStencil( s );
+    }
+
+    void IRenderDevice::Clear( U32 mask )
+    {
+        glClear( ToGLClearMask[mask] );
+    }
+
+    void IRenderDevice::SetColorWrite( U32 mask )
+    {
+        glColorMask( mask & CM_RED, mask & CM_GREEN, mask & CM_BLUE, mask & CM_ALPHA );
+    }
+
+    void IRenderDevice::SetDepthWrite( Bool enable )
+    {
+        glDepthMask( enable );
+    }
+
+    void IRenderDevice::SetStencilWrite( U8 mask )
+    {
+        glStencilMask( mask );
+    }
+
+    void IRenderDevice::EnableDepthTest( Bool enable )
+    {
+        enable ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
+    }
+
+    void IRenderDevice::SetDepthFunc( Function f )
+    {
+        glDepthFunc( ToGLFunction[f] );
+    }
+
+    void IRenderDevice::SetStencilOp( Operation stencilFail, Operation depthFail, Operation depthPass )
+    {
+        glStencilOp( ToGLOperation[ stencilFail ], ToGLOperation[ depthFail ], ToGLOperation[ depthPass ] );
+    }
+
+    void IRenderDevice::SetStencilFunc( Function f, U8 ref, U8 mask )
+    {
+        glStencilFunc( ToGLFunction[f], ref, mask );
+    }
+
+    void IRenderDevice::EnableCullFace( Bool enable )
+    {
+        enable ? glEnable( GL_CULL_FACE ) : glDisable( GL_CULL_FACE );
+    }
+
+    void IRenderDevice::SetCullFace( CullFace face )
+    {
+        glCullFace( ToGLCullFace[ face ] );
+    }
+
+    void IRenderDevice::SetBlendColor( F32 r, F32 g, F32 b, F32 a )
+    {
+        glBlendColor( r, g, b, a );
+    }
+
+    void IRenderDevice::SetBlendFunc( BlendFunction src, BlendFunction dst )
+    {
+        glBlendFunc( ToGLBlendFunction[ src ], ToGLBlendFunction[ dst ] );
+    }
+
+    void IRenderDevice::SetBlendFuncSeparate( BlendFunction srcRGB, BlendFunction dstRGB, BlendFunction srcAlpha, BlendFunction dstAlpha )
+    {
+        glBlendFuncSeparate( ToGLBlendFunction[ srcRGB ], ToGLBlendFunction[ dstRGB ], ToGLBlendFunction[ srcAlpha ], ToGLBlendFunction[ dstAlpha ] );
+    }
+
+    void IRenderDevice::SetBlendMode( BlendMode mode )
+    {
+        glBlendEquation( ToGLBlendMode[ mode ] );
     }
 
     void IRenderDevice::SetSRGBWrite( Bool enable )
     {
-        if ( enable )
-            glEnable( GL_FRAMEBUFFER_SRGB );
-        else
-            glDisable( GL_FRAMEBUFFER_SRGB );
+        enable ? glEnable( GL_FRAMEBUFFER_SRGB ) : glDisable( GL_FRAMEBUFFER_SRGB );
     }
 }

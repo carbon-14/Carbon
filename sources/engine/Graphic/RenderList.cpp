@@ -1,10 +1,19 @@
 #include "Graphic/RenderList.h"
 
+#include "Graphic/RenderGeometry.h"
+
 namespace Graphic
 {
     RenderList::RenderList()
-        : m_sRGBWrite( false )
+        : m_clearMask( 0 )
+        , m_clearDepth( 1.0f )
+        , m_clearStencil( 0 )
+        , m_sRGBWrite( false )
     {
+        m_clearColor[0] = 0.0f;
+        m_clearColor[1] = 0.0f;
+        m_clearColor[2] = 0.0f;
+        m_clearColor[3] = 0.0f;
     }
 
     RenderList::~RenderList()
@@ -17,62 +26,83 @@ namespace Graphic
         m_list.PushBack( element );
     }
 
+    void RenderList::SetRenderState( const RenderState& state )
+    {
+        m_renderState = state;
+    }
+
+    void RenderList::SetClearMask( U32 mask )
+    {
+        m_clearMask = mask;
+    }
+
+    void RenderList::SetClearColor( F32 r, F32 g, F32 b, F32 a )
+    {
+        m_clearColor[0] = r;
+        m_clearColor[1] = g;
+        m_clearColor[2] = b;
+        m_clearColor[3] = a;
+    }
+
+    void RenderList::SetClearDepth( F32 depth )
+    {
+        m_clearDepth = depth;
+    }
+
+    void RenderList::SetClearStencil( U8 stencil )
+    {
+        m_clearStencil = stencil;
+    }
+
     void RenderList::SetSRGBWrite( Bool enable )
     {
         m_sRGBWrite = enable;
     }
 
-    void RenderList::Draw( const ProgramCache& programCache )
+    void RenderList::Draw( RenderCache& renderCache )
     {
         // BEGIN
-        RenderDevice::SetSRGBWrite( m_sRGBWrite );
+        if ( m_clearMask )
+        {
+            if ( m_clearMask & CM_COLOR )
+                renderCache.SetClearColor( m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3] );
+            if ( m_clearMask & CM_DEPTH )
+                renderCache.SetClearDepth( m_clearDepth );
+            if ( m_clearMask & CM_STENCIL )
+                renderCache.SetClearStencil( m_clearStencil );
+            RenderDevice::Clear( m_clearMask );
+        }
+        renderCache.SetSRGBWrite( m_sRGBWrite );
+        renderCache.SetRenderState( m_renderState );
 
         // DRAW
         Core::Array< RenderElement >::Iterator it = m_list.Begin();
         Core::Array< RenderElement >::Iterator end = m_list.End();
         for ( ; it != end; ++it )
         {
-            RenderElement& e = *it;
+            const RenderElement& e = *it;
 
-            programCache.UseProgram( e.m_program );
-
-            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
+            renderCache.SetProgram( e.m_program );
+            for ( SizeT i=0; i<e.m_textureCount; ++i )
             {
-                RenderDevice::BindUniformBuffer( e.m_uniformBuffers[ i ], i );
+                const LayoutObject& texture = e.m_textures[i];
+                renderCache.SetTexture( texture.m_handle, texture.m_index );
+            }
+            for ( SizeT i=0; i<e.m_uniformBufferCount; ++i )
+            {
+                const LayoutObject& uniformBuffer = e.m_uniformBuffers[i];
+                renderCache.SetUniformBuffer( uniformBuffer.m_handle, uniformBuffer.m_index );
             }
 
-            for ( SizeT i=0; i<e.m_unitCount; ++i )
-            {
-                RenderDevice::SampleTexture( e.m_textures[ i ], e.m_samplers[ i ], i );
-            }
-
-            for ( SizeT i=0; i<e.m_geom.m_subGeomCount; ++i )
-            {
-                const SubGeometry& sub = e.m_geom.m_subGeoms[ i ];
-                RenderDevice::BeginGeometry( e.m_geom.m_vertexDecl, sub.m_vertexArray, sub.m_indexBuffer );
-                RenderDevice::DrawIndexed( e.m_primitive, sub.m_indexCount, e.m_geom.m_indexType );
-                RenderDevice::EndGeometry( e.m_geom.m_vertexDecl );
-            }
-
-            for ( SizeT i=0; i<e.m_unitCount; ++i )
-            {
-                RenderDevice::SampleTexture( 0, 0, i );
-            }
-
-            for ( SizeT i=0; i<e.m_uniformBufferCout; ++i )
-            {
-                RenderDevice::BindUniformBuffer( 0, i );
-            }
+            e.m_geometry->Draw();
         }
 
         // END
-        m_list.Clear();
-        RenderDevice::UseProgram( 0 );
-        RenderDevice::SetSRGBWrite( !m_sRGBWrite );
+        Clear();
     }
 
     void RenderList::Clear()
     {
-        m_list.Clear();
+        m_list.Reserve(0);
     }
 }

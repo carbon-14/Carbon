@@ -1,5 +1,7 @@
 #include "MeshCompiler/MeshCompiler.h"
 
+#include "MeshCompiler/Material.h"
+
 #include "libxml.h"
 #include "libxml/parser.h"
 
@@ -67,9 +69,31 @@ bool BuildDirectory( const char * path )
     return true;
 }
 
+unsigned int HashString( const char * str )
+{
+    // FNV hash
+    // http://eternallyconfuzzled.com/tuts/algorithms/jsw_tut_hashing.aspx
+    // Thx !
+    //
+    unsigned int h = 2166136261;
+
+    while ( *(str++) != 0 ) // be sure that the string ends by '\0'
+    {
+        h = ( h * 16777619 ) ^ *str;
+    }
+    return h;
+};
+
 enum ParseState
 {
     START,
+        IMAGE,
+            IMAGE_FILE,
+        EFFECT,
+            DIFFUSE,
+            SPECULAR,
+            AMBIENT,
+            BUMP,
         GEOMETRY,
             MESH,
                 SOURCE,
@@ -140,12 +164,120 @@ struct ColladaGeometry
     ColladaMesh mesh;
 };
 
+struct ColladaImage
+{
+    char    id[32];
+    char    file[256];
+};
+
+enum TextureType
+{
+    TT_Diffuse  = 0,
+    TT_Specular,
+    TT_Ambient,
+    TT_Bump,
+    TT_Count
+};
+
+const char * TextureMaterialSemantics[] =
+{
+    "color",
+    "gloss",
+    "ambient",
+    "normal"
+};
+
+struct ColladaEffect
+{
+    char            id[32];
+    char            program[32];
+    char            set[32];
+    char            name[32];
+    char            textures[TT_Count][32];
+    unsigned int    hash;
+};
+
+void SplitMaterialString( const char * str, char * split[] )
+{
+    size_t count = 0;
+
+    const char * begin = str;
+    const char * ptr = begin;
+    while ( *ptr )
+    {
+        if ( *ptr == '_' )
+        {
+            size_t size = ptr - begin;
+            memcpy( split[count], begin, size );
+            split[count][size] = 0;
+
+            ++count;
+            begin = ++ptr;
+
+            if ( count == 2 )
+                break;
+        }
+        else
+        {
+            ++ptr;
+        }
+    }
+
+    strcpy( split[count], begin );
+
+    assert( count == 1 || count == 2 );
+
+    if ( count == 1 )
+    {
+        strcpy( split[2], split[1] );
+        *(split[1]) = 0;
+    }
+}
+
+void BuildColladaId( const char * str, char * id )
+{
+    const char * src = str;
+    char * dst = id;
+    while ( *src != '-' && *src != 0 )
+    {
+        *(dst++) = *(src++);
+    }
+
+    *dst = 0;
+}
+
+void BuildMaterialId( ColladaEffect& effect, const std::vector< ColladaImage >& images )
+{
+    std::string stringId = effect.program;
+    stringId += effect.set;
+
+    size_t texIndex = 0;
+    for ( size_t i=0; i<TT_Count; ++i )
+    {
+        if ( *effect.textures[i] )
+        {
+            std::vector< ColladaImage >::const_iterator it = images.cbegin();
+            std::vector< ColladaImage >::const_iterator end = images.cend();
+            for ( ; it != end && strcmp( it->id, effect.textures[i] ) != 0; ++it );
+
+            assert( it != end );
+            stringId += it->file;
+        }
+    }
+
+    effect.hash = HashString( stringId.c_str() );
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
+char rootDir[256];
+char meshDir[256];
+
+std::vector< ColladaImage > images;
+std::vector< ColladaEffect > effects;
 ColladaGeometry geometry;
 
-
+std::vector< Program > programs;
 
 void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** atts )
 {
@@ -154,7 +286,59 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
     switch ( state )
     {
     case START :
-        if ( strcmp( (const char*)name, "geometry" ) == 0 )
+        if ( strcmp( (const char*)name, "image" ) == 0 )
+        {
+            ColladaImage image;
+            *image.id = 0;
+            *image.file = 0;
+
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "id" ) == 0 )
+                {
+                    strcpy( image.id, (const char *)*(++a) );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
+            state = IMAGE;
+
+            images.push_back( image );
+        }
+        else if ( strcmp( (const char*)name, "effect" ) == 0 )
+        {
+            ColladaEffect effect;
+            *effect.program = 0;
+            *effect.set = 0;
+            *effect.name = 0;
+
+            for ( size_t i=0; i<TT_Count; ++i ) { *effect.textures[i] = 0; }
+
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "id" ) == 0 )
+                {
+                    BuildColladaId( (const char *)*(++a), effect.id );
+
+                    char * split[] = { effect.program, effect.set, effect.name };
+                    SplitMaterialString( effect.id, split );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
+            state = EFFECT;
+
+            effects.push_back( effect );
+        }
+        else if ( strcmp( (const char*)name, "geometry" ) == 0 )
         {
             *geometry.id = 0;
             *geometry.name = 0;
@@ -177,6 +361,101 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
                 ++a;
             }
             state = GEOMETRY;
+        }
+        break;
+    case IMAGE :
+        if ( strcmp( (const char*)name, "init_from" ) == 0 )
+        {
+            state = IMAGE_FILE;
+        }
+    case EFFECT :
+        if ( strcmp( (const char*)name, "diffuse" ) == 0 )
+        {
+            state = DIFFUSE;
+        }
+        else if ( strcmp( (const char*)name, "specular" ) == 0 )
+        {
+            state = SPECULAR;
+        }
+        else if ( strcmp( (const char*)name, "ambient" ) == 0 )
+        {
+            state = AMBIENT;
+        }
+        else if ( strcmp( (const char*)name, "bump" ) == 0 )
+        {
+            state = BUMP;
+        }
+        break;
+    case DIFFUSE :
+        if ( strcmp( (const char*)name, "texture" ) == 0 )
+        {
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "texture" ) == 0 )
+                {
+                    BuildColladaId( (const char *)*(++a), effects.back().textures[TT_Diffuse] );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
+        }
+        break;
+    case SPECULAR :
+        if ( strcmp( (const char*)name, "texture" ) == 0 )
+        {
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "texture" ) == 0 )
+                {
+                    BuildColladaId( (const char *)*(++a), effects.back().textures[TT_Specular] );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
+        }
+        break;
+    case AMBIENT :
+        if ( strcmp( (const char*)name, "texture" ) == 0 )
+        {
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "texture" ) == 0 )
+                {
+                    BuildColladaId( (const char *)*(++a), effects.back().textures[TT_Ambient] );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
+        }
+        break;
+    case BUMP :
+        if ( strcmp( (const char*)name, "texture" ) == 0 )
+        {
+            const xmlChar ** a = atts;
+            while ( *a != NULL )
+            {
+                if ( strcmp( (const char *)*a, "texture" ) == 0 )
+                {
+                    BuildColladaId( (const char *)*(++a), effects.back().textures[TT_Bump] );
+                }
+                else
+                {
+                    ++a;
+                }
+                ++a;
+            }
         }
         break;
     case GEOMETRY :
@@ -358,7 +637,10 @@ void startElementCollada( void * ctx, const xmlChar * name, const xmlChar ** att
         }
         break;
     case FINISH :
-        if ( strcmp( (const char*)name, "library_geometries" ) == 0 )
+        if (
+            strcmp( (const char*)name, "library_images" ) == 0 ||
+            strcmp( (const char*)name, "library_effects" ) == 0 ||
+            strcmp( (const char*)name, "library_geometries" ) == 0 )
         {
             state = START;
         }
@@ -374,6 +656,7 @@ void charactersCollada( void * ctx, const xmlChar * name, int len )
 
     switch ( state )
     {
+    case IMAGE_FILE :
     case ARRAY :
     case PRIMITIVES :
         collada_characters.append( (const char*)name, len );
@@ -391,6 +674,51 @@ void endElementCollada( void * ctx, const xmlChar * name )
         if ( strcmp( (const char*)name, "library_geometries" ) == 0 )
         {
             state = FINISH;
+        }
+        break;
+    case IMAGE :
+        if ( strcmp( (const char*)name, "image" ) == 0 )
+        {
+            state = START;
+        }
+        break;
+    case IMAGE_FILE :
+        if ( strcmp( (const char*)name, "init_from" ) == 0 )
+        {
+            sprintf( images.back().file, "%s/%s.btx", meshDir, collada_characters.substr(0, collada_characters.find_last_of('.')).c_str() );
+            collada_characters.clear();
+
+            state = IMAGE;
+        }
+        break;
+    case EFFECT :
+        if ( strcmp( (const char*)name, "effect" ) == 0 )
+        {
+            state = START;
+        }
+        break;
+    case DIFFUSE :
+        if ( strcmp( (const char*)name, "diffuse" ) == 0 )
+        {
+            state = EFFECT;
+        }
+        break;
+    case SPECULAR :
+        if ( strcmp( (const char*)name, "specular" ) == 0 )
+        {
+            state = EFFECT;
+        }
+        break;
+    case AMBIENT :
+        if ( strcmp( (const char*)name, "ambient" ) == 0 )
+        {
+            state = EFFECT;
+        }
+        break;
+    case BUMP :
+        if ( strcmp( (const char*)name, "bump" ) == 0 )
+        {
+            state = EFFECT;
         }
         break;
     case GEOMETRY :
@@ -515,16 +843,108 @@ xmlSAXHandler SAXHandler = {
     NULL                    //fatalErrorSAXFunc fatalError;
 };
 
-int LoadCollada( const char * filename )
+bool LoadCollada( const char * inFilename )
 {
     ParseState state = FINISH;
 
-    int success = xmlSAXUserParseFile( &SAXHandler, &state, filename );
+    int success = xmlSAXUserParseFile( &SAXHandler, &state, inFilename );
 
     xmlCleanupParser();
     xmlMemoryDump();
     
-    return success;
+    return success == 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+bool BuildMaterials()
+{
+
+    std::vector< ColladaEffect >::iterator it = effects.begin();
+    std::vector< ColladaEffect >::iterator end = effects.end();
+    for ( ; it != end; ++it )
+    {
+        BuildMaterialId( *it, images );
+
+        std::vector< Program >::iterator prg = programs.begin();
+        std::vector< Program >::iterator pEnd = programs.end();
+        for ( ; prg != pEnd && strcmp(prg->id, it->program ) != 0; ++prg );
+
+        if ( prg == pEnd )
+        {
+            Program p;
+            strcpy( p.id, it->program );
+
+            FillProgram( p, rootDir );
+            programs.push_back( p );
+
+            prg = programs.end() - 1;
+        }
+
+        char id[9];
+        sprintf( id, "%08x", it->hash );
+
+        char filename[256];
+        sprintf( filename, "%s/%s/%s.bin", rootDir, materialCacheDir, id );
+
+        if ( !BuildDirectory( filename ) )
+        {
+            return false;
+        }
+
+        FILE *fp;
+
+        if (fopen_s(&fp, filename, "wb"))
+            return false;
+
+        unsigned int prgId = HashString( it->program );
+        unsigned int setId = HashString( it->set );
+
+        fwrite(&prgId,1,sizeof(unsigned int),fp);
+        fwrite(&setId,1,sizeof(unsigned int),fp);
+
+        unsigned int texture_count = 0;
+        for ( size_t i=0; i<prg->textures.size(); ++i )
+        {
+            if ( *(prg->textures[i].semantic) )
+                ++texture_count;
+        }
+
+        fwrite(&texture_count,1,sizeof(unsigned int),fp);
+
+        std::vector< Texture >::const_iterator tex = prg->textures.cbegin();
+        std::vector< Texture >::const_iterator tEnd = prg->textures.cend();
+        for ( ; tex != tEnd; ++tex )
+        {
+            if ( *(tex->semantic) )
+            {
+                fwrite(&tex->layout,1,sizeof(unsigned int),fp);
+
+                const char * texFile = tex->default;
+
+                for ( size_t i=0; i<TT_Count; ++i )
+                {
+                    if ( strcmp( tex->semantic, TextureMaterialSemantics[i] ) == 0 && *(it->textures[i]) != 0 )
+                    {
+                        std::vector< ColladaImage >::const_iterator img = images.cbegin();
+                        std::vector< ColladaImage >::const_iterator iEnd = images.cend();
+                        for ( ; img != iEnd && strcmp( img->id, it->textures[i] ) != 0; ++img );
+
+                        texFile = img->file;
+                        break;
+                    }
+                }
+
+                fwrite( texFile, 1, 256, fp );
+            }
+        }
+
+        fclose(fp);
+
+        printf( "material %s : %s : %s : %x\n", it->program, it->set, it->name, it->hash );
+    }
+
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -839,7 +1259,7 @@ void BuildTangentSpace( float * tangents,
     }
 }
 
-bool BuildMesh( const char * outFilename, int options )
+bool BuildMesh(  const char * outFilename , int options )
 {
     MeshHeader header;
 
@@ -925,11 +1345,22 @@ bool BuildMesh( const char * outFilename, int options )
     vertex_cache.reserve( vertex_count * vertex_stride );
     
     std::vector< size_t > sub_meshes;
+    std::vector< unsigned int > materials;
     
     poly_it = polylists.begin();
     for ( ; poly_it != poly_end; ++poly_it )
     {
         sub_meshes.push_back( poly_it->count * 3 ); // Only triangles
+
+        char materialId[32];
+        BuildColladaId( poly_it->material, materialId );
+
+        std::vector< ColladaEffect >::iterator effect = effects.begin();
+        std::vector< ColladaEffect >::iterator eEnd = effects.end();
+        for ( ; effect != eEnd && strcmp( effect->id, materialId ) != 0; ++effect );
+
+        assert( effect != eEnd );
+        materials.push_back( effect->hash );
 
         int * index = poly_it->primitives.data();
         int * index_end = index + poly_it->primitives.size();
@@ -1121,11 +1552,15 @@ bool BuildMesh( const char * outFilename, int options )
     index_end = (unsigned char*)index_data;
     for ( size_t i=0; i<sub_meshes.size(); ++i )
     {
-        unsigned int count  = sub_meshes[ i ];
-        unsigned int size   = count * index_size;
+        unsigned int count      = sub_meshes[ i ];
+        unsigned int size       = count * index_size;
 
         fwrite(&count,1,sizeof(unsigned int),fp);
         fwrite(index_end,1,size,fp);
+
+        unsigned int material   = materials[ i ];
+
+        fwrite(&material,1,sizeof(unsigned int),fp);
 
         index_end += size;
     }
@@ -1138,11 +1573,44 @@ bool BuildMesh( const char * outFilename, int options )
     return true;
 }
 
-bool CompileMesh( const char * inFilename, const char * outFilename, int options )
+bool CompileMesh( const char * filename, const char * dir, int options )
 {
-    LoadCollada( inFilename );
+    strcpy( rootDir, dir );
 
-    BuildMesh( outFilename, options );
+    char inFilename[256];
+    sprintf( inFilename, "%s/data/%s", dir, filename );
+
+    std::string mesh_dir = filename;
+    strcpy( meshDir, mesh_dir.substr( 0, mesh_dir.find_last_of( '/' ) ).c_str() );
+
+    size_t len = strlen( inFilename );
+
+    if ( len < 5 )
+        return false;
+
+    const char * ext = inFilename + len - 3;
+    
+    // only COLLADA files
+    if ( strcmp( ext, "dae" ) == 0 || strcmp( ext, "DAE" ) == 0 )
+    {
+        if ( ! LoadCollada( inFilename ) )
+            return false;
+    }
+    else
+    {
+        return false;
+    }
+
+    if ( !BuildMaterials() )
+        return false;
+
+    char outFilename[256];
+    sprintf( outFilename, "%s/cache/%s", dir, filename );
+    len = strlen( outFilename );
+    strcpy( outFilename + len - 3, "bmh" );
+
+    if ( !BuildMesh( outFilename, options ) )
+        return false;
 
     return true;
 }

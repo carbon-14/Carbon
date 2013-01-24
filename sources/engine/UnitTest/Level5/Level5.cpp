@@ -2,10 +2,14 @@
 #include "UnitTest/Utils.h"
 
 #include "Core/FileSystem.h"
+#include "Core/ResourceManager.h"
 
 #include "Graphic/RenderDevice.h"
 #include "Graphic/ProgramCache.h"
 #include "Graphic/RenderList.h"
+#include "Graphic/RenderGeometry.h"
+#include "Graphic/TextureResource.h"
+#include "Graphic/MeshResource.h"
 
 #include "Core/Math.h"
 #include "Core/Matrix.h"
@@ -106,191 +110,23 @@ namespace Level5_NS
         F32     radius;
     };
 
-    struct TextureHeader
+    class RenderMesh : public RenderGeometry
     {
-        U32     internalFormat;
-        U32     externalFormat;
-        U32     mipMapCount;
-        Bool    compressed;
-    };
+    public:
+        RenderMesh( const MeshResource * mesh, SizeT subMeshIndex )
+            : m_mesh( mesh ), m_subMeshIndex( subMeshIndex ) {}
 
-    struct LevelDesc
-    {
-        U32 size;
-        U32 width;
-        U32 height;
-    };
-
-    Handle LoadTexture( const Char * filename )
-    {
-        PathString path;
-        FileSystem::BuildPathName( filename, path, FileSystem::PT_CACHE );
-
-        void * data;
-        SizeT size;
-        FileSystem::Load( path, data, size );
-
-        U8 * ptr = (U8*)data;
-
-        TextureHeader * header = (TextureHeader*)ptr;
-
-        ptr += sizeof(TextureHeader);
-
-        const SizeT maxMipMapCount = 16;
-        SizeT sizes[ maxMipMapCount ];
-        SizeT widths[ maxMipMapCount ];
-        SizeT heights[ maxMipMapCount ];
-        void * datas[ maxMipMapCount ];
-
-        SizeT count = ( header->mipMapCount < maxMipMapCount ) ? header->mipMapCount : maxMipMapCount;
-        for ( SizeT i=0; i<count; ++i )
+        void Draw()
         {
-            LevelDesc * desc = (LevelDesc*)ptr;
-            ptr += sizeof(LevelDesc);
-
-            sizes[ i ]      = desc->size;
-            widths[ i ]     = desc->width;
-            heights[ i ]    = desc->height;
-            datas[ i ]      = ptr;
-            ptr += desc->size;
+            const MeshResource::SubMesh& sub_mesh = m_mesh->GetSubMeshes()[ m_subMeshIndex ];
+            RenderDevice::BeginGeometry( m_mesh->GetVertexDecl(), sub_mesh.m_vertexArray, sub_mesh.m_indexBuffer );
+            RenderDevice::DrawIndexed( m_mesh->GetPrimitive(), sub_mesh.m_indexCount, m_mesh->GetIndexType() );
+            RenderDevice::EndGeometry( m_mesh->GetVertexDecl() );
         }
 
-        Handle texture = RenderDevice::CreateTexture( header->internalFormat, header->externalFormat, count, header->compressed, sizes, widths, heights, datas );
-
-        UnknownAllocator::Deallocate( data );
-
-        return texture;
-    }
-
-    enum VType
-    {
-        VT_UBYTE    = 0,
-        VT_SHORT,
-        VT_HALF,
-        VT_FLOAT,
-        VT_NMVECT      // 2_10_10_10
+        const MeshResource *    m_mesh;
+        SizeT                   m_subMeshIndex;
     };
-
-    const DataType toAttribType[] =
-    {
-        DT_U8,
-        DT_S16,
-        DT_F16,
-        DT_F32,
-        DT_S2_10_10_10
-    };
-
-    const SizeT toAttribSize[] =
-    {
-        1, 
-        2, 
-        2,
-        4,
-        1   // used to keep a size of 4 in vertex declaration
-    };
-
-    const Bool toAttribNormalized[] =
-    {
-        true,   // color
-        false,
-        false,
-        false,
-        true    // normal
-    };
-
-    enum IType
-    {
-        IT_UBYTE   = 0,
-        IT_USHORT,
-        IT_ULONG
-    };
-
-    const DataType toIndexType[] =
-    {
-        DT_U8,
-        DT_U16,
-        DT_U32
-    };
-
-    const SizeT toIndexSize[] =
-    {
-        1, 
-        2, 
-        4
-    };
-
-    struct MeshHeader
-    {
-        IType   indexType;
-        U32     subMeshCount;
-        U32     inputCount;
-        U32     vertexDataSize;
-    };
-
-    struct MeshInput
-    {
-        VertexSemantic  semantic;
-        VType           type;
-        U32             size;
-        U32             offset;
-    };
-
-    Geometry LoadMesh( const Char * filename )
-    {
-        Geometry geom;
-
-        PathString path;
-        FileSystem::BuildPathName( filename, path, FileSystem::PT_CACHE );
-
-        void * data;
-        SizeT size;
-        FileSystem::Load( path, data, size );
-
-        U8 * ptr = (U8*)data;
-
-        MeshHeader * header = (MeshHeader*)ptr;
-        ptr += sizeof(MeshHeader);
-
-        geom.m_indexType    = toIndexType[ header->indexType ];
-        geom.m_subGeomCount = header->subMeshCount;
-
-        VertexDeclaration& vDecl = geom.m_vertexDecl;
-        vDecl.m_count = header->inputCount;
-        vDecl.m_size = 0;
-        for ( SizeT i=0; i<vDecl.m_count; ++i )
-        {
-            MeshInput * desc = (MeshInput*)ptr;
-            ptr += sizeof(MeshInput);
-
-            vDecl.m_attributes[ i ].m_semantic      = desc->semantic;
-            vDecl.m_attributes[ i ].m_type          = toAttribType[ desc->type ];
-            vDecl.m_attributes[ i ].m_size          = desc->size / toAttribSize[ desc->type ];
-            vDecl.m_attributes[ i ].m_normalized    = toAttribNormalized[ desc->type ];
-            vDecl.m_attributes[ i ].m_offset        = desc->offset;
-            vDecl.m_size                            += desc->size;
-        }
-
-        geom.m_vertexBuffer = RenderDevice::CreateVertexBuffer( header->vertexDataSize, ptr, BU_STATIC );
-
-        ptr += header->vertexDataSize;
-
-        for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
-        {
-            SizeT count = *((U32*)ptr);
-            ptr += sizeof(U32);
-
-            SizeT size = count * DataTypeSize[ geom.m_indexType ];
-
-            geom.m_subGeoms[ i ].m_indexCount   = count;
-            geom.m_subGeoms[ i ].m_indexBuffer  = RenderDevice::CreateIndexBuffer( size, ptr, BU_STATIC );
-            geom.m_subGeoms[ i ].m_vertexArray  = RenderDevice::CreateVertexArray( geom.m_vertexDecl, geom.m_vertexBuffer, geom.m_subGeoms[ i ].m_indexBuffer );
-            ptr += size;
-        }
-
-        UnknownAllocator::Deallocate( data );
-
-        return geom;
-    }
 
     class MeshRenderer
     {
@@ -301,40 +137,46 @@ namespace Level5_NS
 
         void Initialize()
         {
-            m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "level5" );
-
-            m_renderElement.m_geom = LoadMesh( "sibenik.bmh" );
-
-            m_renderElement.m_unitCount = 0;
-
+            U32 programId       = ProgramCache::CreateId( "level5" );
+            m_program           = programCache.GetProgram( programId );
+            m_mesh              = ResourceManager::Create< MeshResource >( "level5.bmh" );
             m_uniformBuffers[0] = cameraParameters;
             m_uniformBuffers[1] = ambientParameters;
             m_uniformBuffers[2] = lightParameters;
             m_uniformBuffers[3] = flashParameters;
-            m_renderElement.m_uniformBuffers = m_uniformBuffers;
-            m_renderElement.m_uniformBufferCout = 4;
         }
 
         void Render()
         {
-            renderList.Push( m_renderElement );
+            RenderElement element;
+
+            element.m_program       = m_program;
+            element.m_textureCount  = 0;
+
+            for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<4; ++element.m_uniformBufferCount )
+            {
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
+            }
+
+            for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
+            {
+                element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
+                ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
+
+                renderList.Push( element );
+            }
         }
 
         void Destroy()
         {
-            Geometry& geom = m_renderElement.m_geom;
-            for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
-            {
-                RenderDevice::DestroyVertexArray( geom.m_subGeoms[ i ].m_vertexArray );
-                RenderDevice::DestroyBuffer( geom.m_subGeoms[ i ].m_indexBuffer );
-            }
-            RenderDevice::DestroyBuffer( geom.m_vertexBuffer );
+            m_mesh = 0;
         }
 
     private:
-        RenderElement   m_renderElement;
-        Handle          m_uniformBuffers[4];
+        ProgramHandle               m_program;
+        SharedPtr< MeshResource >   m_mesh;
+        Handle                      m_uniformBuffers[4];
     };
 
     struct SphereParameters
@@ -352,32 +194,22 @@ namespace Level5_NS
 
         void Initialize()
         {
-            m_renderElement.m_primitive = PT_TRIANGLES;
-            m_renderElement.m_program   = programCache.GetProgram( "sphere" );
+            U32 programId       = ProgramCache::CreateId( "sphere" );
+            m_program           = programCache.GetProgram( programId );
+            m_mesh              = ResourceManager::Create< MeshResource >( "sphere.bmh" );
 
-            m_renderElement.m_geom = LoadMesh( "sphere.bmh" );
-
-            m_samplers[0] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-            m_samplers[1] = RenderDevice::CreateSampler( FT_LINEAR, FT_LINEAR, MT_LINEAR, WT_REPEAT );
-            m_renderElement.m_samplers = m_samplers;
-
-            m_textures[0] = LoadTexture( "crack_c.btx" );
-            m_textures[1] = LoadTexture( "crack_n.btx" );
-            m_renderElement.m_textures = m_textures;
-
-            m_renderElement.m_unitCount = 2;
-
-            m_position      = Vector4( 5.0f, -10.0f, 0.0f );
-            m_scale         = One4();
-            m_orientation   = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
+            m_textures[0]       = ResourceManager::Create< TextureResource >( "crack_c.btx" );
+            m_textures[1]       = ResourceManager::Create< TextureResource >( "crack_n.btx" );
 
             m_uniformBuffers[0] = cameraParameters;
             m_uniformBuffers[1] = ambientParameters;
             m_uniformBuffers[2] = lightParameters;
             m_uniformBuffers[3] = flashParameters;
             m_uniformBuffers[4] = RenderDevice::CreateUniformBuffer( sizeof(SphereParameters), NULL, BU_STREAM );
-            m_renderElement.m_uniformBuffers = m_uniformBuffers;
-            m_renderElement.m_uniformBufferCout = 5;
+
+            m_position          = Vector4( 5.0f, -10.0f, 0.0f );
+            m_scale             = One4();
+            m_orientation       = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
         }
 
         void Render()
@@ -396,36 +228,55 @@ namespace Level5_NS
 
             RenderDevice::UnmapUniformBuffer( );
 
-            renderList.Push( m_renderElement );
+            RenderElement element;
+
+            element.m_program = m_program;
+
+            for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
+            {
+                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsReady() )
+                {
+                    element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
+                    element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
+                }
+            }
+
+            for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )
+            {
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
+                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
+            }
+
+            for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
+            {
+                element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
+                ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
+
+                renderList.Push( element );
+            }
         }
 
         void Destroy()
         {
+            m_mesh = 0;
+
+            m_textures[0] = 0;
+            m_textures[1] = 0;
+
             RenderDevice::DestroyBuffer( m_uniformBuffers[3] );
-
-            RenderDevice::DestroySampler( m_samplers[0] );
-            RenderDevice::DestroySampler( m_samplers[1] );
-            RenderDevice::DestroyTexture( m_textures[0] );
-            RenderDevice::DestroyTexture( m_textures[1] );
-
-            Geometry& geom = m_renderElement.m_geom;
-            for ( SizeT i=0; i<geom.m_subGeomCount; ++i )
-            {
-                RenderDevice::DestroyVertexArray( geom.m_subGeoms[ i ].m_vertexArray );
-                RenderDevice::DestroyBuffer( geom.m_subGeoms[ i ].m_indexBuffer );
-            }
-            RenderDevice::DestroyBuffer( geom.m_vertexBuffer );
         }
 
     private:
-        RenderElement       m_renderElement;
-        Handle              m_samplers[2];
-        Handle              m_textures[2];
-        Handle              m_uniformBuffers[5];
+        ProgramHandle                   m_program;
 
-        Vector              m_position;
-        Vector              m_scale;
-        Vector              m_orientation;
+        SharedPtr< MeshResource >       m_mesh;
+
+        SharedPtr< TextureResource >    m_textures[2];
+        Handle                          m_uniformBuffers[5];
+
+        Vector          m_position;
+        Vector          m_scale;
+        Vector          m_orientation;
     };
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -776,7 +627,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     UNIT_TEST_MESSAGE( "Carbon Engine : Initialize\n" );
 
     MemoryManager::Initialize( frameAllocatorSize );
-    FileSystem::Initialize( "..\\..\\..\\" );
+    FileSystem::Initialize( "../../.." );
 
     if ( ! device3d.Initialize( hInstance, hwnd ) )
     {
@@ -784,13 +635,23 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         return FALSE;
     }
 
-    if ( ! programCache.Initialize( "shaders\\" ) )
+    if ( ! programCache.Initialize( "shaders" ) )
     {
         device3d.Destroy();
         MessageBox( hwnd, "Cannot initialize the program cache !", "Fatal Error", MB_OK );
         return FALSE;
     }
 
+    ResourceManager::Initialize();
+
+    RenderCache renderCache;
+
+    RenderState opaque;
+    opaque.m_enableDepthTest = true;
+    opaque.m_enableCullFace  = true;
+
+    renderList.SetRenderState( opaque );
+    renderList.SetClearMask( CM_COLOR | CM_DEPTH );
     renderList.SetSRGBWrite( true );
 
     cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
@@ -834,12 +695,11 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
         meshRenderer.Render();
         sphereRenderer.Render();
 
-        RenderDevice::ClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
-
-        renderList.Draw( programCache );
+        renderList.Draw( renderCache );
 
         device3d.Swap();
 
+        ResourceManager::Update();
         MemoryManager::FrameUpdate();
 
         /////////////////////////////////////////////////////////////////////////////
@@ -849,13 +709,17 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
 
     UNIT_TEST_MESSAGE( "Carbon Engine : Destroy\n" );
 
+    sphereRenderer.Destroy();
+    meshRenderer.Destroy();
+
+    renderCache.Clear();
+
     RenderDevice::DestroyBuffer( flashParameters );
     RenderDevice::DestroyBuffer( lightParameters );
     RenderDevice::DestroyBuffer( ambientParameters );
     RenderDevice::DestroyBuffer( cameraParameters );
 
-    sphereRenderer.Destroy();
-    meshRenderer.Destroy();
+    ResourceManager::Destroy();
 
     programCache.Destroy();
 

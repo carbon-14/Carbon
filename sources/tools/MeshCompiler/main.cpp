@@ -9,8 +9,8 @@ int main( int argc, char* argv[] )
     if ( argc < 3 || argc > 7 )
         goto exit;
 
-    char * inFile = argv[--argc];
-    char * outFile = argv[--argc];
+    char * file = argv[--argc];
+    char * root = argv[--argc];
 
     int options = 0;
     while ( argc > 1 )
@@ -28,7 +28,7 @@ int main( int argc, char* argv[] )
             goto exit;
     }
 
-    if ( ! CompileMesh( inFile, outFile, options ) )
+    if ( ! CompileMesh( file, root, options ) )
     {
         printf( "COMPILATION FAILED !\n" );
         return EXIT_FAILURE;
@@ -37,11 +37,11 @@ int main( int argc, char* argv[] )
     return EXIT_SUCCESS;
 
 exit :
-    printf( "usage: MeshCompiler [-cmp_pos|-cmp_vec|-cmp_uvs] <output> <input>\n\n" );
+    printf( "usage: MeshCompiler [-cmp_pos|-cmp_vec|-cmp_uvs] <root> <input>\n\n" );
     printf( "    cmp_pos    compress positions                      ( optional )\n" );
     printf( "    cmp_vec    compress normals, tangents, binormals   ( optional )\n" );
     printf( "    cmp_uvs    compress texture coords                 ( optional )\n" );
-    printf( "    output     output file name                        ( required )\n" );
+    printf( "    root       root directory                          ( required )\n" );
     printf( "    input      input file name                         ( required )\n" );
     return 0;
 }
