@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<program xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=". program.xsd">
+    <description>
+        <textures>
+            <texture id="carbonColor" sampler="LinearSampler" layout="0" default="default_c.png"/>
+            <texture id="carbonNormal" sampler="LinearSampler" layout="1" default="default_n.png"/>
+        </textures>
+        <parameters/>
+    </description>
+    <sets/>
+</program>

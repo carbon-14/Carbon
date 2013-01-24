@@ -12,8 +12,6 @@ in Data
 
 out vec4 outColor;
 
-layout(binding=0) uniform sampler2D carbonColor;
-
 layout(binding=1) uniform AmbientParameters
 {
     vec4    groundColor;

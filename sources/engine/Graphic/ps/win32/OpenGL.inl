@@ -80,6 +80,14 @@ extern "C"
 #endif
 
 #define META_GL_FUNCTIONS( Func )                                                   \
+    /* GL_VERSION_1_2 */                                                            \
+    Func ( PFNGLBLENDCOLORPROC                  , glBlendColor                  );  \
+    Func ( PFNGLBLENDEQUATIONPROC               , glBlendEquation               );  \
+    Func ( PFNGLDRAWRANGEELEMENTSPROC           , glDrawRangeElements           );  \
+    Func ( PFNGLTEXIMAGE3DPROC                  , glTexImage3D                  );  \
+    Func ( PFNGLTEXSUBIMAGE3DPROC               , glTexSubImage3D               );  \
+    Func ( PFNGLCOPYTEXSUBIMAGE3DPROC           , glCopyTexSubImage3D           );  \
+                                                                                    \
     /* GL_VERSION_1_3 */                                                            \
     Func ( PFNGLACTIVETEXTUREPROC               , glActiveTexture               );  \
     Func ( PFNGLSAMPLECOVERAGEPROC              , glSampleCoverage              );  \
@@ -90,6 +98,15 @@ extern "C"
     Func ( PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC     , glCompressedTexSubImage2D     );  \
     Func ( PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC     , glCompressedTexSubImage1D     );  \
     Func ( PFNGLGETCOMPRESSEDTEXIMAGEPROC       , glGetCompressedTexImage       );  \
+                                                                                    \
+    /* GL_VERSION_1_4 */                                                            \
+    Func ( PFNGLBLENDFUNCSEPARATEPROC           , glBlendFuncSeparate           );  \
+    Func ( PFNGLMULTIDRAWARRAYSPROC             , glMultiDrawArrays             );  \
+    Func ( PFNGLMULTIDRAWELEMENTSPROC           , glMultiDrawElements           );  \
+    Func ( PFNGLPOINTPARAMETERFPROC             , glPointParameterf             );  \
+    Func ( PFNGLPOINTPARAMETERFVPROC            , glPointParameterfv            );  \
+    Func ( PFNGLPOINTPARAMETERIPROC             , glPointParameteri             );  \
+    Func ( PFNGLPOINTPARAMETERIVPROC            , glPointParameteriv            );  \
                                                                                     \
     /* GL_VERSION_1_5 */                                                            \
     Func ( PFNGLGENQUERIESPROC                  , glGenQueries                  );  \

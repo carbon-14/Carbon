@@ -23,7 +23,7 @@ namespace Core
         typedef Char *          Iterator;
         typedef const Char *    ConstIterator;
 
-        static const SizeT      ms_MinStringSize = 8;
+        static const SizeT      ms_minStringSize = 8;
 
     public:
         StringImpl();
@@ -43,8 +43,8 @@ namespace Core
     template< typename Alloc >
     StringImpl< Alloc >::StringImpl()
     {
-        m_end = m_begin = DoAllocate( ms_MinStringSize );
-        m_capacity = m_begin + ms_MinStringSize;
+        m_end = m_begin = DoAllocate( ms_minStringSize );
+        m_capacity = m_begin + ms_minStringSize;
         *m_end = 0;
     }
 
@@ -62,8 +62,8 @@ namespace Core
         }
         else
         {
-            m_end = m_begin = DoAllocate( ms_MinStringSize );
-            m_capacity = m_begin + ms_MinStringSize;
+            m_end = m_begin = DoAllocate( ms_minStringSize );
+            m_capacity = m_begin + ms_minStringSize;
         }
 
         *m_end = 0;
@@ -82,8 +82,8 @@ namespace Core
         }
         else
         {
-            m_end = m_begin = DoAllocate( ms_MinStringSize );
-            m_capacity = m_begin + ms_MinStringSize;
+            m_end = m_begin = DoAllocate( ms_minStringSize );
+            m_capacity = m_begin + ms_minStringSize;
         }
 
         *m_end = 0;
@@ -103,8 +103,8 @@ namespace Core
         }
         else
         {
-            m_end = m_begin = DoAllocate( ms_MinStringSize );
-            m_capacity = m_begin + ms_MinStringSize;
+            m_end = m_begin = DoAllocate( ms_minStringSize );
+            m_capacity = m_begin + ms_minStringSize;
         }
 
         *m_end = 0;

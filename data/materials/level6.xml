@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<program xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=". program.xsd">
+    <description>
+        <textures>
+            <texture id="colorMap" sampler="LinearSampler" layout="0" semantic="color" default="default_c.png"/>
+            <texture id="normalMap" sampler="LinearSampler" layout="1" semantic="normal" default="default_n.png"/>
+        </textures>
+        <parameters>
+            <parameter id="SpecParams" layout="0" desc="intensity, power">1 4</parameter>
+        </parameters>
+    </description>
+    <sets>
+        <set id="stone">
+            <value ref="SpecParams">0.1 4</value>
+        </set>
+        <set id="marble">
+            <value ref="SpecParams">1 16</value>
+        </set>
+        <set id="metal">
+            <value ref="SpecParams">0.5 8</value>
+        </set>
+        <set id="fabric">
+            <value ref="SpecParams">0.01 1</value>
+        </set>
+    </sets>
+</program>
