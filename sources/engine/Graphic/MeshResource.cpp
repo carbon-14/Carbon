@@ -170,8 +170,8 @@ namespace Graphic
             if ( !sub_mesh.m_indexBuffer )
                 return false;
 
-            sub_mesh.m_vertexArray  = RenderDevice::CreateVertexArray( m_vertexDecl, m_vertexBuffer, sub_mesh.m_indexBuffer );
-            if ( !sub_mesh.m_indexBuffer )
+            sub_mesh.m_vertexArray  = RenderDevice::CreateVertexArray( m_vertexDecl, m_vertexBuffer );
+            if ( !sub_mesh.m_vertexArray )
                 return false;
 
             ptr += size;

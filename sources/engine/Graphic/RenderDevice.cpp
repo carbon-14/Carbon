@@ -28,6 +28,32 @@ namespace Graphic
         GL_READ_WRITE       // BU_READ_WRITE
     };
 
+    const GLenum ToGLTextureFormat[] =
+    {
+        GL_RGBA8,               // TF_RGBA8
+        GL_RG16,                // TF_RG16
+        GL_DEPTH24_STENCIL8     // TF_D24S8
+    };
+
+    const GLenum ToGLFramebufferTarget[] =
+    {
+        GL_READ_FRAMEBUFFER,    // FT_READ
+        GL_DRAW_FRAMEBUFFER,    // FT_DRAW
+        GL_FRAMEBUFFER          // FT_BOTH
+    };
+
+    const GLenum ToGLFramebufferAttachment[] =
+    {
+        GL_COLOR_ATTACHMENT0,           // FA_COLOR0
+        GL_COLOR_ATTACHMENT1,           // FA_COLOR1
+        GL_COLOR_ATTACHMENT2,           // FA_COLOR2
+        GL_COLOR_ATTACHMENT3,           // FA_COLOR3
+        GL_DEPTH_ATTACHMENT,            // FA_DEPTH
+        GL_STENCIL_ATTACHMENT,          // FA_STENCIL
+        GL_DEPTH_STENCIL_ATTACHMENT,    // FA_DEPTH_STENCIL
+    };
+
+
     const GLenum ToGLDataType[] =
     {
         GL_BYTE,                        // DT_S8
@@ -249,32 +275,21 @@ namespace Graphic
         glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
     }
 
-    Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
+    Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer )
     {
         GLuint varray;
         glGenVertexArrays( 1, &varray );
         glBindVertexArray( varray );
-
-        GLenum error = glGetError();
 
         glBindBuffer( GL_ARRAY_BUFFER, vbuffer );
         for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
             const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
             glEnableVertexAttribArray( attrib.m_semantic );
-            error = glGetError();
             glVertexAttribPointer( attrib.m_semantic, attrib.m_size, ToGLDataType[ attrib.m_type ], attrib.m_normalized, vDecl.m_size, reinterpret_cast< const void * >( attrib.m_offset ) );
-            error = glGetError();
             glDisableVertexAttribArray( attrib.m_semantic );
         }
         glBindBuffer( GL_ARRAY_BUFFER, 0 );
-
-        if ( ibuffer )
-        {
-            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibuffer );
-            error = glGetError();
-            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
-        }
 
         glBindVertexArray( 0 );
         return varray;
@@ -403,6 +418,16 @@ namespace Graphic
         return texture;
     }
 
+    Handle IRenderDevice::CreateRenderTarget( TextureFormat format, SizeT width, SizeT height )
+    {
+        GLuint texture;
+        glGenTextures( 1, &texture );
+        glBindTexture( GL_TEXTURE_2D, texture );
+        glTexStorage2D( GL_TEXTURE_2D, 1, ToGLTextureFormat[ format ], width, height );
+        glBindTexture( GL_TEXTURE_2D, 0 );
+        return texture;
+    }
+
     void IRenderDevice::DestroyTexture( Handle texture )
     {
         glDeleteTextures( 1, (GLuint*)&texture );
@@ -434,6 +459,28 @@ namespace Graphic
     void IRenderDevice::BindSampler( Handle sampler, SizeT unit )
     {
         glBindSampler( unit, sampler );
+    }
+
+    Handle IRenderDevice::CreateFramebuffer()
+    {
+        GLuint frameBuffer;
+        glGenFramebuffers( 1, &frameBuffer );
+        return frameBuffer;
+    }
+
+    void IRenderDevice::DestroyFramebuffer( Handle framebuffer )
+    {
+        glDeleteFramebuffers( 1, (GLuint*)&framebuffer );
+    }
+
+    void IRenderDevice::BindFramebuffer( Handle framebuffer, FramebufferTarget target )
+    {
+        glBindFramebuffer( ToGLFramebufferTarget[ target ], framebuffer );
+    }
+
+    void IRenderDevice::AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level )
+    {
+        glFramebufferTexture2D( ToGLFramebufferTarget[ target ], ToGLFramebufferAttachment[ attachment ], GL_TEXTURE_2D, texture, level );
     }
 
     void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )
