@@ -19,6 +19,11 @@ namespace Core
         return (m_state & VALID) != 0;
     }
 
+    bool Resource::IsPending() const
+    {
+        return (m_state & PENDING) != 0;
+    }
+
     bool Resource::IsLoaded() const
     {
         return (m_state & LOADED) != 0;
