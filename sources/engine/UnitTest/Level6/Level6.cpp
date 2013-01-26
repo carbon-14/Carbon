@@ -139,8 +139,12 @@ namespace Level6_NS
                     if ( texture.m_resource && texture.m_resource->IsReady() )
                     {
                         element.m_textures[ element.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
-                        element.m_textures[ element.m_textureCount ].m_index    = texture.m_index;
                     }
+                    else
+                    {
+                        element.m_textures[ element.m_textureCount ].m_handle   = 0;
+                    }
+                    element.m_textures[ element.m_textureCount ].m_index    = texture.m_index;
                 }
                 element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
                 ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
@@ -213,8 +217,12 @@ namespace Level6_NS
                 if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsReady() )
                 {
                     element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
-                    element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
                 }
+                else
+                {
+                    element.m_textures[ element.m_textureCount ].m_handle   = 0;
+                }
+                element.m_textures[ element.m_textureCount ].m_index        = element.m_textureCount;
             }
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )

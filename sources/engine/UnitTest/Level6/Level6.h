@@ -7,8 +7,6 @@
 #include "Graphic/RenderCache.h"
 #include "Graphic/RenderList.h"
 
-#include "Core/Vector.h"
-
 class Level6 : public Application
 {
 public:

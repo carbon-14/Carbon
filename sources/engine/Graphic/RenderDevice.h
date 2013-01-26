@@ -59,6 +59,31 @@ namespace Graphic
         BA_READ_WRITE
     };
 
+    enum TextureFormat
+    {
+        TF_RGBA8 = 0,
+        TF_RG16,
+        TF_D24S8
+    };
+
+    enum FramebufferTarget
+    {
+        FT_READ = 0,
+        FT_DRAW,
+        FT_BOTH
+    };
+
+    enum FramebufferAttachment
+    {
+        FA_COLOR0 = 0,
+        FA_COLOR1,
+        FA_COLOR2,
+        FA_COLOR3,
+        FA_DEPTH,
+        FA_STENCIL,
+        FA_DEPTH_STENCIL
+    };
+
     enum PrimitiveType
     {
         PT_POINTS = 0,
@@ -202,7 +227,7 @@ namespace Graphic
         static void             UnmapUniformBuffer( );
         static void             BindUniformBuffer( Handle ubuffer, SizeT location );
 
-        static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer );
+        static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer );
         static void             DestroyVertexArray( Handle varray );
 
         static Handle           CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count );
@@ -212,12 +237,18 @@ namespace Graphic
         static void             UseProgram( Handle program );
 
         static Handle           CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
+        static Handle           CreateRenderTarget( TextureFormat format, SizeT width, SizeT height );
         static void             DestroyTexture( Handle texture );
         static void             BindTexture( Handle texture, SizeT unit );
 
         static Handle           CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap );
         static void             DestroySampler( Handle sampler );
         static void             BindSampler( Handle sampler, SizeT unit );
+
+        static Handle           CreateFramebuffer();
+        static void             DestroyFramebuffer( Handle framebuffer );
+        static void             BindFramebuffer( Handle framebuffer, FramebufferTarget target );
+        static void             AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level );
 
         static void             BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer );
         static void             EndGeometry( const VertexDeclaration& vDecl );
