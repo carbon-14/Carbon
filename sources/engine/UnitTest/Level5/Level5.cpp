@@ -237,8 +237,12 @@ namespace Level5_NS
                 if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsReady() )
                 {
                     element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
-                    element.m_textures[ element.m_textureCount ].m_index    = element.m_textureCount;
                 }
+                else
+                {
+                    element.m_textures[ element.m_textureCount ].m_handle   = 0;
+                }
+                element.m_textures[ element.m_textureCount ].m_index        = element.m_textureCount;
             }
 
             for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )

@@ -16,6 +16,7 @@ namespace Core
         virtual ~Resource();
 
         bool            IsValid() const;    // valid
+        bool            IsPending() const;  // pending
         bool            IsLoaded() const;   // loaded
         bool            IsReady() const;    // valid & loaded
 
@@ -31,7 +32,8 @@ namespace Core
         enum StateBit
         {
             VALID   = 1 << 0,
-            LOADED  = 1 << 1
+            PENDING = 1 << 1,
+            LOADED  = 1 << 2
         };
 
         void            SetId( U32 id );

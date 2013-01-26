@@ -79,127 +79,146 @@ extern "C"
 }
 #endif
 
-#define META_GL_FUNCTIONS( Func )                                                   \
-    /* GL_VERSION_1_2 */                                                            \
-    Func ( PFNGLBLENDCOLORPROC                  , glBlendColor                  );  \
-    Func ( PFNGLBLENDEQUATIONPROC               , glBlendEquation               );  \
-    Func ( PFNGLDRAWRANGEELEMENTSPROC           , glDrawRangeElements           );  \
-    Func ( PFNGLTEXIMAGE3DPROC                  , glTexImage3D                  );  \
-    Func ( PFNGLTEXSUBIMAGE3DPROC               , glTexSubImage3D               );  \
-    Func ( PFNGLCOPYTEXSUBIMAGE3DPROC           , glCopyTexSubImage3D           );  \
-                                                                                    \
-    /* GL_VERSION_1_3 */                                                            \
-    Func ( PFNGLACTIVETEXTUREPROC               , glActiveTexture               );  \
-    Func ( PFNGLSAMPLECOVERAGEPROC              , glSampleCoverage              );  \
-    Func ( PFNGLCOMPRESSEDTEXIMAGE3DPROC        , glCompressedTexImage3D        );  \
-    Func ( PFNGLCOMPRESSEDTEXIMAGE2DPROC        , glCompressedTexImage2D        );  \
-    Func ( PFNGLCOMPRESSEDTEXIMAGE1DPROC        , glCompressedTexImage1D        );  \
-    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC     , glCompressedTexSubImage3D     );  \
-    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC     , glCompressedTexSubImage2D     );  \
-    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC     , glCompressedTexSubImage1D     );  \
-    Func ( PFNGLGETCOMPRESSEDTEXIMAGEPROC       , glGetCompressedTexImage       );  \
-                                                                                    \
-    /* GL_VERSION_1_4 */                                                            \
-    Func ( PFNGLBLENDFUNCSEPARATEPROC           , glBlendFuncSeparate           );  \
-    Func ( PFNGLMULTIDRAWARRAYSPROC             , glMultiDrawArrays             );  \
-    Func ( PFNGLMULTIDRAWELEMENTSPROC           , glMultiDrawElements           );  \
-    Func ( PFNGLPOINTPARAMETERFPROC             , glPointParameterf             );  \
-    Func ( PFNGLPOINTPARAMETERFVPROC            , glPointParameterfv            );  \
-    Func ( PFNGLPOINTPARAMETERIPROC             , glPointParameteri             );  \
-    Func ( PFNGLPOINTPARAMETERIVPROC            , glPointParameteriv            );  \
-                                                                                    \
-    /* GL_VERSION_1_5 */                                                            \
-    Func ( PFNGLGENQUERIESPROC                  , glGenQueries                  );  \
-    Func ( PFNGLDELETEQUERIESPROC               , glDeleteQueries               );  \
-    Func ( PFNGLISQUERYPROC                     , glIsQuery                     );  \
-    Func ( PFNGLBEGINQUERYPROC                  , glBeginQuery                  );  \
-    Func ( PFNGLENDQUERYPROC                    , glEndQuery                    );  \
-    Func ( PFNGLGETQUERYIVPROC                  , glGetQueryiv                  );  \
-    Func ( PFNGLGETQUERYOBJECTIVPROC            , glGetQueryObjectiv            );  \
-    Func ( PFNGLGETQUERYOBJECTUIVPROC           , glGetQueryObjectuiv           );  \
-    Func ( PFNGLBINDBUFFERPROC                  , glBindBuffer                  );  \
-    Func ( PFNGLDELETEBUFFERSPROC               , glDeleteBuffers               );  \
-    Func ( PFNGLGENBUFFERSPROC                  , glGenBuffers                  );  \
-    Func ( PFNGLISBUFFERPROC                    , glIsBuffer                    );  \
-    Func ( PFNGLBUFFERDATAPROC                  , glBufferData                  );  \
-    Func ( PFNGLBUFFERSUBDATAPROC               , glBufferSubData               );  \
-    Func ( PFNGLGETBUFFERSUBDATAPROC            , glGetBufferSubData            );  \
-    Func ( PFNGLMAPBUFFERPROC                   , glMapBuffer                   );  \
-    Func ( PFNGLUNMAPBUFFERPROC                 , glUnmapBuffer                 );  \
-    Func ( PFNGLGETBUFFERPARAMETERIVPROC        , glGetBufferParameteriv        );  \
-    Func ( PFNGLGETBUFFERPOINTERVPROC           , glGetBufferPointerv           );  \
-                                                                                    \
-    /* GL_VERSION_2_0 */                                                            \
-    Func ( PFNGLATTACHSHADERPROC                , glAttachShader                );  \
-    Func ( PFNGLCOMPILESHADERPROC               , glCompileShader               );  \
-    Func ( PFNGLCREATEPROGRAMPROC               , glCreateProgram               );  \
-    Func ( PFNGLCREATESHADERPROC                , glCreateShader                );  \
-    Func ( PFNGLDELETEPROGRAMPROC               , glDeleteProgram               );  \
-    Func ( PFNGLDELETESHADERPROC                , glDeleteShader                );  \
-    Func ( PFNGLDETACHSHADERPROC                , glDetachShader                );  \
-    Func ( PFNGLDISABLEVERTEXATTRIBARRAYPROC    , glDisableVertexAttribArray    );  \
-    Func ( PFNGLENABLEVERTEXATTRIBARRAYPROC     , glEnableVertexAttribArray     );  \
-    Func ( PFNGLGETPROGRAMIVPROC                , glGetProgramiv                );  \
-    Func ( PFNGLGETPROGRAMINFOLOGPROC           , glGetProgramInfoLog           );  \
-    Func ( PFNGLGETSHADERIVPROC                 , glGetShaderiv                 );  \
-    Func ( PFNGLGETSHADERINFOLOGPROC            , glGetShaderInfoLog            );  \
-    Func ( PFNGLISPROGRAMPROC                   , glIsProgram                   );  \
-    Func ( PFNGLISSHADERPROC                    , glIsShader                    );  \
-    Func ( PFNGLLINKPROGRAMPROC                 , glLinkProgram                 );  \
-    Func ( PFNGLSHADERSOURCEPROC                , glShaderSource                );  \
-    Func ( PFNGLUSEPROGRAMPROC                  , glUseProgram                  );  \
-    Func ( PFNGLVERTEXATTRIBPOINTERPROC         , glVertexAttribPointer         );  \
-                                                                                    \
-    /* GL_VERSION_3_0 */                                                            \
-    Func ( PFNGLBINDBUFFERRANGEPROC             , glBindBufferRange             );  \
-    Func ( PFNGLBINDBUFFERBASEPROC              , glBindBufferBase              );  \
-                                                                                    \
-    /* GL_ARB_framebuffer_object */                                                 \
-    Func ( PFNGLGENERATEMIPMAPPROC              , glGenerateMipmap              );  \
-                                                                                    \
-    /* GL_ARB_vertex_array_object */                                                \
-    Func ( PFNGLBINDVERTEXARRAYPROC             , glBindVertexArray             );  \
-    Func ( PFNGLDELETEVERTEXARRAYSPROC          , glDeleteVertexArrays          );  \
-    Func ( PFNGLGENVERTEXARRAYSPROC             , glGenVertexArrays             );  \
-    Func ( PFNGLISVERTEXARRAYPROC               , glIsVertexArray               );  \
-                                                                                    \
-    /* GL_ARB_uniform_buffer_object */                                              \
-    Func ( PFNGLGETUNIFORMINDICESPROC           , glGetUniformIndices           );  \
-    Func ( PFNGLGETACTIVEUNIFORMSIVPROC         , glGetActiveUniformsiv         );  \
-    Func ( PFNGLGETACTIVEUNIFORMNAMEPROC        , glGetActiveUniformName        );  \
-    Func ( PFNGLGETUNIFORMBLOCKINDEXPROC        , glGetUniformBlockIndex        );  \
-    Func ( PFNGLGETACTIVEUNIFORMBLOCKIVPROC     , glGetActiveUniformBlockiv     );  \
-    Func ( PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC   , glGetActiveUniformBlockName   );  \
-    Func ( PFNGLUNIFORMBLOCKBINDINGPROC         , glUniformBlockBinding         );  \
-                                                                                    \
-    /* GL_ARB_sampler_objects */                                                    \
-    Func ( PFNGLGENSAMPLERSPROC                 , glGenSamplers                 );  \
-    Func ( PFNGLDELETESAMPLERSPROC              , glDeleteSamplers              );  \
-    Func ( PFNGLISSAMPLERPROC                   , glIsSampler                   );  \
-    Func ( PFNGLBINDSAMPLERPROC                 , glBindSampler                 );  \
-    Func ( PFNGLSAMPLERPARAMETERIPROC           , glSamplerParameteri           );  \
-    Func ( PFNGLSAMPLERPARAMETERIVPROC          , glSamplerParameteriv          );  \
-    Func ( PFNGLSAMPLERPARAMETERFPROC           , glSamplerParameterf           );  \
-    Func ( PFNGLSAMPLERPARAMETERFVPROC          , glSamplerParameterfv          );  \
-    Func ( PFNGLSAMPLERPARAMETERIIVPROC         , glSamplerParameterIiv         );  \
-    Func ( PFNGLSAMPLERPARAMETERIUIVPROC        , glSamplerParameterIuiv        );  \
-    Func ( PFNGLGETSAMPLERPARAMETERIVPROC       , glGetSamplerParameteriv       );  \
-    Func ( PFNGLGETSAMPLERPARAMETERIIVPROC      , glGetSamplerParameterIiv      );  \
-    Func ( PFNGLGETSAMPLERPARAMETERFVPROC       , glGetSamplerParameterfv       );  \
-    Func ( PFNGLGETSAMPLERPARAMETERIUIVPROC     , glGetSamplerParameterIuiv     );  \
-                                                                                    \
-    /* GL_ARB_get_program_binary */                                                 \
-    Func ( PFNGLGETPROGRAMBINARYPROC            , glGetProgramBinary            );  \
-    Func ( PFNGLPROGRAMBINARYPROC               , glProgramBinary               );  \
-    Func ( PFNGLPROGRAMPARAMETERIPROC           , glProgramParameteri           );  \
-                                                                                    \
-    /* GL_ARB_texture_storage */                                                    \
-    Func ( PFNGLTEXSTORAGE1DPROC                , glTexStorage1D                );  \
-    Func ( PFNGLTEXSTORAGE2DPROC                , glTexStorage2D                );  \
-    Func ( PFNGLTEXSTORAGE3DPROC                , glTexStorage3D                );  \
-    Func ( PFNGLTEXTURESTORAGE1DEXTPROC         , glTextureStorage1DEXT         );  \
-    Func ( PFNGLTEXTURESTORAGE2DEXTPROC         , glTextureStorage2DEXT         );  \
-    Func ( PFNGLTEXTURESTORAGE3DEXTPROC         , glTextureStorage3DEXT         )
+#define META_GL_FUNCTIONS( Func )                                                                   \
+    /* GL_VERSION_1_2 */                                                                            \
+    Func ( PFNGLBLENDCOLORPROC                          , glBlendColor                          );  \
+    Func ( PFNGLBLENDEQUATIONPROC                       , glBlendEquation                       );  \
+    Func ( PFNGLDRAWRANGEELEMENTSPROC                   , glDrawRangeElements                   );  \
+    Func ( PFNGLTEXIMAGE3DPROC                          , glTexImage3D                          );  \
+    Func ( PFNGLTEXSUBIMAGE3DPROC                       , glTexSubImage3D                       );  \
+    Func ( PFNGLCOPYTEXSUBIMAGE3DPROC                   , glCopyTexSubImage3D                   );  \
+                                                                                                    \
+    /* GL_VERSION_1_3 */                                                                            \
+    Func ( PFNGLACTIVETEXTUREPROC                       , glActiveTexture                       );  \
+    Func ( PFNGLSAMPLECOVERAGEPROC                      , glSampleCoverage                      );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE3DPROC                , glCompressedTexImage3D                );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE2DPROC                , glCompressedTexImage2D                );  \
+    Func ( PFNGLCOMPRESSEDTEXIMAGE1DPROC                , glCompressedTexImage1D                );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC             , glCompressedTexSubImage3D             );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC             , glCompressedTexSubImage2D             );  \
+    Func ( PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC             , glCompressedTexSubImage1D             );  \
+    Func ( PFNGLGETCOMPRESSEDTEXIMAGEPROC               , glGetCompressedTexImage               );  \
+                                                                                                    \
+    /* GL_VERSION_1_4 */                                                                            \
+    Func ( PFNGLBLENDFUNCSEPARATEPROC                   , glBlendFuncSeparate                   );  \
+    Func ( PFNGLMULTIDRAWARRAYSPROC                     , glMultiDrawArrays                     );  \
+    Func ( PFNGLMULTIDRAWELEMENTSPROC                   , glMultiDrawElements                   );  \
+    Func ( PFNGLPOINTPARAMETERFPROC                     , glPointParameterf                     );  \
+    Func ( PFNGLPOINTPARAMETERFVPROC                    , glPointParameterfv                    );  \
+    Func ( PFNGLPOINTPARAMETERIPROC                     , glPointParameteri                     );  \
+    Func ( PFNGLPOINTPARAMETERIVPROC                    , glPointParameteriv                    );  \
+                                                                                                    \
+    /* GL_VERSION_1_5 */                                                                            \
+    Func ( PFNGLGENQUERIESPROC                          , glGenQueries                          );  \
+    Func ( PFNGLDELETEQUERIESPROC                       , glDeleteQueries                       );  \
+    Func ( PFNGLISQUERYPROC                             , glIsQuery                             );  \
+    Func ( PFNGLBEGINQUERYPROC                          , glBeginQuery                          );  \
+    Func ( PFNGLENDQUERYPROC                            , glEndQuery                            );  \
+    Func ( PFNGLGETQUERYIVPROC                          , glGetQueryiv                          );  \
+    Func ( PFNGLGETQUERYOBJECTIVPROC                    , glGetQueryObjectiv                    );  \
+    Func ( PFNGLGETQUERYOBJECTUIVPROC                   , glGetQueryObjectuiv                   );  \
+    Func ( PFNGLBINDBUFFERPROC                          , glBindBuffer                          );  \
+    Func ( PFNGLDELETEBUFFERSPROC                       , glDeleteBuffers                       );  \
+    Func ( PFNGLGENBUFFERSPROC                          , glGenBuffers                          );  \
+    Func ( PFNGLISBUFFERPROC                            , glIsBuffer                            );  \
+    Func ( PFNGLBUFFERDATAPROC                          , glBufferData                          );  \
+    Func ( PFNGLBUFFERSUBDATAPROC                       , glBufferSubData                       );  \
+    Func ( PFNGLGETBUFFERSUBDATAPROC                    , glGetBufferSubData                    );  \
+    Func ( PFNGLMAPBUFFERPROC                           , glMapBuffer                           );  \
+    Func ( PFNGLUNMAPBUFFERPROC                         , glUnmapBuffer                         );  \
+    Func ( PFNGLGETBUFFERPARAMETERIVPROC                , glGetBufferParameteriv                );  \
+    Func ( PFNGLGETBUFFERPOINTERVPROC                   , glGetBufferPointerv                   );  \
+                                                                                                    \
+    /* GL_VERSION_2_0 */                                                                            \
+    Func ( PFNGLATTACHSHADERPROC                        , glAttachShader                        );  \
+    Func ( PFNGLCOMPILESHADERPROC                       , glCompileShader                       );  \
+    Func ( PFNGLCREATEPROGRAMPROC                       , glCreateProgram                       );  \
+    Func ( PFNGLCREATESHADERPROC                        , glCreateShader                        );  \
+    Func ( PFNGLDELETEPROGRAMPROC                       , glDeleteProgram                       );  \
+    Func ( PFNGLDELETESHADERPROC                        , glDeleteShader                        );  \
+    Func ( PFNGLDETACHSHADERPROC                        , glDetachShader                        );  \
+    Func ( PFNGLDISABLEVERTEXATTRIBARRAYPROC            , glDisableVertexAttribArray            );  \
+    Func ( PFNGLENABLEVERTEXATTRIBARRAYPROC             , glEnableVertexAttribArray             );  \
+    Func ( PFNGLGETPROGRAMIVPROC                        , glGetProgramiv                        );  \
+    Func ( PFNGLGETPROGRAMINFOLOGPROC                   , glGetProgramInfoLog                   );  \
+    Func ( PFNGLGETSHADERIVPROC                         , glGetShaderiv                         );  \
+    Func ( PFNGLGETSHADERINFOLOGPROC                    , glGetShaderInfoLog                    );  \
+    Func ( PFNGLISPROGRAMPROC                           , glIsProgram                           );  \
+    Func ( PFNGLISSHADERPROC                            , glIsShader                            );  \
+    Func ( PFNGLLINKPROGRAMPROC                         , glLinkProgram                         );  \
+    Func ( PFNGLSHADERSOURCEPROC                        , glShaderSource                        );  \
+    Func ( PFNGLUSEPROGRAMPROC                          , glUseProgram                          );  \
+    Func ( PFNGLVERTEXATTRIBPOINTERPROC                 , glVertexAttribPointer                 );  \
+                                                                                            \
+    /* GL_VERSION_3_0 */                                                                    \
+    Func ( PFNGLBINDBUFFERRANGEPROC                     , glBindBufferRange                     );  \
+    Func ( PFNGLBINDBUFFERBASEPROC                      , glBindBufferBase                      );  \
+                                                                                                    \
+    /* GL_ARB_framebuffer_object */                                                                 \
+    Func ( PFNGLISRENDERBUFFERPROC                      , glIsRenderbuffer                      );  \
+    Func ( PFNGLBINDRENDERBUFFERPROC                    , glBindRenderbuffer                    );  \
+    Func ( PFNGLDELETERENDERBUFFERSPROC                 , glDeleteRenderbuffers                 );  \
+    Func ( PFNGLGENRENDERBUFFERSPROC                    , glGenRenderbuffers                    );  \
+    Func ( PFNGLRENDERBUFFERSTORAGEPROC                 , glRenderbufferStorage                 );  \
+    Func ( PFNGLGETRENDERBUFFERPARAMETERIVPROC          , glGetRenderbufferParameteriv          );  \
+    Func ( PFNGLISFRAMEBUFFERPROC                       , glIsFramebuffer                       );  \
+    Func ( PFNGLBINDFRAMEBUFFERPROC                     , glBindFramebuffer                     );  \
+    Func ( PFNGLDELETEFRAMEBUFFERSPROC                  , glDeleteFramebuffers                  );  \
+    Func ( PFNGLGENFRAMEBUFFERSPROC                     , glGenFramebuffers                     );  \
+    Func ( PFNGLCHECKFRAMEBUFFERSTATUSPROC              , glCheckFramebufferStatus              );  \
+    Func ( PFNGLFRAMEBUFFERTEXTURE1DPROC                , glFramebufferTexture1D                );  \
+    Func ( PFNGLFRAMEBUFFERTEXTURE2DPROC                , glFramebufferTexture2D                );  \
+    Func ( PFNGLFRAMEBUFFERTEXTURE3DPROC                , glFramebufferTexture3D                );  \
+    Func ( PFNGLFRAMEBUFFERRENDERBUFFERPROC             , glFramebufferRenderbuff               );  \
+    Func ( PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC , glGetFramebufferAttachmentParameteriv );  \
+    Func ( PFNGLGENERATEMIPMAPPROC                      , glGenerateMipmap                      );  \
+    Func ( PFNGLBLITFRAMEBUFFERPROC                     , glBlitFramebuffer                     );  \
+    Func ( PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC      , glRenderbufferStorageMultisample      );  \
+    Func ( PFNGLFRAMEBUFFERTEXTURELAYERPROC             , glFramebufferTextureLayer             );  \
+                                                                                                    \
+    /* GL_ARB_vertex_array_object */                                                                \
+    Func ( PFNGLBINDVERTEXARRAYPROC                     , glBindVertexArray                     );  \
+    Func ( PFNGLDELETEVERTEXARRAYSPROC                  , glDeleteVertexArrays                  );  \
+    Func ( PFNGLGENVERTEXARRAYSPROC                     , glGenVertexArrays                     );  \
+    Func ( PFNGLISVERTEXARRAYPROC                       , glIsVertexArray                       );  \
+                                                                                                    \
+    /* GL_ARB_uniform_buffer_object */                                                              \
+    Func ( PFNGLGETUNIFORMINDICESPROC                   , glGetUniformIndices                   );  \
+    Func ( PFNGLGETACTIVEUNIFORMSIVPROC                 , glGetActiveUniformsiv                 );  \
+    Func ( PFNGLGETACTIVEUNIFORMNAMEPROC                , glGetActiveUniformName                );  \
+    Func ( PFNGLGETUNIFORMBLOCKINDEXPROC                , glGetUniformBlockIndex                );  \
+    Func ( PFNGLGETACTIVEUNIFORMBLOCKIVPROC             , glGetActiveUniformBlockiv             );  \
+    Func ( PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC           , glGetActiveUniformBlockName           );  \
+    Func ( PFNGLUNIFORMBLOCKBINDINGPROC                 , glUniformBlockBinding                 );  \
+                                                                                                    \
+    /* GL_ARB_sampler_objects */                                                                    \
+    Func ( PFNGLGENSAMPLERSPROC                         , glGenSamplers                         );  \
+    Func ( PFNGLDELETESAMPLERSPROC                      , glDeleteSamplers                      );  \
+    Func ( PFNGLISSAMPLERPROC                           , glIsSampler                           );  \
+    Func ( PFNGLBINDSAMPLERPROC                         , glBindSampler                         );  \
+    Func ( PFNGLSAMPLERPARAMETERIPROC                   , glSamplerParameteri                   );  \
+    Func ( PFNGLSAMPLERPARAMETERIVPROC                  , glSamplerParameteriv                  );  \
+    Func ( PFNGLSAMPLERPARAMETERFPROC                   , glSamplerParameterf                   );  \
+    Func ( PFNGLSAMPLERPARAMETERFVPROC                  , glSamplerParameterfv                  );  \
+    Func ( PFNGLSAMPLERPARAMETERIIVPROC                 , glSamplerParameterIiv                 );  \
+    Func ( PFNGLSAMPLERPARAMETERIUIVPROC                , glSamplerParameterIuiv                );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIVPROC               , glGetSamplerParameteriv               );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIIVPROC              , glGetSamplerParameterIiv              );  \
+    Func ( PFNGLGETSAMPLERPARAMETERFVPROC               , glGetSamplerParameterfv               );  \
+    Func ( PFNGLGETSAMPLERPARAMETERIUIVPROC             , glGetSamplerParameterIuiv             );  \
+                                                                                                    \
+    /* GL_ARB_get_program_binary */                                                                 \
+    Func ( PFNGLGETPROGRAMBINARYPROC                    , glGetProgramBinary                    );  \
+    Func ( PFNGLPROGRAMBINARYPROC                       , glProgramBinary                       );  \
+    Func ( PFNGLPROGRAMPARAMETERIPROC                   , glProgramParameteri                   );  \
+                                                                                                    \
+    /* GL_ARB_texture_storage */                                                                    \
+    Func ( PFNGLTEXSTORAGE1DPROC                        , glTexStorage1D                        );  \
+    Func ( PFNGLTEXSTORAGE2DPROC                        , glTexStorage2D                        );  \
+    Func ( PFNGLTEXSTORAGE3DPROC                        , glTexStorage3D                        );  \
+    Func ( PFNGLTEXTURESTORAGE1DEXTPROC                 , glTextureStorage1DEXT                 );  \
+    Func ( PFNGLTEXTURESTORAGE2DEXTPROC                 , glTextureStorage2DEXT                 );  \
+    Func ( PFNGLTEXTURESTORAGE3DEXTPROC                 , glTextureStorage3DEXT                 )
 
 #define DECLARE_GL_FUNCTION( PFunc, Name )     extern PFunc Name
 #define DEFINE_GL_FUNCTION( PFunc, Name )      PFunc Name = 0
