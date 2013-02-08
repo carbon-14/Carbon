@@ -3,11 +3,8 @@
 #include <cstdio>
 #include <Windows.h>
 
-namespace Core
+void Trace::Message( const Char * msg )
 {
-    void Trace::Message( const Char * msg )
-    {
-        printf( "%s", msg );
-        OutputDebugStringA( msg );
-    }
+    printf( "%s", msg );
+    OutputDebugStringA( msg );
 }

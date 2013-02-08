@@ -2,46 +2,43 @@
 
 #include "Core/TypeTraits.h"
 
-namespace Core
+template< typename T >
+SizeT MemoryUtils::AlignOf()
 {
-    template< typename T >
-    SizeT MemoryUtils::AlignOf()
-    {
-        return __alignof( T );
-    }
+    return __alignof( T );
+}
 
-    template < typename T >
-    void MemoryUtils::Fill( T * begin, const T * end, const T& value )
+template < typename T >
+void MemoryUtils::Fill( T * begin, const T * end, const T& value )
+{
+    if ( IsPOD< T >::value )
     {
-        if ( IsPOD< T >::value )
+        for ( ; begin != end; ++begin )
         {
-            for ( ; begin != end; ++begin )
-            {
-                *begin = value;
-            }
-        }
-        else
-        {
-            for ( ; begin != end; ++begin )
-            {
-                new( begin ) T( value );
-            }
+            *begin = value;
         }
     }
-
-    template< typename T >
-    void MemoryUtils::Copy( const T * begin, const T * end, T * to )
+    else
     {
-        if ( IsPOD< T >::value )
+        for ( ; begin != end; ++begin )
         {
-            MemoryUtils::MemCpy( to, begin, sizeof(T) * ( end - begin ) );
+            new( begin ) T( value );
         }
-        else
+    }
+}
+
+template< typename T >
+void MemoryUtils::Copy( const T * begin, const T * end, T * to )
+{
+    if ( IsPOD< T >::value )
+    {
+        MemoryUtils::MemCpy( to, begin, sizeof(T) * ( end - begin ) );
+    }
+    else
+    {
+        for ( ; begin != end; ++begin, ++to )
         {
-            for ( ; begin != end; ++begin, ++to )
-            {
-                new( to ) T( *begin );
-            }
+            new( to ) T( *begin );
         }
     }
 }

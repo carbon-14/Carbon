@@ -5,9 +5,6 @@
 #include "Core/DLL.h"
 #include "Core/Types.h"
 
-namespace Core
-{
-    U32 _CoreExport HashString( const Char * str );
-}
+U32 _CoreExport HashString( const Char * str );
 
 #endif // _CORE_HASH_H

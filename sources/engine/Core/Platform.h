@@ -5,13 +5,10 @@
 #include "Core/Types.h"
 #include "Core/DLL.h"
 
-namespace Core
+class _CoreExport Platform
 {
-    class _CoreExport Platform
-    {
-    public:
-        static const Char * GetName();
-    };
-}
+public:
+    static const Char * GetName();
+};
 
 #endif // _CORE_PLATFORM_H

@@ -5,15 +5,12 @@
 #include "Core/Types.h"
 #include "Core/DLL.h"
 
-namespace Core
+class _CoreExport TimeUtils
 {
-    class _CoreExport TimeUtils
-    {
-    public:
-        static U64 ClockTime();
-        static F64 ClockFrequency();
-        static F64 ClockPeriod();
-    };
-}
+public:
+    static U64 ClockTime();
+    static F64 ClockFrequency();
+    static F64 ClockPeriod();
+};
 
 #endif // _CORE_TIMEUTILS_H

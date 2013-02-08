@@ -5,25 +5,22 @@
 #include "Core/Types.h"
 #include "Core/DLL.h"
 
-namespace Core
+class _CoreExport StackAllocator
 {
-    class _CoreExport StackAllocator
-    {
-    public:
-        StackAllocator();
+public:
+    StackAllocator();
 
-        void Initialize( void * buffer, SizeT sizeBytes );
-        void Destroy();
+    void Initialize( void * buffer, SizeT sizeBytes );
+    void Destroy();
 
-        void Clear();
+    void Clear();
 
-        void * Allocate( SizeT sizeBytes, SizeT align = 1 );
+    void * Allocate( SizeT sizeBytes, SizeT align = 1 );
 
-    private:
-        void *  mp_buffer;
-        SizeT   m_end;
-        SizeT   m_head;
-    };
-}
+private:
+    void *  mp_buffer;
+    SizeT   m_end;
+    SizeT   m_head;
+};
 
 #endif // _CORE_STACKALLOCATOR_H
