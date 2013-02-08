@@ -7,6 +7,7 @@
 #include "UnitTest/Level4/Level4.h"
 #include "UnitTest/Level5/Level5.h"
 #include "UnitTest/Level6/Level6.h"
+#include "UnitTest/Level7/Level7.h"
 
 int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
 {
@@ -28,6 +29,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
     UpdateWindow(window.hwnd);
 
     Level6 test( window );
+    //Level7 test( window );
 
     int r = test.Run();
 

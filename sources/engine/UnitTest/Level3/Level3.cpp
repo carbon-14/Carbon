@@ -10,7 +10,6 @@
 
 #include "Core/TimeUtils.h"
 
-using namespace Core;
 using namespace Graphic;
 
 namespace Level3_NS
@@ -29,7 +28,7 @@ namespace Level3_NS
     class RenderSimple : public RenderGeometry
     {
     public:
-        void Draw()
+        void Draw() const
         {
             RenderDevice::BeginGeometry( m_vertexDecl, m_vertexArray, m_indexBuffer );
             RenderDevice::DrawIndexed( m_primitive, m_indexCount, m_indexType );
@@ -173,13 +172,13 @@ namespace Level3_NS
         ++frameCount;
         if ( frameCount == FRAME_MAX_COUNT )
         {
-            U64 currentTicks    = Core::TimeUtils::ClockTime();
-            F64 fps             = FRAME_MAX_COUNT * Core::TimeUtils::ClockFrequency() / ( currentTicks - clockTicks );
+            U64 currentTicks    = TimeUtils::ClockTime();
+            F64 fps             = FRAME_MAX_COUNT * TimeUtils::ClockFrequency() / ( currentTicks - clockTicks );
             clockTicks          = currentTicks;
             frameCount          = 0;
 
             Char text[ 32 ];
-            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level3 - [ %0.0f fps ]", fps ) );
+            SetWindowText( hwnd, StringUtils::FormatString( text, 32, "Level3 - [ %0.0f fps ]", fps ) );
         }
     }
 

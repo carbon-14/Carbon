@@ -17,7 +17,6 @@
 
 #include "Core/TimeUtils.h"
 
-using namespace Core;
 using namespace Graphic;
 
 #ifndef HID_USAGE_PAGE_GENERIC
@@ -116,7 +115,7 @@ namespace Level5_NS
         RenderMesh( const MeshResource * mesh, SizeT subMeshIndex )
             : m_mesh( mesh ), m_subMeshIndex( subMeshIndex ) {}
 
-        void Draw()
+        void Draw() const
         {
             const MeshResource::SubMesh& sub_mesh = m_mesh->GetSubMeshes()[ m_subMeshIndex ];
             RenderDevice::BeginGeometry( m_mesh->GetVertexDecl(), sub_mesh.m_vertexArray, sub_mesh.m_indexBuffer );
@@ -403,24 +402,24 @@ namespace Level5_NS
         ++frameCount;
         if ( frameCount == FRAME_MAX_COUNT )
         {
-            U64 currentTicks    = Core::TimeUtils::ClockTime();
-            F64 fps             = FRAME_MAX_COUNT * Core::TimeUtils::ClockFrequency() / ( currentTicks - clockTicks );
+            U64 currentTicks    = TimeUtils::ClockTime();
+            F64 fps             = FRAME_MAX_COUNT * TimeUtils::ClockFrequency() / ( currentTicks - clockTicks );
             clockTicks          = currentTicks;
             frameCount          = 0;
 
             Char text[ 32 ];
-            SetWindowText( hwnd, Core::StringUtils::FormatString( text, 32, "Level5 - [ %0.0f fps ]", fps ) );
+            SetWindowText( hwnd, StringUtils::FormatString( text, 32, "Level5 - [ %0.0f fps ]", fps ) );
         }
     }
 
     void UpdateGlobalUniformData()
     {
-        U64 currentTime = Core::TimeUtils::ClockTime();
+        U64 currentTime = TimeUtils::ClockTime();
         U64 diff = currentTime - frameTime;
         frameTime = currentTime;
 
-        time = static_cast< F32 >( frameTime * Core::TimeUtils::ClockPeriod() );
-        F32 elapsedTime = static_cast< F32 >( diff * Core::TimeUtils::ClockPeriod() );
+        time = static_cast< F32 >( frameTime * TimeUtils::ClockPeriod() );
+        F32 elapsedTime = static_cast< F32 >( diff * TimeUtils::ClockPeriod() );
         
         F32 lightRatio = 0.5f + 0.5f * Sin( time );
         const Vector color = Vector4( 1.0f, 0.6881f, 0.5317f, 1.0f );

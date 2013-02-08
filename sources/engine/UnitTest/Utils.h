@@ -10,8 +10,8 @@
 #define UNIT_TEST_MESSAGE( format, ... ) \
     { \
         Char unit_test_dbgString[ UNIT_TEST_DEBUG_STRING_SIZE ]; \
-        Core::StringUtils::FormatString( unit_test_dbgString, UNIT_TEST_DEBUG_STRING_SIZE, format, __VA_ARGS__ ); \
-        Core::Trace::Message( unit_test_dbgString ); \
+        StringUtils::FormatString( unit_test_dbgString, UNIT_TEST_DEBUG_STRING_SIZE, format, __VA_ARGS__ ); \
+        Trace::Message( unit_test_dbgString ); \
     }
 
 #endif // _UNITTEST_UTILS_H

@@ -13,7 +13,6 @@
 
 #include "Core/TimeUtils.h"
 
-using namespace Core;
 using namespace Graphic;
 
 namespace Level6_NS
@@ -89,7 +88,7 @@ namespace Level6_NS
         RenderMesh( const MeshResource * mesh, SizeT subMeshIndex )
             : m_mesh( mesh ), m_subMeshIndex( subMeshIndex ) {}
 
-        void Draw()
+        void Draw() const
         {
             const MeshResource::SubMesh& sub_mesh = m_mesh->GetSubMeshes()[ m_subMeshIndex ];
             RenderDevice::BeginGeometry( m_mesh->GetVertexDecl(), sub_mesh.m_vertexArray, sub_mesh.m_indexBuffer );

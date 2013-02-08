@@ -9,8 +9,6 @@
 
 #include "Core/Timer.h"
 
-using namespace Core;
-
 #define ALLOC_TYPE  char
 #define ALLOC_COUNT 500000
 

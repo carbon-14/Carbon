@@ -6,8 +6,6 @@
 #include "Core/Matrix.h"
 #include "Core/Quaternion.h"
 
-using namespace Core;
-
 namespace Level2_NS
 {
 

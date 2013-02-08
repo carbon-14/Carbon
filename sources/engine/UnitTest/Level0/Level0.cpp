@@ -3,8 +3,6 @@
 
 #include "Core/Platform.h"
 
-using namespace Core;
-
 void Level0()
 {
     UNIT_TEST_MESSAGE( "\n###########\n# LEVEL 0 #\n###########\n\n" );

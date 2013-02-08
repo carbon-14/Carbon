@@ -6,7 +6,6 @@
 
 #include "Core/TimeUtils.h"
 
-using namespace Core;
 using namespace Graphic;
 
 const SizeT frameAllocatorSize  = 10 * 1024;
@@ -191,7 +190,7 @@ Bool Application::Update()
 
     /////////////////////////////////////////////////////////////////////////////
 
-    U64 currentTicks    = Core::TimeUtils::ClockTime();
+    U64 currentTicks    = TimeUtils::ClockTime();
     m_frameTicks        = currentTicks - m_clockTicks;
     m_clockTicks        = currentTicks;
     
@@ -243,10 +242,10 @@ void Application::DisplayFramerate()
 
     if ( m_frameCount == FRAME_MAX_COUNT )
     {
-        F64 fps = FRAME_MAX_COUNT * Core::TimeUtils::ClockFrequency() / ( m_ticksCount );
+        F64 fps = FRAME_MAX_COUNT * TimeUtils::ClockFrequency() / ( m_ticksCount );
 
         Char text[ 32 ];
-        SetWindowText( m_window.hwnd, Core::StringUtils::FormatString( text, 32, "CarbonEngine [ %0.0f fps ]", fps ) );
+        SetWindowText( m_window.hwnd, StringUtils::FormatString( text, 32, "CarbonEngine [ %0.0f fps ]", fps ) );
 
         m_frameCount = 0;
         m_ticksCount = 0;
