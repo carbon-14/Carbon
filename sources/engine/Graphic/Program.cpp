@@ -3,8 +3,6 @@
 #include "Core/MemoryUtils.h"
 #include "Core/StringUtils.h"
 
-using namespace Core;
-
 namespace Graphic
 {
     Program::Program()

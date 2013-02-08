@@ -11,7 +11,7 @@ namespace Graphic
     class _GraphicExport RenderGeometry
     {
     public:
-        virtual void Draw() = 0;
+        virtual void Draw() const = 0;
     };
 }
 

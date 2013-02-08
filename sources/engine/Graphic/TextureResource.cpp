@@ -18,7 +18,7 @@ namespace Graphic
     };
 
     TextureResource::TextureResource()
-        : Core::Resource()
+        : Resource()
     {
     }
 

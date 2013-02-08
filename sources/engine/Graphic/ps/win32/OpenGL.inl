@@ -149,8 +149,16 @@ extern "C"
     Func ( PFNGLSHADERSOURCEPROC                        , glShaderSource                        );  \
     Func ( PFNGLUSEPROGRAMPROC                          , glUseProgram                          );  \
     Func ( PFNGLVERTEXATTRIBPOINTERPROC                 , glVertexAttribPointer                 );  \
-                                                                                            \
-    /* GL_VERSION_3_0 */                                                                    \
+                                                                                                    \
+    /* GL_VERSION_3_0 */                                                                            \
+    Func ( PFNGLCOLORMASKIPROC                          , glColorMaski                          );  \
+    Func ( PFNGLGETBOOLEANI_VPROC                       , glGetBooleani_v                       );  \
+    Func ( PFNGLGETINTEGERI_VPROC                       , glGetIntegeri_v                       );  \
+    Func ( PFNGLENABLEIPROC                             , glEnablei                             );  \
+    Func ( PFNGLDISABLEIPROC                            , glDisablei                            );  \
+    Func ( PFNGLISENABLEDIPROC                          , glIsEnabledi                          );  \
+    Func ( PFNGLBEGINTRANSFORMFEEDBACKPROC              , glBeginTransformFeedback              );  \
+    Func ( PFNGLENDTRANSFORMFEEDBACKPROC                , glEndTransformFeedback                );  \
     Func ( PFNGLBINDBUFFERRANGEPROC                     , glBindBufferRange                     );  \
     Func ( PFNGLBINDBUFFERBASEPROC                      , glBindBufferBase                      );  \
                                                                                                     \

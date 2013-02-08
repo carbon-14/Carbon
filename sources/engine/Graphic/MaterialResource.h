@@ -11,13 +11,13 @@
 
 namespace Graphic
 {
-    class _GraphicExport MaterialResource : public Core::Resource
+    class _GraphicExport MaterialResource : public Resource
     {
     public:
         struct Texture
         {
-            Core::SharedPtr< TextureResource >  m_resource;
-            SizeT                               m_index;
+            SharedPtr< TextureResource >    m_resource;
+            SizeT                           m_index;
         };
 
     public:

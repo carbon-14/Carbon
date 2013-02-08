@@ -175,11 +175,15 @@ namespace Graphic
             return false;
         }
 
+        ClearCache();
+
         return true;
     }
 
     void RenderDevice::Destroy()
     {
+        ClearCache();
+
         if ( m_renderContext )
         {
             OpenGL::DestroyContext( m_renderContext );

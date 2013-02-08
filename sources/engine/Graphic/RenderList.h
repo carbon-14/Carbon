@@ -12,12 +12,12 @@ namespace Graphic
 
     struct RenderElement
     {
-        ProgramHandle       m_program;
-        RenderGeometry *    m_geometry;
-        LayoutObject        m_textures[ RenderDevice::ms_maxTextureUnitCount ];
-        SizeT               m_textureCount;
-        LayoutObject        m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
-        SizeT               m_uniformBufferCount;
+        ProgramHandle           m_program;
+        const RenderGeometry *  m_geometry;
+        LayoutObject            m_textures[ RenderDevice::ms_maxTextureUnitCount ];
+        SizeT                   m_textureCount;
+        LayoutObject            m_uniformBuffers[ RenderDevice::ms_maxUniformBufferCount ];
+        SizeT                   m_uniformBufferCount;
     };
 
     class _GraphicExport RenderList
@@ -41,7 +41,7 @@ namespace Graphic
         void Clear();
 
     private:
-        Core::Array< RenderElement, Core::FrameAllocator >  m_list;
+        Array< RenderElement, FrameAllocator >  m_list;
 
         RenderState m_renderState;
         U32         m_clearMask;

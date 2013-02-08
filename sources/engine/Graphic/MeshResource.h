@@ -12,17 +12,17 @@ namespace Graphic
 {
     class MaterialResource;
 
-    class _GraphicExport MeshResource : public Core::Resource
+    class _GraphicExport MeshResource : public Resource
     {
     public:
         static const SizeT  ms_maxSubMeshCount = 32;
 
         struct SubMesh
         {
-            Handle                              m_vertexArray;
-            Handle                              m_indexBuffer;
-            SizeT                               m_indexCount;
-            Core::SharedPtr< MaterialResource > m_material;
+            Handle                          m_vertexArray;
+            Handle                          m_indexBuffer;
+            SizeT                           m_indexCount;
+            SharedPtr< MaterialResource >   m_material;
         };
 
     public:

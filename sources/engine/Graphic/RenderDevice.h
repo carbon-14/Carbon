@@ -201,10 +201,10 @@ namespace Graphic
         SizeT           m_offset;
     };
 
-    static const SizeT s_MaxVertexAttribCount = 16;
+    const SizeT s_maxVertexAttribCount = 16;
     struct VertexDeclaration
     {
-        AttribDeclaration   m_attributes[ s_MaxVertexAttribCount ];
+        AttribDeclaration   m_attributes[ s_maxVertexAttribCount ];
         SizeT               m_size;
         SizeT               m_count;
     };
@@ -285,7 +285,10 @@ namespace Graphic
         // Constants
 
         static const SizeT      ms_maxTextureUnitCount      = 8;
-        static const SizeT      ms_maxUniformBufferCount    = 7;    // the 8th slot is reserved for material uniform buffer through the ProgramCache
+        static const SizeT      ms_maxUniformBufferCount    = 8;    // the 8th slot is reserved for material uniform buffer through the ProgramCache
+
+    protected:
+        static void             ClearCache();
     };
 }
 

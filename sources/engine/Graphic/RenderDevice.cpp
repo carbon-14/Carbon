@@ -7,7 +7,22 @@
 
 namespace Graphic
 {
-    const S32 ToGLShaderType[] =
+    enum BufferTarget
+    {
+        BT_ARRAY,
+        BT_ELEMENT_ARRAY,
+        BT_UNIFORM,
+        BT_COUNT
+    };
+
+    const GLenum ToGLBufferTarget[] =
+    {
+        GL_ARRAY_BUFFER,            // BT_ARRAY
+        GL_ELEMENT_ARRAY_BUFFER,    // BT_ELEMENT_ARRAY
+        GL_UNIFORM_BUFFER           // BT_UNIFORM
+    };
+
+    const GLenum ToGLShaderType[] =
     {
         GL_VERTEX_SHADER,   // ST_VERTEX_SHADER
         GL_FRAGMENT_SHADER, // ST_FRAGMENT_SHADER
@@ -194,6 +209,17 @@ namespace Graphic
 
     //===================================================================================
 
+    static GLuint   s_vertexArrayCache;
+    static GLuint   s_bufferCache[ BT_COUNT ];
+    static GLuint   s_samplerCache[ RenderDevice::ms_maxTextureUnitCount ];
+    static GLuint   s_activeTexture;
+    static GLuint   s_textureCache[ RenderDevice::ms_maxTextureUnitCount ];
+    static GLuint   s_uniformCache[ RenderDevice::ms_maxUniformBufferCount ];
+    static GLuint   s_framebufferCache;
+    static GLuint   s_programCache;
+
+    //===================================================================================
+
     void TraceProgramInfoLog( GLuint program )
     {
         GLint logLength;
@@ -226,13 +252,16 @@ namespace Graphic
 		CARBON_TRACE( buffer );
     }
 
-    Handle CreateBuffer( SizeT size, const void * data, GLenum usage, GLenum target )
+    Handle CreateBuffer( SizeT size, const void * data, GLenum usage, BufferTarget target )
     {
         GLuint buffer;
         glGenBuffers( 1, &buffer );
-        glBindBuffer( target, buffer );
-        glBufferData( target, size, data, usage );
-        glBindBuffer( target, 0 );
+
+        glBindBuffer( ToGLBufferTarget[target], buffer );
+        s_bufferCache[target] = buffer;
+
+        glBufferData( ToGLBufferTarget[target], size, data, usage );
+
         return buffer;
     }
 
@@ -240,17 +269,17 @@ namespace Graphic
 
     Handle IRenderDevice::CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage )
     {
-        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ARRAY_BUFFER );
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], BT_ARRAY );
     }
 
     Handle IRenderDevice::CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage )
     {
-        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ELEMENT_ARRAY_BUFFER );
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], BT_ELEMENT_ARRAY );
     }
 
     Handle IRenderDevice::CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage )
     {
-        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_UNIFORM_BUFFER );
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], BT_UNIFORM );
     }
 
     void IRenderDevice::DestroyBuffer( Handle buffer )
@@ -260,28 +289,40 @@ namespace Graphic
 
     void * IRenderDevice::MapUniformBuffer( Handle buffer, BufferAccess access )
     {
-        glBindBuffer( GL_UNIFORM_BUFFER, buffer );
+        glBindBuffer( ToGLBufferTarget[BT_UNIFORM], buffer );
+        s_bufferCache[BT_UNIFORM] = buffer;
+
         return glMapBuffer( GL_UNIFORM_BUFFER, ToGLBufferAccess[ access ] );
     }
 
     void IRenderDevice::UnmapUniformBuffer( )
     {
-        GLboolean test = glUnmapBuffer( GL_UNIFORM_BUFFER );
-        glBindBuffer( GL_UNIFORM_BUFFER, 0 );
+        glUnmapBuffer( GL_UNIFORM_BUFFER );
     }
 
     void IRenderDevice::BindUniformBuffer( Handle ubuffer, SizeT location )
     {
-        glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
+        if ( ubuffer != s_uniformCache[location] )
+        {
+            glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
+            s_uniformCache[location] = ubuffer;
+        }
     }
 
     Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer )
     {
         GLuint varray;
         glGenVertexArrays( 1, &varray );
-        glBindVertexArray( varray );
 
-        glBindBuffer( GL_ARRAY_BUFFER, vbuffer );
+        glBindVertexArray( varray );
+        s_vertexArrayCache = varray;
+
+        if ( vbuffer != s_bufferCache[BT_ARRAY] )
+        {
+            glBindBuffer( ToGLBufferTarget[BT_ARRAY], vbuffer );
+            s_bufferCache[BT_ARRAY] = vbuffer;
+        }
+
         for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
             const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
@@ -289,9 +330,7 @@ namespace Graphic
             glVertexAttribPointer( attrib.m_semantic, attrib.m_size, ToGLDataType[ attrib.m_type ], attrib.m_normalized, vDecl.m_size, reinterpret_cast< const void * >( attrib.m_offset ) );
             glDisableVertexAttribArray( attrib.m_semantic );
         }
-        glBindBuffer( GL_ARRAY_BUFFER, 0 );
 
-        glBindVertexArray( 0 );
         return varray;
     }
 
@@ -358,7 +397,7 @@ namespace Graphic
 
         size = binLength + sizeof(GLenum);
 
-        binary          = Core::UnknownAllocator::Allocate( size );
+        binary          = UnknownAllocator::Allocate( size );
         GLenum * fmt    = (GLenum*)binary;
         void * buffer   = fmt + 1;
 
@@ -388,14 +427,20 @@ namespace Graphic
 
     void IRenderDevice::UseProgram( Handle program )
     {
-        glUseProgram( (GLuint)program );
+        if ( program != s_programCache )
+        {
+            glUseProgram( (GLuint)program );
+            s_programCache = program;
+        }
     }
 
     Handle IRenderDevice::CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
     {
         GLuint texture;
         glGenTextures( 1, &texture );
+
         glBindTexture( GL_TEXTURE_2D, texture );
+        s_textureCache[s_activeTexture] = texture;
 
         if ( compressed )
         {
@@ -413,8 +458,6 @@ namespace Graphic
             }
         }
 
-        glBindTexture( GL_TEXTURE_2D, 0 );
-
         return texture;
     }
 
@@ -423,8 +466,8 @@ namespace Graphic
         GLuint texture;
         glGenTextures( 1, &texture );
         glBindTexture( GL_TEXTURE_2D, texture );
+        s_textureCache[s_activeTexture] = texture;
         glTexStorage2D( GL_TEXTURE_2D, 1, ToGLTextureFormat[ format ], width, height );
-        glBindTexture( GL_TEXTURE_2D, 0 );
         return texture;
     }
 
@@ -435,8 +478,16 @@ namespace Graphic
 
     void IRenderDevice::BindTexture( Handle texture, SizeT unit )
     {
-        glActiveTexture( GL_TEXTURE0 + unit );
-        glBindTexture( GL_TEXTURE_2D, texture );
+        if ( unit != s_activeTexture )
+        {
+            glActiveTexture( GL_TEXTURE0 + unit );
+            s_activeTexture = unit;
+        }
+        if ( texture != s_textureCache[unit] )
+        {
+            glBindTexture( GL_TEXTURE_2D, texture );
+            s_textureCache[unit] = texture;
+        }
     }
 
     Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
@@ -458,7 +509,11 @@ namespace Graphic
 
     void IRenderDevice::BindSampler( Handle sampler, SizeT unit )
     {
-        glBindSampler( unit, sampler );
+        if ( sampler != s_samplerCache[unit] )
+        {
+            glBindSampler( unit, sampler );
+            s_samplerCache[unit] = sampler;
+        }
     }
 
     Handle IRenderDevice::CreateFramebuffer()
@@ -475,7 +530,11 @@ namespace Graphic
 
     void IRenderDevice::BindFramebuffer( Handle framebuffer, FramebufferTarget target )
     {
-        glBindFramebuffer( ToGLFramebufferTarget[ target ], framebuffer );
+        if ( framebuffer != s_framebufferCache )
+        {
+            glBindFramebuffer( ToGLFramebufferTarget[ target ], framebuffer );
+            s_framebufferCache = framebuffer;
+        }
     }
 
     void IRenderDevice::AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level )
@@ -485,10 +544,17 @@ namespace Graphic
 
     void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )
     {
-        glBindVertexArray( varray );
+        if ( varray != s_vertexArrayCache )
+        {
+            glBindVertexArray( varray );
+            s_vertexArrayCache = varray;
+        }
 
-        if ( ibuffer )
+        if ( ibuffer && ibuffer != s_bufferCache[BT_ELEMENT_ARRAY] )
+        {
             glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibuffer );
+            s_bufferCache[BT_ELEMENT_ARRAY] = ibuffer;
+        }
 
         for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
@@ -504,10 +570,6 @@ namespace Graphic
             const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
             glDisableVertexAttribArray( attrib.m_semantic );
         }
-
-        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
-
-        glBindVertexArray( 0 );
     }
 
     void IRenderDevice::Draw( PrimitiveType primitive, SizeT vertexCount )
@@ -608,5 +670,41 @@ namespace Graphic
     void IRenderDevice::SetSRGBWrite( Bool enable )
     {
         enable ? glEnable( GL_FRAMEBUFFER_SRGB ) : glDisable( GL_FRAMEBUFFER_SRGB );
+    }
+
+    void IRenderDevice::ClearCache()
+    {
+        glBindVertexArray( 0 );
+        s_vertexArrayCache = 0;
+
+        glBindBuffer( GL_ARRAY_BUFFER_BINDING, 0 );
+        s_bufferCache[BT_ARRAY] = 0;
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER_BINDING, 0 );
+        s_bufferCache[BT_ELEMENT_ARRAY] = 0;
+        glBindBuffer( GL_UNIFORM_BUFFER_BINDING, 0 );
+        s_bufferCache[BT_UNIFORM] = 0;
+
+        for ( SizeT i=0; i<ms_maxTextureUnitCount; ++i )
+        {
+            glActiveTexture( GL_TEXTURE0 + i );
+            glBindTexture( GL_TEXTURE_2D, 0 );
+            s_samplerCache[i] = 0;
+            s_textureCache[i] = 0;
+        }
+
+        glActiveTexture( GL_TEXTURE0 );
+        s_activeTexture = 0;
+
+        for ( SizeT i=0; i<ms_maxUniformBufferCount; ++i )
+        {
+            glBindBufferBase( GL_UNIFORM_BUFFER, i, 0 );
+            s_uniformCache[i] = 0;
+        }
+
+        glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+        s_framebufferCache = 0;
+
+        glUseProgram( 0 );
+        s_programCache = 0;
     }
 }

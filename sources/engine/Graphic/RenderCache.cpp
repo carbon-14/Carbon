@@ -3,8 +3,7 @@
 namespace Graphic
 {
     RenderCache::RenderCache()
-        : m_program( ProgramCache::ms_invalidHandle )
-        , m_clearDepth( 1.0f )
+        : m_clearDepth( 1.0f )
         , m_clearStencil( 0 )
         , m_sRGBWrite( false )
     {
@@ -12,16 +11,6 @@ namespace Graphic
         m_clearColor[1] = 0.0f;
         m_clearColor[2] = 0.0f;
         m_clearColor[3] = 0.0f;
-
-        for ( SizeT i=0; i<RenderDevice::ms_maxUniformBufferCount; ++i )
-        {
-            m_uniformBuffers[i] = 0;
-        }
-
-        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
-        {
-            m_textures[i] = 0;
-        }
     }
 
     RenderCache::~RenderCache()
@@ -35,21 +24,7 @@ namespace Graphic
         SetClearStencil( 0 );
         SetSRGBWrite( false );
 
-        for ( SizeT i=0; i<RenderDevice::ms_maxUniformBufferCount; ++i )
-        {
-            RenderDevice::BindUniformBuffer( 0, i );
-            m_uniformBuffers[i] = 0;
-        }
-
-        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
-        {
-            RenderDevice::BindTexture( 0, i );
-            m_textures[i] = 0;
-        }
-
         SetRenderState( RenderState() );
-
-        SetProgram( 0 );
     }
 
     void RenderCache::SetClearColor( F32 r, F32 g, F32 b, F32 a )
@@ -92,15 +67,6 @@ namespace Graphic
         {
             RenderDevice::SetSRGBWrite( enable );
             m_sRGBWrite = enable;
-        }
-    }
-
-    void RenderCache::SetProgram( ProgramHandle program )
-    {
-        if ( program != m_program )
-        {
-            ProgramCache::UseProgram( program );
-            m_program = program;
         }
     }
 
@@ -180,24 +146,6 @@ namespace Graphic
                 RenderDevice::SetDepthFunc( (Function)renderState.m_depthFunc );
                 m_renderState.m_depthFunc = renderState.m_depthFunc;
             }
-        }
-    }
-
-    void RenderCache::SetTexture( Handle texture, SizeT index )
-    {
-       if ( texture != m_textures[index] )
-       {
-           RenderDevice::BindTexture( texture, index );
-           m_textures[index] = texture;
-       }
-    }
-
-    void RenderCache::SetUniformBuffer( Handle uniformBuffer, SizeT index )
-    {
-        if ( uniformBuffer != m_uniformBuffers[index] )
-        {
-            RenderDevice::BindUniformBuffer( uniformBuffer, index );
-            m_uniformBuffers[index] = uniformBuffer;
         }
     }
 }

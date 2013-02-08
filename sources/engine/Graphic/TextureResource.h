@@ -9,7 +9,7 @@
 
 namespace Graphic
 {
-    class _GraphicExport TextureResource : public Core::Resource
+    class _GraphicExport TextureResource : public Resource
     {
     public:
         TextureResource();

@@ -7,8 +7,6 @@
 #include "Core/Hash.h"
 #include "Core/Trace.h"
 
-using namespace Core;
-
 namespace Graphic
 {
     enum ShaderTypeBits
@@ -36,18 +34,15 @@ namespace Graphic
     Bool dirtyCache = false;
 
     const ProgramHandle             ProgramCache::ms_invalidHandle = -1;
+    const SizeT                     ProgramCache::ms_uniformBufferLocation = RenderDevice::ms_maxUniformBufferCount - 1;
 
-    Core::PathString                ProgramCache::m_dataPath;
-    Core::PathString                ProgramCache::m_cachePath;
-    Core::PathString                ProgramCache::m_materialPath;
+    PathString                      ProgramCache::m_dataPath;
+    PathString                      ProgramCache::m_cachePath;
+    PathString                      ProgramCache::m_materialPath;
 
     ProgramCache::ProgramArray      ProgramCache::m_programs;
     ProgramCache::ProgramSetArray   ProgramCache::m_programSets;
     ProgramCache::SamplerArray      ProgramCache::m_samplers;
-
-    Handle                          ProgramCache::m_programCache;
-    Handle                          ProgramCache::m_samplerCache[ RenderDevice::ms_maxTextureUnitCount ];
-    Handle                          ProgramCache::m_uniformBufferCache;
 
     Bool ProgramCache::Initialize( const Char * shaderPath )
     {
@@ -61,21 +56,17 @@ namespace Graphic
 
         BuildCache();
 
-        m_programCache = 0;
-        memset( &m_samplerCache, 0, sizeof(m_samplerCache) );
-        m_uniformBufferCache = 0;
-
         return true;
     }
 
     void ProgramCache::Destroy()
     {
-        SetProgram( 0 );
+        RenderDevice::UseProgram( 0 );
         for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
         {
-            SetSampler( 0, i );
+            RenderDevice::BindSampler( 0, i );
         }
-        SetUniformBuffer( 0 );
+        RenderDevice::BindUniformBuffer( 0, RenderDevice::ms_maxUniformBufferCount - 1 );
 
         m_dataPath.Clear();
         m_cachePath.Clear();
@@ -124,7 +115,7 @@ namespace Graphic
 
     U32 ProgramCache::CreateId( const Char * str )
     {
-        return Core::HashString( str );
+        return HashString( str );
     }
 
     ProgramHandle ProgramCache::GetProgram( U32 nameId, U32 setId )
@@ -149,9 +140,9 @@ namespace Graphic
     {
         Char filename[256];
 
-        Core::StringUtils::FormatString( filename, 256, "%s/%08x.bin", materialDir, materialId );
+        StringUtils::FormatString( filename, 256, "%s/%08x.bin", materialDir, materialId );
 
-        return Core::ResourceManager::Create< MaterialResource >( filename );
+        return ResourceManager::Create< MaterialResource >( filename );
     }
 
     void ProgramCache::UseProgram( ProgramHandle handle )
@@ -160,13 +151,13 @@ namespace Graphic
 
         const Program& p = m_programs[ handle >> 4 ];
 
-        SetProgram( p.m_handle );
+        RenderDevice::UseProgram( p.m_handle );
         for ( SizeT i=0; i<p.m_samplerCount; ++i )
         {
             const LayoutObject& sampler = p.m_samplers[i];
-            SetSampler( sampler.m_handle, sampler.m_index );
+            RenderDevice::BindSampler( sampler.m_handle, sampler.m_index );
         }
-        SetUniformBuffer( m_programSets[ handle ].m_uniformBuffer );
+        RenderDevice::BindUniformBuffer( m_programSets[ handle ].m_uniformBuffer, ms_uniformBufferLocation );
     }
 
     void ProgramCache::NotifySourceChange()
@@ -242,12 +233,12 @@ namespace Graphic
 
     void ProgramCache::ReloadCache()
     {
-        SetProgram( 0 );
+        RenderDevice::UseProgram( 0 );
         for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
         {
-            SetSampler( 0, i );
+            RenderDevice::BindSampler( 0, i );
         }
-        SetUniformBuffer( 0 );
+        RenderDevice::BindUniformBuffer( 0, ms_uniformBufferLocation );
 
         // Reload samplers
         {
@@ -496,32 +487,5 @@ namespace Graphic
         for ( ; it != end && it->m_id != id ; ++it );
 
         return it;
-    }
-
-    void ProgramCache::SetProgram( Handle program )
-    {
-        if ( program != m_programCache )
-        {
-            RenderDevice::UseProgram( program );
-            m_programCache = program;
-        }
-    }
-
-    void ProgramCache::SetSampler( Handle sampler, SizeT index )
-    {
-        if ( sampler != m_samplerCache[index] )
-        {
-            RenderDevice::BindSampler( sampler, index );
-            m_samplerCache[index] = sampler;
-        }
-    }
-
-    void ProgramCache::SetUniformBuffer( Handle uniformBuffer )
-    {
-        if ( uniformBuffer != m_uniformBufferCache )
-        {
-            RenderDevice::BindUniformBuffer( uniformBuffer, RenderDevice::ms_maxUniformBufferCount );
-            m_uniformBufferCache = uniformBuffer;
-        }
     }
 }

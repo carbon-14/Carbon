@@ -7,7 +7,7 @@
 namespace Graphic
 {
     MaterialResource::MaterialResource()
-        : Core::Resource()
+        : Resource()
         , m_program( ProgramCache::ms_invalidHandle )
         , m_textureCount( 0 )
     {
@@ -57,7 +57,7 @@ namespace Graphic
             tex.m_index = *((U32*)ptr);
             ptr += sizeof(U32);
 
-            tex.m_resource = Core::ResourceManager::Create< TextureResource >( (const Char*)ptr );
+            tex.m_resource = ResourceManager::Create< TextureResource >( (const Char*)ptr );
             ptr += 256;
         }
 

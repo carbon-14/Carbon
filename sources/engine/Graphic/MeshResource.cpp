@@ -78,7 +78,7 @@ namespace Graphic
     };
 
     MeshResource::MeshResource()
-        : Core::Resource()
+        : Resource()
         , m_subMeshCount( 0 )
     {
     }
