@@ -85,70 +85,108 @@ namespace Level6_NS
     class RenderMesh : public RenderGeometry
     {
     public:
-        RenderMesh( const MeshResource * mesh, SizeT subMeshIndex )
-            : m_mesh( mesh ), m_subMeshIndex( subMeshIndex ) {}
-
         void Draw() const
         {
-            const MeshResource::SubMesh& sub_mesh = m_mesh->GetSubMeshes()[ m_subMeshIndex ];
-            RenderDevice::BeginGeometry( m_mesh->GetVertexDecl(), sub_mesh.m_vertexArray, sub_mesh.m_indexBuffer );
-            RenderDevice::DrawIndexed( m_mesh->GetPrimitive(), sub_mesh.m_indexCount, m_mesh->GetIndexType() );
-            RenderDevice::EndGeometry( m_mesh->GetVertexDecl() );
+            RenderDevice::BeginGeometry( m_vertexDecl, m_vertexArray, m_indexBuffer );
+            RenderDevice::DrawIndexed( m_primitive, m_indexCount, m_indexType );
+            RenderDevice::EndGeometry( m_vertexDecl );
         }
 
-        const MeshResource *    m_mesh;
-        SizeT                   m_subMeshIndex;
+        VertexDeclaration       m_vertexDecl;
+        PrimitiveType           m_primitive;
+        DataType                m_indexType;
+
+        Handle                  m_vertexArray;
+        Handle                  m_indexBuffer;
+        SizeT                   m_indexCount;
     };
 
     class MeshRenderer
     {
     public:
         MeshRenderer()
+            : m_isFinalized( false )
         {
         }
 
         void Initialize()
         {
-            m_mesh              = ResourceManager::Create< MeshResource >( "level6/level6.bmh" );
-            m_uniformBuffers[0] = cameraParameters;
-            m_uniformBuffers[1] = ambientParameters;
-            m_uniformBuffers[2] = lightParameters;
-            m_uniformBuffers[3] = flashParameters;
+            m_mesh = ResourceManager::Create< MeshResource >( "level6/level6.bmh" );
+        }
+
+        void Finalize()
+        {
+            m_uniformBuffers[0].m_handle    = cameraParameters;
+            m_uniformBuffers[0].m_index     = 0;
+            m_uniformBuffers[1].m_handle    = ambientParameters;
+            m_uniformBuffers[1].m_index     = 1;
+            m_uniformBuffers[2].m_handle    = lightParameters;
+            m_uniformBuffers[2].m_index     = 2;
+            m_uniformBuffers[3].m_handle    = flashParameters;
+            m_uniformBuffers[3].m_index     = 3;
+
+            const MeshResource::SubMesh * sub_mesh = m_mesh->GetSubMeshes();
+            const SizeT count = m_mesh->GetSubMeshCount();
+            for ( m_subMeshCount=0; m_subMeshCount<count; ++m_subMeshCount, ++sub_mesh )
+            {
+                RenderMesh& geom    = m_geometry[ m_subMeshCount ];
+                geom.m_vertexDecl   = m_mesh->GetVertexDecl();
+                geom.m_primitive    = m_mesh->GetPrimitive();
+                geom.m_indexType    = m_mesh->GetIndexType();
+                geom.m_vertexArray  = sub_mesh->m_vertexArray;
+                geom.m_indexBuffer  = sub_mesh->m_indexBuffer;
+                geom.m_indexCount   = sub_mesh->m_indexCount;
+
+                const MaterialResource * material = sub_mesh->m_material.ConstPtr();
+
+                m_program[ m_subMeshCount ] = material->GetProgram();
+
+                SizeT& texCount = m_textureCount[ m_subMeshCount ];
+                for ( texCount=0; texCount<material->GetTextureCount(); ++texCount )
+                {
+                    const MaterialResource::Texture& texture = material->GetTexture( texCount );
+
+                    LayoutHandle& texUnit   = m_textureUnits[ m_subMeshCount ][ texCount ];
+                    texUnit.m_handle        = texture.m_resource->GetTexture();
+                    texUnit.m_index         = texture.m_index;
+                }
+            }
+
+            m_isFinalized = true;
         }
 
         void Render( RenderList& renderList )
         {
-            RenderElement element;
-
-            element.m_textureCount  = 0;
-
-            for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<4; ++element.m_uniformBufferCount )
+            if ( ! m_isFinalized )
             {
-                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
-                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
+                if ( m_mesh->IsReady() )
+                {
+                    Finalize();
+                }
             }
 
-            for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
+            if ( m_isFinalized )
             {
-                const MaterialResource * material = m_mesh->GetSubMeshes()[i].m_material.ConstPtr();
-                element.m_program = material->GetProgram();
-                for ( element.m_textureCount = 0; element.m_textureCount<material->GetTextureCount(); ++element.m_textureCount )
-                {
-                    const MaterialResource::Texture& texture = material->GetTexture( element.m_textureCount );
-                    if ( texture.m_resource && texture.m_resource->IsReady() )
-                    {
-                        element.m_textures[ element.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
-                    }
-                    else
-                    {
-                        element.m_textures[ element.m_textureCount ].m_handle   = 0;
-                    }
-                    element.m_textures[ element.m_textureCount ].m_index    = texture.m_index;
-                }
-                element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
-                ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
+                RenderElement element;
 
-                renderList.Push( element );
+                element.m_textureCount  = 0;
+
+                for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<4; ++element.m_uniformBufferCount )
+                {
+                    element.m_uniformBuffers[ element.m_uniformBufferCount ] = m_uniformBuffers[ element.m_uniformBufferCount ];
+                }
+
+                for ( SizeT i=0; i<m_subMeshCount; ++i )
+                {
+                    element.m_program = m_program[ i ];
+                    for ( element.m_textureCount = 0; element.m_textureCount<m_textureCount[ i ]; ++element.m_textureCount )
+                    {
+                        element.m_textures[ element.m_textureCount ] = m_textureUnits[i][element.m_textureCount];
+                    }
+                    element.m_geometry = &m_geometry[i];
+
+                    renderList.Push( element );
+                }
             }
         }
 
@@ -159,7 +197,15 @@ namespace Level6_NS
 
     private:
         SharedPtr< MeshResource >   m_mesh;
-        Handle                      m_uniformBuffers[4];
+        Bool                        m_isFinalized;
+
+        SizeT                       m_subMeshCount;
+        ProgramHandle               m_program[ MeshResource::ms_maxSubMeshCount ];
+        RenderMesh                  m_geometry[ MeshResource::ms_maxSubMeshCount ];
+        LayoutHandle                m_textureUnits[ MeshResource::ms_maxSubMeshCount ][ s_maxTextureUnitCount ];
+        SizeT                       m_textureCount[ MeshResource::ms_maxSubMeshCount ];
+
+        LayoutHandle                m_uniformBuffers[4];
     };
 
     struct SphereParameters
@@ -172,72 +218,101 @@ namespace Level6_NS
     {
     public:
         SphereRenderer()
+            : m_isFinalized(false)
         {
         }
 
         void Initialize()
         {
-            m_mesh              = ResourceManager::Create< MeshResource >( "sphere.bmh" );
+            m_mesh          = ResourceManager::Create< MeshResource >( "level6/sphere.bmh" );
 
-            m_textures[0]       = ResourceManager::Create< TextureResource >( "crack_c.btx" );
-            m_textures[1]       = ResourceManager::Create< TextureResource >( "crack_n.btx" );
+            m_textures[0]   = ResourceManager::Create< TextureResource >( "level6/crack_c.btx" );
+            m_textures[1]   = ResourceManager::Create< TextureResource >( "level6/crack_n.btx" );
 
-            m_uniformBuffers[0] = cameraParameters;
-            m_uniformBuffers[1] = ambientParameters;
-            m_uniformBuffers[2] = lightParameters;
-            m_uniformBuffers[3] = flashParameters;
-            m_uniformBuffers[4] = RenderDevice::CreateUniformBuffer( sizeof(SphereParameters), NULL, BU_STREAM );
+            m_position      = Vector4( 5.0f, -10.0f, 0.0f );
+            m_scale         = One4();
+            m_orientation   = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
+        }
 
-            m_position          = Vector4( 5.0f, -10.0f, 0.0f );
-            m_scale             = One4();
-            m_orientation       = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
+        void Finalize()
+        {
+            m_uniformBuffers[0].m_handle    = cameraParameters;
+            m_uniformBuffers[0].m_index     = 0;
+            m_uniformBuffers[1].m_handle    = ambientParameters;
+            m_uniformBuffers[1].m_index     = 1;
+            m_uniformBuffers[2].m_handle    = lightParameters;
+            m_uniformBuffers[2].m_index     = 2;
+            m_uniformBuffers[3].m_handle    = flashParameters;
+            m_uniformBuffers[3].m_index     = 3;
+            m_uniformBuffers[4].m_handle    = RenderDevice::CreateUniformBuffer( sizeof(SphereParameters), NULL, BU_STREAM );
+            m_uniformBuffers[4].m_index     = 4;
+
+            const MeshResource::SubMesh * sub_mesh = m_mesh->GetSubMeshes();
+            RenderMesh& geom    = m_geometry;
+            geom.m_vertexDecl   = m_mesh->GetVertexDecl();
+            geom.m_primitive    = m_mesh->GetPrimitive();
+            geom.m_indexType    = m_mesh->GetIndexType();
+            geom.m_vertexArray  = sub_mesh->m_vertexArray;
+            geom.m_indexBuffer  = sub_mesh->m_indexBuffer;
+            geom.m_indexCount   = sub_mesh->m_indexCount;
+
+            m_program = sub_mesh->m_material.ConstPtr()->GetProgram();
+
+            for ( SizeT texCount=0; texCount<2; ++texCount )
+            {
+                LayoutHandle& texUnit   = m_textureUnits[ texCount ];
+                texUnit.m_handle        = m_textures[ texCount ]->GetTexture();
+                texUnit.m_index         = texCount;
+            }
+
+            m_isFinalized = true;
         }
 
         void Render( RenderList& renderList, F32 time )
         {
             m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
 
-            Vector emissive = Vector4( 10.0f, 5.0f, 2.5f, 1.0f ) / SquareLength( m_position - cameraPosition );
-
-            SphereParameters * params = static_cast< SphereParameters * >( RenderDevice::MapUniformBuffer( m_uniformBuffers[4], BA_WRITE_ONLY ) );
-
-            params->m_world = RMatrix( m_orientation );
-            Scale( params->m_world, m_scale );
-            params->m_world.m_column[3] = m_position;
-
-            params->m_emissiveColor = emissive;
-
-            RenderDevice::UnmapUniformBuffer( );
-
-            RenderElement element;
-
-            for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
+            if ( ! m_isFinalized )
             {
-                if ( m_textures[ element.m_textureCount ] && m_textures[ element.m_textureCount ]->IsReady() )
+                if ( m_textures[0]->IsReady() && m_textures[1]->IsReady() && m_mesh->IsReady() )
                 {
-                    element.m_textures[ element.m_textureCount ].m_handle   = m_textures[ element.m_textureCount ]->GetTexture();
+                    Finalize();
                 }
-                else
-                {
-                    element.m_textures[ element.m_textureCount ].m_handle   = 0;
-                }
-                element.m_textures[ element.m_textureCount ].m_index        = element.m_textureCount;
             }
 
-            for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )
+            if ( m_isFinalized )
             {
-                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_handle   = m_uniformBuffers[ element.m_uniformBufferCount ];
-                element.m_uniformBuffers[ element.m_uniformBufferCount ].m_index    = element.m_uniformBufferCount;
-            }
+                Vector emissive = Vector4( 10.0f, 5.0f, 2.5f, 1.0f ) / SquareLength( m_position - cameraPosition );
 
-            for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
-            {
+                SphereParameters * params = static_cast< SphereParameters * >( RenderDevice::MapUniformBuffer( m_uniformBuffers[4].m_handle, BA_WRITE_ONLY ) );
 
-                element.m_program = m_mesh->GetSubMeshes()[i].m_material->GetProgram();
-                element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
-                ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
+                params->m_world = RMatrix( m_orientation );
+                Scale( params->m_world, m_scale );
+                params->m_world.m_column[3] = m_position;
 
-                renderList.Push( element );
+                params->m_emissiveColor = emissive;
+
+                RenderDevice::UnmapUniformBuffer( );
+
+                RenderElement element;
+
+                for ( element.m_uniformBufferCount = 0; element.m_uniformBufferCount<5; ++element.m_uniformBufferCount )
+                {
+                    element.m_uniformBuffers[ element.m_uniformBufferCount ] = m_uniformBuffers[ element.m_uniformBufferCount ];
+                }
+
+                for ( element.m_textureCount = 0; element.m_textureCount<2; ++element.m_textureCount )
+                {
+                    element.m_textures[ element.m_textureCount ] = m_textureUnits[ element.m_textureCount ];
+                }
+
+                for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
+                {
+                    element.m_program = m_program;
+                    element.m_geometry = &m_geometry;
+
+                    renderList.Push( element );
+                }
             }
         }
 
@@ -248,18 +323,23 @@ namespace Level6_NS
             m_textures[0] = 0;
             m_textures[1] = 0;
 
-            RenderDevice::DestroyBuffer( m_uniformBuffers[3] );
+            RenderDevice::DestroyBuffer( m_uniformBuffers[4].m_handle );
         }
 
     private:
         SharedPtr< MeshResource >       m_mesh;
-
         SharedPtr< TextureResource >    m_textures[2];
-        Handle                          m_uniformBuffers[5];
+        Bool                            m_isFinalized;
 
-        Vector          m_position;
-        Vector          m_scale;
-        Vector          m_orientation;
+        SizeT                           m_subMeshCount;
+        ProgramHandle                   m_program;
+        RenderMesh                      m_geometry;
+        LayoutHandle                    m_textureUnits[2];
+        LayoutHandle                    m_uniformBuffers[5];
+
+        Vector                          m_position;
+        Vector                          m_scale;
+        Vector                          m_orientation;
     };
 
     MeshRenderer    meshRenderer;

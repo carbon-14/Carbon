@@ -4,10 +4,8 @@
 
 #include "UnitTest/Application.h"
 
-#include "Graphic/RenderCache.h"
-#include "Graphic/RenderList.h"
-
-#include "Graphic/MeshResource.h"
+#include "Graphic/FrameRenderer.h"
+#include "Graphic/Mesh.h"
 
 class Level7 : public Application
 {
@@ -20,10 +18,7 @@ protected:
     void PostExecute();
     void Execute();
 
-    Graphic::RenderCache                m_renderCache;
-    Graphic::RenderList                 m_renderList;
-
-    SharedPtr< Graphic::MeshResource >  m_mesh;
+    Graphic::FrameRenderer  m_frameRenderer;
 };
 
 #endif // _UNITTEST_LEVEL7_H

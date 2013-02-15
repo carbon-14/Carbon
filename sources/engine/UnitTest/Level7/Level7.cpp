@@ -1,13 +1,24 @@
 #include "UnitTest/Level7/Level7.h"
 
 #include "Core/ResourceManager.h"
+#include "Core/Vector.h"
+#include "Core/Matrix.h"
+#include "Core/Quaternion.h"
 
-#include "Graphic/RenderState.h"
+#include "Graphic/Scene.h"
 
 using namespace Graphic;
 
 namespace Level7_NS
 {
+    Mesh *  m_mesh = 0;
+    Mesh *  m_sphere = 0;
+    Scene * m_scene = 0;
+
+    Bool    scene_ready;
+
+    Vector cameraPosition       = Vector4( 0.0f, 0.0f, 0.0f );
+    Vector cameraOrientation    = Quaternion( UnitY(), -HalfPi() );
 }
 
 using namespace Level7_NS;
@@ -23,57 +34,111 @@ void Level7::ProcessInputs( RAWINPUT * raw )
 
 void Level7::PreExecute()
 {
-    RenderState opaque;
-    opaque.m_enableDepthTest = true;
-    opaque.m_enableCullFace  = true;
+    m_frameRenderer.Initialize();    
 
-    m_renderList.SetRenderState( opaque );
-    m_renderList.SetClearMask( CM_COLOR | CM_DEPTH );
+    {
+        Mesh::Parameters mesh_params;
+        Store( mesh_params.m_transform, Identity() );
 
-    m_mesh = ResourceManager::Create< MeshResource >( "level7/sphere.bmh" );
+        m_mesh = MemoryManager::New< Mesh >();
+        m_mesh->SetResource( ResourceManager::Create< MeshResource >( "level7/level7.bmh" ) );
+        m_mesh->SetParameters( mesh_params );
+        m_mesh->Update();
+    }
+
+    {
+        Mesh::Parameters sphere_params;
+        Store( sphere_params.m_transform, Identity() );
+
+        m_sphere = MemoryManager::New< Mesh >();
+        m_sphere->SetResource( ResourceManager::Create< MeshResource >( "level7/sphere.bmh" ) );
+        m_sphere->SetParameters( sphere_params );
+        m_sphere->Update();
+    }
+
+    {
+        Matrix cam_base = RMatrix( cameraOrientation );
+        cam_base.m_column[3] = cameraPosition;
+
+        Matrix view = Inverse( cam_base );
+
+        F32 n       = 0.25f;
+        F32 f       = 50.0f;
+        F32 fov     = HalfPi();
+
+        F32 cotan   = 1.0f / Tan( 0.5f * fov ) ;
+
+        F32 frameRatio  = static_cast< F32 >( m_window.width ) / static_cast< F32 >( m_window.height );
+
+        Matrix proj;
+        proj.m_column[0] = Vector4( cotan   , 0.0f                  , 0.0f                          , 0.0f  );
+        proj.m_column[1] = Vector4( 0.0f    , cotan * frameRatio    , 0.0f                          , 0.0f  );
+        proj.m_column[2] = Vector4( 0.0f    , 0.0f                  , ( f + n ) / ( n - f )         , -1.0f );
+        proj.m_column[3] = Vector4( 0.0f    , 0.0f                  , ( 2.0f * n * f ) / ( n - f )  , 0.0f  );
+
+        Matrix viewProjMatrix = Mul( proj, view );
+
+        Scene::Parameters scene_params;
+        Store( scene_params.m_position, cameraPosition );
+        Store( scene_params.m_viewProjMatrix, viewProjMatrix );
+
+        m_scene = MemoryManager::New< Scene >();
+        m_scene->SetParameters( scene_params );
+        m_scene->Update();
+        m_scene->AddMesh( m_mesh );
+        m_scene->AddMesh( m_sphere );
+    }
+
+    scene_ready = false;
 }
 
 void Level7::PostExecute()
 {
-    m_mesh = 0;
+    m_scene->Clear();
 
-    m_renderCache.Clear();
+    MemoryManager::Delete( m_sphere );
+    MemoryManager::Delete( m_mesh );
+    MemoryManager::Delete( m_scene );
+
+    m_frameRenderer.Destroy();
 }
 
 void Level7::Execute()
 {
-    /*{
-        RenderElement element;
+    if ( scene_ready )
+    {
+        m_frameRenderer.Render( m_scene );
+    }
+    else
+    {
+        scene_ready = true;
 
-        element.m_textureCount  = 0;
-        element.m_uniformBufferCount = 0;
-
-        for ( SizeT i=0; i<m_mesh->GetSubMeshCount(); ++i )
+        if ( !m_mesh->IsFinalized() )
         {
-            const MaterialResource * material = m_mesh->GetSubMeshes()[i].m_material.ConstPtr();
-            element.m_program = material->GetProgram();
-            for ( element.m_textureCount = 0; element.m_textureCount<material->GetTextureCount(); ++element.m_textureCount )
+            if ( m_mesh->GetResource()->IsReady() )
             {
-                const MaterialResource::Texture& texture = material->GetTexture( element.m_textureCount );
-                if ( texture.m_resource && texture.m_resource->IsReady() )
-                {
-                    element.m_textures[ element.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
-                }
-                else
-                {
-                    element.m_textures[ element.m_textureCount ].m_handle   = 0;
-                }
-                element.m_textures[ element.m_textureCount ].m_index    = texture.m_index;
+                m_mesh->Finalize();
             }
-            element.m_geometry = (RenderMesh*)MemoryManager::FrameAlloc( sizeof(RenderMesh), MemoryUtils::AlignOf< RenderMesh >() );
-            ::new( element.m_geometry ) RenderMesh( m_mesh.Ptr(), i );
-
-            renderList.Push( element );
+            else
+            {
+                scene_ready = false;
+            }
         }
-    }*/
 
+        if ( !m_sphere->IsFinalized() )
+        {
+            if ( m_sphere->GetResource()->IsReady() )
+            {
+                m_sphere->Finalize();
+            }
+            else
+            {
+                scene_ready = false;
+            }
+        }
+    }
 
-    Handle depthStencil = RenderDevice::CreateRenderTarget( TF_D24S8, m_window.width, m_window.height );
+    /*Handle depthStencil = RenderDevice::CreateRenderTarget( TF_D24S8, m_window.width, m_window.height );
     Handle albedo = RenderDevice::CreateRenderTarget( TF_RGBA8, m_window.width, m_window.height );
 
     Handle framebuffer = RenderDevice::CreateFramebuffer();
@@ -87,6 +152,6 @@ void Level7::Execute()
     RenderDevice::BindFramebuffer( 0, FT_DRAW );
 
     RenderDevice::DestroyTexture( albedo );
-    RenderDevice::DestroyTexture( depthStencil );
+    RenderDevice::DestroyTexture( depthStencil );*/
 }
 
