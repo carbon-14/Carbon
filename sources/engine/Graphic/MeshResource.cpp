@@ -1,5 +1,6 @@
 #include "Graphic/MeshResource.h"
 
+#include "Graphic/RenderDevice.h"
 #include "Graphic/MaterialResource.h"
 
 namespace Graphic
@@ -122,7 +123,7 @@ namespace Graphic
         return m_subMeshCount;
     }
 
-    bool MeshResource::Load( const void * data )
+    Bool MeshResource::Load( const void * data )
     {
         m_primitive = PT_TRIANGLES;
 

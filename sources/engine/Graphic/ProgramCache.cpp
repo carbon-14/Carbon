@@ -1,5 +1,6 @@
 #include "Graphic/ProgramCache.h"
 
+#include "Graphic/RenderDevice.h"
 #include "Graphic/MaterialResource.h"
 
 #include "Core/ResourceManager.h"
@@ -34,7 +35,7 @@ namespace Graphic
     Bool dirtyCache = false;
 
     const ProgramHandle             ProgramCache::ms_invalidHandle = -1;
-    const SizeT                     ProgramCache::ms_uniformBufferLocation = RenderDevice::ms_maxUniformBufferCount - 1;
+    const SizeT                     ProgramCache::ms_uniformBufferLocation = s_maxUniformBufferCount - 1;
 
     PathString                      ProgramCache::m_dataPath;
     PathString                      ProgramCache::m_cachePath;
@@ -62,11 +63,11 @@ namespace Graphic
     void ProgramCache::Destroy()
     {
         RenderDevice::UseProgram( 0 );
-        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
+        for ( SizeT i=0; i<s_maxTextureUnitCount; ++i )
         {
             RenderDevice::BindSampler( 0, i );
         }
-        RenderDevice::BindUniformBuffer( 0, RenderDevice::ms_maxUniformBufferCount - 1 );
+        RenderDevice::BindUniformBuffer( 0, s_maxUniformBufferCount - 1 );
 
         m_dataPath.Clear();
         m_cachePath.Clear();
@@ -154,7 +155,7 @@ namespace Graphic
         RenderDevice::UseProgram( p.m_handle );
         for ( SizeT i=0; i<p.m_samplerCount; ++i )
         {
-            const LayoutObject& sampler = p.m_samplers[i];
+            const LayoutHandle& sampler = p.m_samplers[i];
             RenderDevice::BindSampler( sampler.m_handle, sampler.m_index );
         }
         RenderDevice::BindUniformBuffer( m_programSets[ handle ].m_uniformBuffer, ms_uniformBufferLocation );
@@ -234,7 +235,7 @@ namespace Graphic
     void ProgramCache::ReloadCache()
     {
         RenderDevice::UseProgram( 0 );
-        for ( SizeT i=0; i<RenderDevice::ms_maxTextureUnitCount; ++i )
+        for ( SizeT i=0; i<s_maxTextureUnitCount; ++i )
         {
             RenderDevice::BindSampler( 0, i );
         }

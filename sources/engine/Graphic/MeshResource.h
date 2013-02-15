@@ -5,7 +5,6 @@
 #include "Graphic/DLL.h"
 
 #include "Core/Resource.h"
-#include "Graphic/RenderDevice.h"
 #include "Graphic/MaterialResource.h"
 
 namespace Graphic
@@ -38,7 +37,7 @@ namespace Graphic
         SizeT                       GetSubMeshCount() const;
 
     protected:
-        bool Load( const void * data );
+        Bool Load( const void * data );
         void Unload();
 
     private:

@@ -3,6 +3,7 @@
 #define _GRAPHIC_MESHRENDERER_H
 
 #include "Graphic/DLL.h"
+#include "Graphic/Types.h"
 
 namespace Graphic
 {
@@ -17,7 +18,7 @@ namespace Graphic
         void Initialize( RenderList * opaqueList );
         void Destroy();
 
-        void Render( const Mesh * mesh ) const;
+        void Render( const Mesh * mesh, Handle sceneParameters ) const;
 
     private:
         RenderList *    m_opaqueList;

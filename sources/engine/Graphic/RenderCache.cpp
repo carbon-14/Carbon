@@ -1,4 +1,6 @@
-#include "RenderCache.h"
+#include "Graphic/RenderCache.h"
+
+#include "Graphic/RenderDevice.h"
 
 namespace Graphic
 {

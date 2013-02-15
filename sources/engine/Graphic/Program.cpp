@@ -1,5 +1,7 @@
 #include "Graphic/Program.h"
 
+#include "Graphic/RenderDevice.h"
+
 #include "Core/MemoryUtils.h"
 #include "Core/StringUtils.h"
 

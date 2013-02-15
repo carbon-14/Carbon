@@ -2,7 +2,6 @@
 #ifndef _GRAPHIC_RENDERCACHE_H
 #define _GRAPHIC_RENDERCACHE_H
 
-#include "Graphic/RenderDevice.h"
 #include "Graphic/ProgramCache.h"
 #include "Graphic/RenderState.h"
 

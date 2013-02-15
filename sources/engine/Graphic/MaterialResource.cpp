@@ -24,7 +24,7 @@ namespace Graphic
 
     const MaterialResource::Texture& MaterialResource::GetTexture( SizeT index ) const
     {
-        CARBON_ASSERT( index < RenderDevice::ms_maxTextureUnitCount );
+        CARBON_ASSERT( index < s_maxTextureUnitCount );
         return m_textures[ index ];
     }
 
@@ -33,7 +33,7 @@ namespace Graphic
         return m_textureCount;
     }
 
-    bool MaterialResource::Load( const void * data )
+    Bool MaterialResource::Load( const void * data )
     {
         const U8 * ptr = (U8*)data;
 

@@ -1,5 +1,7 @@
 #include "Graphic/TextureResource.h"
 
+#include "Graphic/RenderDevice.h"
+
 namespace Graphic
 {
     struct TextureHeader
@@ -31,7 +33,7 @@ namespace Graphic
         return m_texture;
     }
 
-    bool TextureResource::Load( const void * data )
+    Bool TextureResource::Load( const void * data )
     {
         U8 * ptr = (U8*)data;
 

@@ -4,8 +4,15 @@
 
 #include "Graphic/DLL.h"
 
+#include "Core/Matrix.h"
+
+#include "Graphic/RenderList.h"
+#include "Graphic/MeshRenderer.h"
+
 namespace Graphic
 {
+    class Scene;
+
     class _GraphicExport FrameRenderer
     {
     public:
@@ -15,7 +22,13 @@ namespace Graphic
         void Initialize();
         void Destroy();
 
-        void Render();
+        void Render( const Scene * scene );
+
+    private:
+        RenderCache     m_renderCache;
+        RenderList      m_opaqueList;
+
+        MeshRenderer    m_meshRenderer;
     };
 }
 

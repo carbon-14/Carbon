@@ -211,10 +211,10 @@ namespace Graphic
 
     static GLuint   s_vertexArrayCache;
     static GLuint   s_bufferCache[ BT_COUNT ];
-    static GLuint   s_samplerCache[ RenderDevice::ms_maxTextureUnitCount ];
+    static GLuint   s_samplerCache[ s_maxTextureUnitCount ];
     static GLuint   s_activeTexture;
-    static GLuint   s_textureCache[ RenderDevice::ms_maxTextureUnitCount ];
-    static GLuint   s_uniformCache[ RenderDevice::ms_maxUniformBufferCount ];
+    static GLuint   s_textureCache[ s_maxTextureUnitCount ];
+    static GLuint   s_uniformCache[ s_maxUniformBufferCount ];
     static GLuint   s_framebufferCache;
     static GLuint   s_programCache;
 
@@ -684,7 +684,7 @@ namespace Graphic
         glBindBuffer( GL_UNIFORM_BUFFER_BINDING, 0 );
         s_bufferCache[BT_UNIFORM] = 0;
 
-        for ( SizeT i=0; i<ms_maxTextureUnitCount; ++i )
+        for ( SizeT i=0; i<s_maxTextureUnitCount; ++i )
         {
             glActiveTexture( GL_TEXTURE0 + i );
             glBindTexture( GL_TEXTURE_2D, 0 );
@@ -695,7 +695,7 @@ namespace Graphic
         glActiveTexture( GL_TEXTURE0 );
         s_activeTexture = 0;
 
-        for ( SizeT i=0; i<ms_maxUniformBufferCount; ++i )
+        for ( SizeT i=0; i<s_maxUniformBufferCount; ++i )
         {
             glBindBufferBase( GL_UNIFORM_BUFFER, i, 0 );
             s_uniformCache[i] = 0;

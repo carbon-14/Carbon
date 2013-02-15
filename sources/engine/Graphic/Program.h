@@ -2,7 +2,8 @@
 #ifndef _GRAPHIC_PROGRAM_H
 #define _GRAPHIC_PROGRAM_H
 
-#include "RenderDevice.h"
+#include "Graphic/DLL.h"
+#include "Graphic/Types.h"
 
 namespace Graphic
 {
@@ -28,7 +29,7 @@ namespace Graphic
 
         Handle          m_handle;
 
-        LayoutObject    m_samplers[ RenderDevice::ms_maxTextureUnitCount ];
+        LayoutHandle    m_samplers[ s_maxTextureUnitCount ];
         SizeT           m_samplerCount;
 
         SizeT           m_setCount;

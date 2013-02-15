@@ -2,7 +2,8 @@
 #ifndef _GRAPHIC_RENDERSTATE_H
 #define _GRAPHIC_RENDERSTATE_H
 
-#include "RenderDevice.h"
+#include "Graphic/DLL.h"
+#include "Graphic/Types.h"
 
 namespace Graphic
 {

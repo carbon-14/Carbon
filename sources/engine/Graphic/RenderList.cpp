@@ -1,5 +1,6 @@
 #include "Graphic/RenderList.h"
 
+#include "Graphic/RenderDevice.h"
 #include "Graphic/RenderGeometry.h"
 
 namespace Graphic
@@ -85,12 +86,12 @@ namespace Graphic
             ProgramCache::UseProgram( e.m_program );
             for ( SizeT i=0; i<e.m_textureCount; ++i )
             {
-                const LayoutObject& texture = e.m_textures[i];
+                const LayoutHandle& texture = e.m_textures[i];
                 RenderDevice::BindTexture( texture.m_handle, texture.m_index );
             }
             for ( SizeT i=0; i<e.m_uniformBufferCount; ++i )
             {
-                const LayoutObject& uniformBuffer = e.m_uniformBuffers[i];
+                const LayoutHandle& uniformBuffer = e.m_uniformBuffers[i];
                 RenderDevice::BindUniformBuffer( uniformBuffer.m_handle, uniformBuffer.m_index );
             }
 

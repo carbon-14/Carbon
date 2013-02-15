@@ -5,7 +5,7 @@
 #include "Graphic/DLL.h"
 
 #include "Core/Resource.h"
-#include "Graphic/RenderDevice.h"
+#include "Graphic/Types.h"
 
 namespace Graphic
 {
@@ -18,7 +18,7 @@ namespace Graphic
         Handle GetTexture() const;
 
     protected:
-        bool Load( const void * data );
+        Bool Load( const void * data );
         void Unload();
 
     private:

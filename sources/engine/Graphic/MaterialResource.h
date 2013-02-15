@@ -5,7 +5,6 @@
 #include "Graphic/DLL.h"
 
 #include "Core/Resource.h"
-#include "Graphic/RenderDevice.h"
 #include "Graphic/ProgramCache.h"
 #include "Graphic/TextureResource.h"
 
@@ -29,12 +28,12 @@ namespace Graphic
         SizeT           GetTextureCount() const;
 
     protected:
-        bool Load( const void * data );
+        Bool Load( const void * data );
         void Unload();
 
     private:
         ProgramHandle   m_program;
-        Texture         m_textures[ RenderDevice::ms_maxTextureUnitCount ];
+        Texture         m_textures[ s_maxTextureUnitCount ];
         SizeT           m_textureCount;
     };
 }

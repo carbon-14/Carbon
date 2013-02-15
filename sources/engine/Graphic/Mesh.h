@@ -2,28 +2,40 @@
 #ifndef _GRAPHIC_MESH_H
 #define _GRAPHIC_MESH_H
 
-#include "Core/Matrix.h"
-
 #include "Graphic/RenderGeometry.h"
 #include "Graphic/MeshResource.h"
+
+#include "Core/Vector.h"
 
 namespace Graphic
 {
     class _GraphicExport Mesh
     {
     public:
-        Mesh();
+        struct Parameters
+        {
+            F128  m_transform[4];
+        };
 
-        void SetTransform( const Matrix& transform );
-        const Matrix& GetTransform() const;
+    public:
+        Mesh();
+        ~Mesh();
+
+        void Update();
+
+        void SetParameters( const Parameters& parameters );
+        const Parameters& GetParameters() const;
 
         void SetResource( MeshResource * resource );
         const MeshResource * GetResource() const;
 
-        const RenderGeometry * GetGeoms() const;
+        const RenderGeometry * GetGeom( SizeT index ) const;
         SizeT GetGeomCount() const;
 
+        Handle GetUniformBuffer() const;
+
         void Finalize();
+        Bool IsFinalized() const;
         
     private:
         class Geometry : public RenderGeometry
@@ -39,11 +51,15 @@ namespace Graphic
             SizeT               m_indexCount;
         };
 
-        Matrix                      m_transform;
+        Parameters                  m_parameters;
         SharedPtr< MeshResource >   m_resource;
 
         Geometry                    m_geoms[ MeshResource::ms_maxSubMeshCount ];
         SizeT                       m_geomCount;
+
+        Handle                      m_uniformBuffer;
+
+        Bool                        m_isFinalized;
     };
 }
 
