@@ -12,24 +12,24 @@ Resource::~Resource()
 {
 }
 
-bool Resource::IsValid() const
+Bool Resource::IsValid() const
 {
     return (m_state & VALID) != 0;
 }
 
-bool Resource::IsPending() const
+Bool Resource::IsPending() const
 {
     return (m_state & PENDING) != 0;
 }
 
-bool Resource::IsLoaded() const
+Bool Resource::IsLoaded() const
 {
     return (m_state & LOADED) != 0;
 }
 
-bool Resource::IsReady() const
+Bool Resource::IsReady() const
 {
-    return (m_state & (VALID|LOADED)) != 0;
+    return (m_state & (VALID|LOADED)) == (VALID|LOADED);
 }
 
 U32 Resource::GetId() const

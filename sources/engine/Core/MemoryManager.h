@@ -19,6 +19,22 @@ public:
     static void * Realloc( void * ptr, SizeT sizeBytes, SizeT align = 1 );
     static void Free( void * ptr );
 
+    template< typename T >
+    static T * New()
+    {
+        T * ptr = (T*)Malloc( sizeof(T), MemoryUtils::AlignOf<T>() );
+        ::new( ptr ) T;
+
+        return ptr;
+    }
+
+    template< typename T >
+    static void Delete( T * ptr )
+    {
+        ptr->~T();
+        Free( ptr );
+    }
+
     static void FrameUpdate();
     static void * FrameAlloc( SizeT sizeBytes, SizeT align = 1 );
 };

@@ -13,10 +13,10 @@ public:
     Resource();
     virtual ~Resource();
 
-    bool            IsValid() const;    // valid
-    bool            IsPending() const;  // pending
-    bool            IsLoaded() const;   // loaded
-    bool            IsReady() const;    // valid & loaded
+    Bool            IsValid() const;    // valid
+    Bool            IsPending() const;  // pending
+    Bool            IsLoaded() const;   // loaded
+    Bool            IsReady() const;    // valid & loaded
 
     U32             GetId() const;
 
@@ -39,7 +39,7 @@ protected:
     void            SetName( const Char * name );
 #endif
 
-    virtual bool    Load( const void * data ) = 0;
+    virtual Bool    Load( const void * data ) = 0;
     virtual void    Unload() = 0;
 
     void            SelfDelete();
