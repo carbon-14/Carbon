@@ -1,4 +1,3 @@
-#version 420
 
 layout( location = 0 ) in vec3 position;
 layout( location = 1 ) in vec3 normal;
@@ -9,12 +8,12 @@ layout( location = 5 ) in vec2 texcoords;
 layout(binding=0) uniform CameraParameters
 {
     mat4    viewProjMatrix;
-    vec4    cameraPosition;
+    vec4    camPosition;
 };
 
 layout(binding=4) uniform SphereParameters
 {
-    mat4    worldMatrix;
+    mat4    worldMat;
     vec4    emissiveColor;
 };
 
@@ -29,8 +28,8 @@ out Data
 
 void main()
 {
-    vec4 p = worldMatrix * vec4( position, 1.0 );
-    mat3 world33 = mat3( worldMatrix[0].xyz, worldMatrix[1].xyz, worldMatrix[2].xyz );
+    vec4 p = worldMat * vec4( position, 1.0 );
+    mat3 world33 = mat3( worldMat[0].xyz, worldMat[1].xyz, worldMat[2].xyz );
 
     DataOut.position    = p.xyz;
     DataOut.normal      = world33 * normal;

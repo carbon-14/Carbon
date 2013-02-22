@@ -28,4 +28,17 @@ TextureCompiler color -cmp -mipmap ../../.. level6/crack_c.png
 TextureCompiler normal -cmp -mipmap ../../.. level6/crack_n.png
 MeshCompiler -gen_ts -cmp_pos -cmp_vec -cmp_uvs ../../.. level6/sphere.dae
 
+REM Sibenik
+TextureCompiler color -cmp -mipmap ../../.. sibenik/kamen_c.png
+TextureCompiler normal -cmp -mipmap ../../.. sibenik/kamen_n.png
+TextureCompiler color -cmp -mipmap ../../.. sibenik/kamen_stup_c.png
+TextureCompiler normal -cmp -mipmap ../../.. sibenik/kamen_stup_n.png
+TextureCompiler color -cmp -mipmap ../../.. sibenik/marble_c.png
+TextureCompiler normal -cmp -mipmap ../../.. sibenik/marble_n.png
+TextureCompiler color -cmp -mipmap ../../.. sibenik/iron_c.png
+TextureCompiler normal -cmp -mipmap ../../.. sibenik/iron_n.png
+TextureCompiler color -cmp -mipmap ../../.. sibenik/carpet_c.png
+TextureCompiler normal -cmp -mipmap ../../.. sibenik/carpet_n.png
+MeshCompiler -gen_ts -cmp_pos -cmp_vec -cmp_uvs ../../.. sibenik/sibenik.dae
+
 pause

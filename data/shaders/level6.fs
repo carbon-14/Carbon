@@ -1,4 +1,3 @@
-#version 420
 
 in Data
 {
@@ -18,7 +17,7 @@ layout(binding=1) uniform sampler2D normalMap;
 layout(binding=0) uniform CameraParameters
 {
     mat4    viewProjMatrix;
-    vec4    cameraPosition;
+    vec4    camPosition;
 };
 
 layout(binding=1) uniform AmbientParameters
@@ -43,7 +42,7 @@ layout(binding=3) uniform FlashParameters
     float   flashRadius;
 };
 
-layout(binding=7) uniform MaterialParameters
+layout(binding=UNIFORM_BINDING_IMATERIAL) uniform MaterialParameters
 {
     vec4    SpecParams;
 };
@@ -63,7 +62,7 @@ void main()
     n.z     = sqrt( 1.0 - dot( n.xy, n.xy ) );
     n       = tbn * n;
 
-    vec3 v = normalize( cameraPosition.xyz - DataIn.position );
+    vec3 v = normalize( camPosition.xyz - DataIn.position );
 
     vec3 light = vec3(0.0);
     {

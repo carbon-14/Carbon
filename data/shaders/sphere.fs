@@ -1,4 +1,3 @@
-#version 420
 
 in Data
 {
@@ -17,7 +16,7 @@ layout(binding=1) uniform sampler2D sphereNormal;
 layout(binding=0) uniform CameraParameters
 {
     mat4    viewProjMatrix;
-    vec4    cameraPosition;
+    vec4    camPosition;
 };
 
 layout(binding=1) uniform AmbientParameters
@@ -44,7 +43,7 @@ layout(binding=3) uniform FlashParameters
 
 layout(binding=4) uniform SphereParameters
 {
-    mat4    worldMatrix;
+    mat4    worldMat;
     vec4    emissiveColor;
 };
 
@@ -64,7 +63,7 @@ void main()
     n.z     = sqrt( 1.0 - dot( n.xy, n.xy ) );
     n       = tbn * n;
 
-    vec3 v = normalize( cameraPosition.xyz - DataIn.position );
+    vec3 v = normalize( camPosition.xyz - DataIn.position );
 
     vec3 light = vec3(0.0);
     {
