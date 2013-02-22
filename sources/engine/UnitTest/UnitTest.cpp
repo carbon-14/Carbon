@@ -28,8 +28,8 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
     ShowWindow(window.hwnd, nCmdShow);
     UpdateWindow(window.hwnd);
 
-    Level6 test( window );
-    //Level7 test( window );
+    //Level6 test( window );
+    Level7 test( window );
 
     int r = test.Run();
 

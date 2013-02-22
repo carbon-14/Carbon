@@ -41,12 +41,12 @@ void Level7::PreExecute()
         Store( mesh_params.m_transform, Identity() );
 
         m_mesh = MemoryManager::New< Mesh >();
-        m_mesh->SetResource( ResourceManager::Create< MeshResource >( "level7/level7.bmh" ) );
+        m_mesh->SetResource( ResourceManager::Create< MeshResource >( "sibenik/sibenik.bmh" ) );
         m_mesh->SetParameters( mesh_params );
         m_mesh->Update();
     }
 
-    {
+    /*{
         Mesh::Parameters sphere_params;
         Store( sphere_params.m_transform, Identity() );
 
@@ -54,7 +54,7 @@ void Level7::PreExecute()
         m_sphere->SetResource( ResourceManager::Create< MeshResource >( "level7/sphere.bmh" ) );
         m_sphere->SetParameters( sphere_params );
         m_sphere->Update();
-    }
+    }*/
 
     {
         Matrix cam_base = RMatrix( cameraOrientation );
@@ -76,17 +76,16 @@ void Level7::PreExecute()
         proj.m_column[2] = Vector4( 0.0f    , 0.0f                  , ( f + n ) / ( n - f )         , -1.0f );
         proj.m_column[3] = Vector4( 0.0f    , 0.0f                  , ( 2.0f * n * f ) / ( n - f )  , 0.0f  );
 
-        Matrix viewProjMatrix = Mul( proj, view );
-
         Scene::Parameters scene_params;
+        Store( scene_params.m_viewMatrix, view );
+        Store( scene_params.m_projMatrix, proj );
         Store( scene_params.m_position, cameraPosition );
-        Store( scene_params.m_viewProjMatrix, viewProjMatrix );
 
         m_scene = MemoryManager::New< Scene >();
         m_scene->SetParameters( scene_params );
         m_scene->Update();
         m_scene->AddMesh( m_mesh );
-        m_scene->AddMesh( m_sphere );
+        //m_scene->AddMesh( m_sphere );
     }
 
     scene_ready = false;
@@ -96,7 +95,7 @@ void Level7::PostExecute()
 {
     m_scene->Clear();
 
-    MemoryManager::Delete( m_sphere );
+    //MemoryManager::Delete( m_sphere );
     MemoryManager::Delete( m_mesh );
     MemoryManager::Delete( m_scene );
 
@@ -107,7 +106,7 @@ void Level7::Execute()
 {
     if ( scene_ready )
     {
-        m_frameRenderer.Render( m_scene );
+        m_frameRenderer.Render( m_scene, m_window.width, m_window.height );
     }
     else
     {
@@ -125,7 +124,7 @@ void Level7::Execute()
             }
         }
 
-        if ( !m_sphere->IsFinalized() )
+        /*if ( !m_sphere->IsFinalized() )
         {
             if ( m_sphere->GetResource()->IsReady() )
             {
@@ -135,23 +134,7 @@ void Level7::Execute()
             {
                 scene_ready = false;
             }
-        }
+        }*/
     }
-
-    /*Handle depthStencil = RenderDevice::CreateRenderTarget( TF_D24S8, m_window.width, m_window.height );
-    Handle albedo = RenderDevice::CreateRenderTarget( TF_RGBA8, m_window.width, m_window.height );
-
-    Handle framebuffer = RenderDevice::CreateFramebuffer();
-
-    RenderDevice::BindFramebuffer( framebuffer, FT_DRAW );
-    RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, albedo, 0 );
-    RenderDevice::AttachTexture( FT_DRAW, FA_DEPTH_STENCIL, depthStencil, 0 );
-
-    m_renderList.Draw( m_renderCache );
-
-    RenderDevice::BindFramebuffer( 0, FT_DRAW );
-
-    RenderDevice::DestroyTexture( albedo );
-    RenderDevice::DestroyTexture( depthStencil );*/
 }
 

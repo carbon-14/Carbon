@@ -114,17 +114,15 @@ namespace Level5_NS
     public:
         void Draw() const
         {
-            RenderDevice::BeginGeometry( m_vertexDecl, m_vertexArray, m_indexBuffer );
+            RenderDevice::BeginGeometry( m_vertexArray );
             RenderDevice::DrawIndexed( m_primitive, m_indexCount, m_indexType );
-            RenderDevice::EndGeometry( m_vertexDecl );
+            RenderDevice::EndGeometry();
         }
 
-        VertexDeclaration       m_vertexDecl;
         PrimitiveType           m_primitive;
         DataType                m_indexType;
 
         Handle                  m_vertexArray;
-        Handle                  m_indexBuffer;
         SizeT                   m_indexCount;
     };
 
@@ -157,11 +155,9 @@ namespace Level5_NS
             for ( m_subMeshCount=0; m_subMeshCount<count; ++m_subMeshCount, ++sub_mesh )
             {
                 RenderMesh& geom    = m_geometry[ m_subMeshCount ];
-                geom.m_vertexDecl   = m_mesh->GetVertexDecl();
                 geom.m_primitive    = m_mesh->GetPrimitive();
                 geom.m_indexType    = m_mesh->GetIndexType();
                 geom.m_vertexArray  = sub_mesh->m_vertexArray;
-                geom.m_indexBuffer  = sub_mesh->m_indexBuffer;
                 geom.m_indexCount   = sub_mesh->m_indexCount;
 
                 const MaterialResource * material = sub_mesh->m_material.ConstPtr();
@@ -276,11 +272,9 @@ namespace Level5_NS
 
             const MeshResource::SubMesh * sub_mesh = m_mesh->GetSubMeshes();
             RenderMesh& geom    = m_geometry;
-            geom.m_vertexDecl   = m_mesh->GetVertexDecl();
             geom.m_primitive    = m_mesh->GetPrimitive();
             geom.m_indexType    = m_mesh->GetIndexType();
             geom.m_vertexArray  = sub_mesh->m_vertexArray;
-            geom.m_indexBuffer  = sub_mesh->m_indexBuffer;
             geom.m_indexCount   = sub_mesh->m_indexCount;
 
             m_program = sub_mesh->m_material.ConstPtr()->GetProgram();

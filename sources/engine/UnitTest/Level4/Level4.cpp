@@ -89,9 +89,9 @@ namespace Level4_NS
     public:
         void Draw() const
         {
-            RenderDevice::BeginGeometry( m_vertexDecl, m_vertexArray, m_indexBuffer );
+            RenderDevice::BeginGeometry( m_vertexArray );
             RenderDevice::DrawIndexed( m_primitive, m_indexCount, m_indexType );
-            RenderDevice::EndGeometry( m_vertexDecl );
+            RenderDevice::EndGeometry();
         }
 
         PrimitiveType       m_primitive;
@@ -147,7 +147,7 @@ namespace Level4_NS
             };
 
             m_geom.m_indexBuffer = RenderDevice::CreateIndexBuffer( sizeof(ib), ib, BU_STATIC );
-            m_geom.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, m_geom.m_vertexBuffer );
+            m_geom.m_vertexArray = RenderDevice::CreateVertexArray( vDecl, m_geom.m_vertexBuffer, m_geom.m_indexBuffer );
             m_geom.m_indexCount  = 6;
 
             m_textures[0] = LoadTexture( "default_c.btx" );
