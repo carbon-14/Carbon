@@ -6,6 +6,7 @@
 
 #include "Core/FixedString.h"
 #include "Core/Array.h"
+#include "Core/String.h"
 
 namespace Graphic
 {
@@ -20,7 +21,6 @@ namespace Graphic
 
     public:
         static const ProgramHandle      ms_invalidHandle;
-        static const SizeT              ms_uniformBufferLocation;
 
         static Bool                     Initialize( const Char * shaderPath );
         static void                     Destroy();
@@ -44,8 +44,9 @@ namespace Graphic
         static void                     ReloadCache();
 
         static void                     LoadSamplerList();
-        static void                     LoadProgram( Program& program );
-        static void                     LoadProgramFromSources( Program& program );
+        static void                     LoadProgramHeaders( String& headers );
+        static void                     LoadProgram( Program& program, const Char * headers );
+        static void                     LoadProgramFromSources( Program& program, const Char * headers );
         static void                     LoadProgramFromBinaries( Program& program );
         static void                     LoadProgramSets();
 

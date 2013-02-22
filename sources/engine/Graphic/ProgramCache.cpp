@@ -21,6 +21,9 @@ namespace Graphic
 
     const char samplersFileName[] = "samplers.bin";
     const char materialDir[] = "materials";
+    const char headersDir[] = "inc";
+    const char glslVersion[] = "#version 420";
+    U64 headersLastWriteTime = 0;
 
     struct SamplerDesc
     {
@@ -35,7 +38,6 @@ namespace Graphic
     Bool dirtyCache = false;
 
     const ProgramHandle             ProgramCache::ms_invalidHandle = -1;
-    const SizeT                     ProgramCache::ms_uniformBufferLocation = s_maxUniformBufferCount - 1;
 
     PathString                      ProgramCache::m_dataPath;
     PathString                      ProgramCache::m_cachePath;
@@ -158,7 +160,7 @@ namespace Graphic
             const LayoutHandle& sampler = p.m_samplers[i];
             RenderDevice::BindSampler( sampler.m_handle, sampler.m_index );
         }
-        RenderDevice::BindUniformBuffer( m_programSets[ handle ].m_uniformBuffer, ms_uniformBufferLocation );
+        RenderDevice::BindUniformBuffer( m_programSets[ handle ].m_uniformBuffer, LI_MATERIAL );
     }
 
     void ProgramCache::NotifySourceChange()
@@ -169,6 +171,9 @@ namespace Graphic
     void ProgramCache::BuildCache()
     {
         LoadSamplerList();
+
+        String headers;
+        LoadProgramHeaders( headers );
 
         PathString searchStr = m_dataPath;
         searchStr += "/*";
@@ -226,7 +231,7 @@ namespace Graphic
         for ( ; pIt != pEnd; ++pIt )
         {
             Program& program = *pIt;
-            LoadProgram( program );
+            LoadProgram( program, headers.ConstPtr() );
         }
 
         LoadProgramSets();
@@ -239,7 +244,7 @@ namespace Graphic
         {
             RenderDevice::BindSampler( 0, i );
         }
-        RenderDevice::BindUniformBuffer( 0, ms_uniformBufferLocation );
+        RenderDevice::BindUniformBuffer( 0, LI_MATERIAL );
 
         // Reload samplers
         {
@@ -254,6 +259,9 @@ namespace Graphic
         }
         // Reload programs
         {
+            String headers;
+            LoadProgramHeaders( headers );
+
             ProgramArray::Iterator it   = m_programs.Begin();
             ProgramArray::Iterator end  = m_programs.End();
             for ( ; it != end; ++it )
@@ -261,7 +269,7 @@ namespace Graphic
                 Program& program = *it;
                 RenderDevice::DeleteProgram( program.m_handle );
                 program.m_handle = 0;
-                LoadProgram( program );
+                LoadProgram( program, headers.ConstPtr() );
             }
         }
         // Reload program sets
@@ -307,7 +315,40 @@ namespace Graphic
         }
     }
 
-    void ProgramCache::LoadProgram( Program& program )
+    void ProgramCache::LoadProgramHeaders( String& headers )
+    {
+        headers = glslVersion;
+        headers += "\n\n";
+
+        PathString searchStr = m_dataPath;
+        searchStr += "/";
+        searchStr += headersDir;
+        searchStr += "/*";
+
+        Array< PathString > headerFileNames;
+        FileSystem::Find( searchStr.ConstPtr(), headerFileNames );
+
+        Array< PathString >::ConstIterator it = headerFileNames.Begin();
+        Array< PathString >::ConstIterator end = headerFileNames.End();
+        for ( ; it != end; ++it )
+        {
+            U64 lastWriteTime = FileSystem::GetLastWriteTime( *it );
+
+            headersLastWriteTime = headersLastWriteTime < lastWriteTime ? lastWriteTime : headersLastWriteTime;
+
+            SizeT size;
+            void * buffer;
+            if ( FileSystem::Load( *it, buffer, size  ) )
+            {
+                Char * ptr = (Char*)buffer;
+                ptr[ size - 1 ] = 0; // last character used as eof
+                headers += ptr;
+                UnknownAllocator::Deallocate( buffer );
+            }
+        } 
+    }
+
+    void ProgramCache::LoadProgram( Program& program, const Char * headers )
     {
         // Try to load program from cache file
         if ( ! program.m_handle )
@@ -318,14 +359,13 @@ namespace Graphic
         // Load data from source files
         if ( ! program.m_handle )
         {
-            LoadProgramFromSources( program );
+            LoadProgramFromSources( program, headers );
         }
     }
 
-    void ProgramCache::LoadProgramFromSources( Program& program )
+    void ProgramCache::LoadProgramFromSources( Program& program, const Char * headers )
     {
         void * srcBuffers[ ST_COUNT ];
-        SizeT srcSizes[ ST_COUNT ];
         ShaderType srcTypes[ ST_COUNT ];
 
         SizeT count = 0;
@@ -339,19 +379,20 @@ namespace Graphic
                 fileName += program.m_name;
                 fileName += Extensions[ i ];
 
-                if ( FileSystem::Load( fileName, srcBuffers[ count ], srcSizes[ count ]  ) )
+                SizeT srcSize;
+                if ( FileSystem::Load( fileName, srcBuffers[ count ], srcSize  ) )
                 {
                     srcTypes[ count ]   = (ShaderType)i;
 
-                    CARBON_ASSERT( srcSizes[ count ] > 0 );
-                    reinterpret_cast< Char * >(srcBuffers[ count ])[ srcSizes[ count ] - 1 ] = 0;    // last character used as eof
+                    CARBON_ASSERT( srcSize > 0 );
+                    reinterpret_cast< Char * >(srcBuffers[ count ])[ srcSize - 1 ] = 0;    // last character used as eof
 
                     ++count;
                 }
             }
         }
 
-        program.m_handle = RenderDevice::CreateProgram( (const Char **)srcBuffers, srcSizes, srcTypes, count );
+        program.m_handle = RenderDevice::CreateProgram( (const Char **)srcBuffers, srcTypes, count, headers );
 
         for ( SizeT i=0; i<count; ++i )
         {
@@ -394,16 +435,22 @@ namespace Graphic
 
             Bool binIsUpToDate = true;
 
-            Array< PathString >::ConstIterator it = shaderFileNames.Begin();
-            Array< PathString >::ConstIterator end = shaderFileNames.End();
-            for ( ; it != end; ++it )
-            {
-                const PathString& shaderFileName = *it;
+            if ( binLastWriteTime < headersLastWriteTime )
+                binIsUpToDate = false;
 
-                if ( binLastWriteTime < FileSystem::GetLastWriteTime( shaderFileName ) )
+            if ( binIsUpToDate )
+            {
+                Array< PathString >::ConstIterator it = shaderFileNames.Begin();
+                Array< PathString >::ConstIterator end = shaderFileNames.End();
+                for ( ; it != end; ++it )
                 {
-                    binIsUpToDate = false;
-                    break;
+                    const PathString& shaderFileName = *it;
+
+                    if ( binLastWriteTime < FileSystem::GetLastWriteTime( shaderFileName ) )
+                    {
+                        binIsUpToDate = false;
+                        break;
+                    }
                 }
             }
 

@@ -19,10 +19,10 @@ namespace Graphic
         static void             UnmapUniformBuffer( );
         static void             BindUniformBuffer( Handle ubuffer, SizeT location );
 
-        static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer );
+        static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer = 0 );
         static void             DestroyVertexArray( Handle varray );
 
-        static Handle           CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count );
+        static Handle           CreateProgram( const Char * srcBuffers[], ShaderType srcTypes[], SizeT count, const Char * headers );
         static void             DeleteProgram( Handle program );
         static void             GetProgramBinary( Handle program, void *& binary, SizeT& size );
         static Handle           CreateProgramBinary( const void * binary, SizeT size );
@@ -42,8 +42,8 @@ namespace Graphic
         static void             BindFramebuffer( Handle framebuffer, FramebufferTarget target );
         static void             AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level );
 
-        static void             BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer );
-        static void             EndGeometry( const VertexDeclaration& vDecl );
+        static void             BeginGeometry( Handle varray );
+        static void             EndGeometry();
 
         static void             Draw( PrimitiveType primitive, SizeT vertexCount );
         static void             DrawIndexed( PrimitiveType primitive, SizeT indexCount, DataType indexType );

@@ -20,7 +20,8 @@ namespace Graphic
 
         struct Parameters
         {
-            F128    m_viewProjMatrix[4];
+            F128    m_viewMatrix[4];
+            F128    m_projMatrix[4];
             F128    m_position;
         };
 

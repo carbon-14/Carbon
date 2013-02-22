@@ -7,21 +7,6 @@
 
 namespace Graphic
 {
-    enum BufferTarget
-    {
-        BT_ARRAY,
-        BT_ELEMENT_ARRAY,
-        BT_UNIFORM,
-        BT_COUNT
-    };
-
-    const GLenum ToGLBufferTarget[] =
-    {
-        GL_ARRAY_BUFFER,            // BT_ARRAY
-        GL_ELEMENT_ARRAY_BUFFER,    // BT_ELEMENT_ARRAY
-        GL_UNIFORM_BUFFER           // BT_UNIFORM
-    };
-
     const GLenum ToGLShaderType[] =
     {
         GL_VERTEX_SHADER,   // ST_VERTEX_SHADER
@@ -209,8 +194,6 @@ namespace Graphic
 
     //===================================================================================
 
-    static GLuint   s_vertexArrayCache;
-    static GLuint   s_bufferCache[ BT_COUNT ];
     static GLuint   s_samplerCache[ s_maxTextureUnitCount ];
     static GLuint   s_activeTexture;
     static GLuint   s_textureCache[ s_maxTextureUnitCount ];
@@ -252,15 +235,13 @@ namespace Graphic
 		CARBON_TRACE( buffer );
     }
 
-    Handle CreateBuffer( SizeT size, const void * data, GLenum usage, BufferTarget target )
+    Handle CreateBuffer( SizeT size, const void * data, GLenum usage, GLenum target )
     {
         GLuint buffer;
+
         glGenBuffers( 1, &buffer );
-
-        glBindBuffer( ToGLBufferTarget[target], buffer );
-        s_bufferCache[target] = buffer;
-
-        glBufferData( ToGLBufferTarget[target], size, data, usage );
+        glBindBuffer( target, buffer );
+        glBufferData( target, size, data, usage );
 
         return buffer;
     }
@@ -269,17 +250,17 @@ namespace Graphic
 
     Handle IRenderDevice::CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage )
     {
-        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], BT_ARRAY );
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ARRAY_BUFFER );
     }
 
     Handle IRenderDevice::CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage )
     {
-        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], BT_ELEMENT_ARRAY );
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ELEMENT_ARRAY_BUFFER );
     }
 
     Handle IRenderDevice::CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage )
     {
-        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], BT_UNIFORM );
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_UNIFORM_BUFFER );
     }
 
     void IRenderDevice::DestroyBuffer( Handle buffer )
@@ -289,8 +270,7 @@ namespace Graphic
 
     void * IRenderDevice::MapUniformBuffer( Handle buffer, BufferAccess access )
     {
-        glBindBuffer( ToGLBufferTarget[BT_UNIFORM], buffer );
-        s_bufferCache[BT_UNIFORM] = buffer;
+        glBindBuffer( GL_UNIFORM_BUFFER, buffer );
 
         return glMapBuffer( GL_UNIFORM_BUFFER, ToGLBufferAccess[ access ] );
     }
@@ -309,27 +289,23 @@ namespace Graphic
         }
     }
 
-    Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer )
+    Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
     {
         GLuint varray;
         glGenVertexArrays( 1, &varray );
 
         glBindVertexArray( varray );
-        s_vertexArrayCache = varray;
-
-        if ( vbuffer != s_bufferCache[BT_ARRAY] )
-        {
-            glBindBuffer( ToGLBufferTarget[BT_ARRAY], vbuffer );
-            s_bufferCache[BT_ARRAY] = vbuffer;
-        }
+        glBindBuffer( GL_ARRAY_BUFFER, vbuffer );
+        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibuffer );
 
         for ( SizeT i=0; i<vDecl.m_count; ++i )
         {
             const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
             glEnableVertexAttribArray( attrib.m_semantic );
             glVertexAttribPointer( attrib.m_semantic, attrib.m_size, ToGLDataType[ attrib.m_type ], attrib.m_normalized, vDecl.m_size, reinterpret_cast< const void * >( attrib.m_offset ) );
-            glDisableVertexAttribArray( attrib.m_semantic );
         }
+
+        glBindVertexArray( 0 );
 
         return varray;
     }
@@ -339,18 +315,20 @@ namespace Graphic
         glDeleteVertexArrays( 1, (GLuint*)&varray );
     }
 
-    U32 IRenderDevice::CreateProgram( const Char * srcBuffers[], SizeT srcSizes[], ShaderType srcTypes[], SizeT count )
+    U32 IRenderDevice::CreateProgram( const Char * srcBuffers[], ShaderType srcTypes[], SizeT count, const Char * headers )
     {
         CARBON_ASSERT( count > 0 );
 
         GLuint program = glCreateProgram();
 
+        const Char * sources[] = { headers, 0 };
+
         for ( SizeT i=0; i<count; ++i )
         {
-            CARBON_ASSERT( srcSizes[ i ] > 0 );
+            sources[1] = srcBuffers[ i ];
 
             GLuint shader = glCreateShader( ToGLShaderType[ srcTypes[ i ] ] );
-            glShaderSource( shader, 1, &srcBuffers[ i ], 0 );
+            glShaderSource( shader, 2, sources, 0 );
             glCompileShader( shader );
 
             GLint compileStatus = GL_FALSE;
@@ -542,34 +520,14 @@ namespace Graphic
         glFramebufferTexture2D( ToGLFramebufferTarget[ target ], ToGLFramebufferAttachment[ attachment ], GL_TEXTURE_2D, texture, level );
     }
 
-    void IRenderDevice::BeginGeometry( const VertexDeclaration& vDecl, Handle varray, Handle ibuffer )
+    void IRenderDevice::BeginGeometry( Handle varray )
     {
-        if ( varray != s_vertexArrayCache )
-        {
-            glBindVertexArray( varray );
-            s_vertexArrayCache = varray;
-        }
-
-        if ( ibuffer && ibuffer != s_bufferCache[BT_ELEMENT_ARRAY] )
-        {
-            glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibuffer );
-            s_bufferCache[BT_ELEMENT_ARRAY] = ibuffer;
-        }
-
-        for ( SizeT i=0; i<vDecl.m_count; ++i )
-        {
-            const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
-            glEnableVertexAttribArray( attrib.m_semantic );
-        }
+        glBindVertexArray( varray );
     }
 
-    void IRenderDevice::EndGeometry( const VertexDeclaration& vDecl )
+    void IRenderDevice::EndGeometry()
     {
-        for ( SizeT i=0; i<vDecl.m_count; ++i )
-        {
-            const AttribDeclaration& attrib = vDecl.m_attributes[ i ];
-            glDisableVertexAttribArray( attrib.m_semantic );
-        }
+        glBindVertexArray( 0 );
     }
 
     void IRenderDevice::Draw( PrimitiveType primitive, SizeT vertexCount )
@@ -674,16 +632,6 @@ namespace Graphic
 
     void IRenderDevice::ClearCache()
     {
-        glBindVertexArray( 0 );
-        s_vertexArrayCache = 0;
-
-        glBindBuffer( GL_ARRAY_BUFFER_BINDING, 0 );
-        s_bufferCache[BT_ARRAY] = 0;
-        glBindBuffer( GL_ELEMENT_ARRAY_BUFFER_BINDING, 0 );
-        s_bufferCache[BT_ELEMENT_ARRAY] = 0;
-        glBindBuffer( GL_UNIFORM_BUFFER_BINDING, 0 );
-        s_bufferCache[BT_UNIFORM] = 0;
-
         for ( SizeT i=0; i<s_maxTextureUnitCount; ++i )
         {
             glActiveTexture( GL_TEXTURE0 + i );

@@ -44,10 +44,8 @@ namespace Graphic
             void Draw() const;
 
             PrimitiveType       m_primitive;
-            VertexDeclaration   m_vertexDecl;
             DataType            m_indexType;
             Handle              m_vertexArray;
-            Handle              m_indexBuffer;
             SizeT               m_indexCount;
         };
 

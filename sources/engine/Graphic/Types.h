@@ -198,8 +198,9 @@ namespace Graphic
 
     enum LayoutIndex
     {
-        LI_SCENE    = 0,
-        LI_INSTANCE = 1
+        LI_SCENE    = 5,
+        LI_INSTANCE = 6,
+        LI_MATERIAL = 7
     };
 
     struct AttribDeclaration
@@ -220,7 +221,7 @@ namespace Graphic
     };
 
     const SizeT s_maxTextureUnitCount       = 8;
-    const SizeT s_maxUniformBufferCount     = 8;    // the 8th slot is reserved for material uniform buffer through the ProgramCache
+    const SizeT s_maxUniformBufferCount     = 8;
 }
 
 #endif // _GRAPHIC_RENDERTYPES_H

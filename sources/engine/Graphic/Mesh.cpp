@@ -6,9 +6,9 @@ namespace Graphic
 {
     void Mesh::Geometry::Draw() const
     {
-        RenderDevice::BeginGeometry( m_vertexDecl, m_vertexArray, m_indexBuffer );
+        RenderDevice::BeginGeometry( m_vertexArray );
         RenderDevice::DrawIndexed( m_primitive, m_indexCount, m_indexType );
-        RenderDevice::EndGeometry( m_vertexDecl );
+        RenderDevice::EndGeometry();
     }
 
     Mesh::Mesh()
@@ -73,12 +73,10 @@ namespace Graphic
             Geometry& geom      = m_geoms[ m_geomCount ];
 
             geom.m_primitive    = m_resource->GetPrimitive();
-            geom.m_vertexDecl   = m_resource->GetVertexDecl();
             geom.m_indexType    = m_resource->GetIndexType();
 
             const MeshResource::SubMesh& sub_mesh = m_resource->GetSubMeshes()[ m_geomCount ];
             geom.m_vertexArray  = sub_mesh.m_vertexArray;
-            geom.m_indexBuffer  = sub_mesh.m_indexBuffer;
             geom.m_indexCount   = sub_mesh.m_indexCount;
         }
 
