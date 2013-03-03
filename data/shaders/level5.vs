@@ -8,7 +8,7 @@ layout( location = 5 ) in vec2 texcoords;
 
 layout(binding=0) uniform CameraParameters
 {
-    mat4    viewProjMatrix;
+    mat4    viewProjMat;
     vec4    camPosition;
 };
 
@@ -31,5 +31,5 @@ void main()
     DataOut.color       = color.rgb;
     DataOut.uv          = texcoords / 128.0;
 
-    gl_Position         = viewProjMatrix * vec4( position, 1.0 );
+    gl_Position         = viewProjMat * vec4( position, 1.0 );
 }

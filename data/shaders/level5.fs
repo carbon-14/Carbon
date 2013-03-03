@@ -19,16 +19,16 @@ layout(binding=1) uniform AmbientParameters
 
 layout(binding=2) uniform LightParameters
 {
-    vec4    lightPosition;
-    vec4    lightDirection;
+    vec4    lightPos;
+    vec4    lightDir;
     vec4    lightColor;
     float   lightRadius;
 };
 
 layout(binding=3) uniform FlashParameters
 {
-    vec4    flashPosition;
-    vec4    flashDirection;
+    vec4    flashPos;
+    vec4    flashDir;
     vec4    flashColor;
     float   flashRadius;
 };
@@ -39,7 +39,7 @@ void main()
 
     vec3 light = vec3(0.0);
     {
-        vec3 l = lightPosition.xyz - DataIn.position;
+        vec3 l = lightPos.xyz - DataIn.position;
         float d = length(l);
         l /= d;
 
@@ -50,14 +50,14 @@ void main()
 
     vec3 flash = vec3(0.0);
     {
-        vec3 l = flashPosition.xyz - DataIn.position;
+        vec3 l = flashPos.xyz - DataIn.position;
         float d = length(l);
         l /= d;
 
         vec3 intensity = flashColor.a * flashColor.rgb;
 
         float att = max( 1.0 - d * d / ( flashRadius * flashRadius ), 0.0 );
-        att *= ( clamp( dot( l, -flashDirection.xyz ), 0.85, 1.0 ) - 0.85 ) / 0.15;
+        att *= ( clamp( dot( l, -flashDir.xyz ), 0.85, 1.0 ) - 0.85 ) / 0.15;
 
         float diff   = max( dot( l, n ), 0.0 );
 

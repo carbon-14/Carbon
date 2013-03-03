@@ -7,7 +7,7 @@ layout( location = 5 ) in vec2 texcoords;
 
 layout(binding=0) uniform CameraParameters
 {
-    mat4    viewProjMatrix;
+    mat4    viewProjMat;
     vec4    camPosition;
 };
 
@@ -37,5 +37,5 @@ void main()
     DataOut.binormal    = world33 * binormal;
     DataOut.uv          = texcoords / 128.0;
 
-    gl_Position         = viewProjMatrix * p;
+    gl_Position         = viewProjMat * p;
 }
