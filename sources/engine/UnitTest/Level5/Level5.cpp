@@ -735,7 +735,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     opaque.m_enableCullFace  = true;
 
     renderList.SetRenderState( opaque );
-    renderList.SetClearMask( CM_COLOR | CM_DEPTH );
+    renderList.SetClearMask( RM_ALL );
     renderList.SetSRGBWrite( true );
 
     cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );

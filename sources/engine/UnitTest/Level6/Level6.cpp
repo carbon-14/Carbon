@@ -577,7 +577,7 @@ void Level6::PreExecute()
     opaque.m_enableCullFace  = true;
 
     m_renderList.SetRenderState( opaque );
-    m_renderList.SetClearMask( CM_COLOR | CM_DEPTH );
+    m_renderList.SetClearMask( RM_ALL );
     m_renderList.SetSRGBWrite( true );
 
     cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
