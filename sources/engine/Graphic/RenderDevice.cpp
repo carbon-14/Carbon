@@ -30,8 +30,17 @@ namespace Graphic
 
     const GLenum ToGLTextureFormat[] =
     {
-        GL_RGBA8,               // TF_RGBA8
+        GL_R8,                  // TF_R8
+        GL_R16,                 // TF_R16
+        GL_R16F,                // TF_R16F
+        GL_R32F,                // TF_R32F
+        GL_RG8,                 // TF_RG8
         GL_RG16,                // TF_RG16
+        GL_RG16F,               // TF_RG16F
+        GL_RGBA8,               // TF_RGBA8
+        GL_SRGB8_ALPHA8,        // TF_SRGBA8
+        GL_RGBA16,              // TF_RGBA16
+        GL_RGBA16F,             // TF_RGBA16F
         GL_DEPTH24_STENCIL8     // TF_D24S8
     };
 
@@ -83,7 +92,7 @@ namespace Graphic
         { GL_NEAREST_MIPMAP_LINEAR  , GL_LINEAR_MIPMAP_LINEAR   }   // min : FT_POINT mip FT_LINEAR , min : FT_LINEAR mip FT_LINEAR
     };
 
-    const GLenum ToGLMagFilterType[] =
+    const GLenum ToGLFilterType[] =
     {
         GL_NEAREST, // FT_POINT
         GL_LINEAR   // FT_LINEAR
@@ -96,17 +105,47 @@ namespace Graphic
         GL_MIRRORED_REPEAT  // WT_MIRROR
     };
 
-    const GLenum ToGLClearMask[] =
+    const GLenum ToGLRenderMask[] =
     {
         0,
-        GL_COLOR_BUFFER_BIT,                                                // CM_COLOR
-        GL_DEPTH_BUFFER_BIT,                                                // CM_DEPTH
+        GL_COLOR_BUFFER_BIT,                                                // RM_COLOR
+        GL_DEPTH_BUFFER_BIT,                                                // RM_DEPTH
         GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT,
-        GL_STENCIL_BUFFER_BIT,                                              // CM_STENCIL
+        GL_STENCIL_BUFFER_BIT,                                              // RM_STENCIL
         GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT,
         GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT,
         GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
     };
+
+    const GLenum ToGLColorBuffer[] =
+    {
+        GL_COLOR_ATTACHMENT0,   // CB_COLOR0
+        GL_COLOR_ATTACHMENT1,   // CB_COLOR1
+        GL_COLOR_ATTACHMENT2,   // CB_COLOR2
+        GL_COLOR_ATTACHMENT3    // CB_COLOR3
+    };
+
+    const GLenum ToGLColorBuffers[][4] =
+    {
+        { GL_NONE               , GL_NONE               , GL_NONE               , GL_NONE               },  // unused
+        { GL_COLOR_ATTACHMENT0  , GL_NONE               , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT1  , GL_NONE               , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT1  , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT2  , GL_NONE               , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT2  , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_NONE               },
+        { GL_COLOR_ATTACHMENT3  , GL_NONE               , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT3  , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT3  , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT3  , GL_NONE               },
+        { GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  , GL_NONE               , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  , GL_NONE               },
+        { GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  , GL_NONE               },
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  }
+    };
+
+    const GLenum ToGLColorBufferCount[] =   { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
 
     const GLenum ToGLFunction[] =
     {
@@ -439,7 +478,7 @@ namespace Graphic
         return texture;
     }
 
-    Handle IRenderDevice::CreateRenderTarget( TextureFormat format, SizeT width, SizeT height )
+    Handle IRenderDevice::CreateRenderTexture( TextureFormat format, SizeT width, SizeT height )
     {
         GLuint texture;
         glGenTextures( 1, &texture );
@@ -473,7 +512,7 @@ namespace Graphic
         GLuint sampler;
         glGenSamplers( 1, &sampler );
         glSamplerParameteri( sampler    , GL_TEXTURE_MIN_FILTER , ToGLMinFilterType[ mip ][ min ]   );
-        glSamplerParameteri( sampler    , GL_TEXTURE_MAG_FILTER , ToGLMagFilterType[ mag ]          );
+        glSamplerParameteri( sampler    , GL_TEXTURE_MAG_FILTER , ToGLFilterType[ mag ]             );
         glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_S     , ToGLWrapType[ wrap ]              );
         glSamplerParameteri( sampler    , GL_TEXTURE_WRAP_T     , ToGLWrapType[ wrap ]              );
 
@@ -492,6 +531,29 @@ namespace Graphic
             glBindSampler( unit, sampler );
             s_samplerCache[unit] = sampler;
         }
+    }
+
+    Handle IRenderDevice::CreateRenderbuffer( TextureFormat format, SizeT width, SizeT height )
+    {
+        GLuint renderbuffer;
+        glGenRenderbuffers( 1, &renderbuffer );
+        glBindRenderbuffer( GL_RENDERBUFFER, renderbuffer );
+        glRenderbufferStorage( GL_RENDERBUFFER, ToGLTextureFormat[ format ], width, height );
+        return renderbuffer;
+    }
+
+    Handle IRenderDevice::CreateRenderbufferMultisample( SizeT samples, TextureFormat format, SizeT width, SizeT height )
+    {
+        GLuint renderbuffer;
+        glGenRenderbuffers( 1, &renderbuffer );
+        glBindRenderbuffer( GL_RENDERBUFFER, renderbuffer );
+        glRenderbufferStorageMultisample( GL_RENDERBUFFER, samples, ToGLTextureFormat[ format ], width, height );
+        return renderbuffer;
+    }
+
+    void IRenderDevice::DestroyRenderbuffer( Handle renderbuffer )
+    {
+        glDeleteRenderbuffers( 1, (GLuint*)&renderbuffer );
     }
 
     Handle IRenderDevice::CreateFramebuffer()
@@ -518,6 +580,26 @@ namespace Graphic
     void IRenderDevice::AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level )
     {
         glFramebufferTexture2D( ToGLFramebufferTarget[ target ], ToGLFramebufferAttachment[ attachment ], GL_TEXTURE_2D, texture, level );
+    }
+
+    void IRenderDevice::AttachRenderbuffer( FramebufferTarget target, FramebufferAttachment attachment, Handle renderbuffer )
+    {
+        glFramebufferRenderbuffer( ToGLFramebufferTarget[ target ], ToGLFramebufferAttachment[ attachment ], GL_RENDERBUFFER, renderbuffer );
+    }
+
+    void IRenderDevice::BlitFramebuffer( SizeT srcX, SizeT srcY, SizeT srcWidth, SizeT srcHeight, SizeT dstX, SizeT dstY, SizeT dstWidth, SizeT dstHeight, U32 mask, FilterType filter )
+    {
+        glBlitFramebuffer( srcX, srcY, srcWidth, srcHeight, dstX, dstY, dstWidth, dstHeight, ToGLRenderMask[ mask ], ToGLFilterType[ filter ] );
+    }
+
+    void IRenderDevice::DrawBuffer( U32 mask )
+    {
+        glDrawBuffers( ToGLColorBufferCount[ mask ], ToGLColorBuffers[ mask ] );
+    }
+
+    void IRenderDevice::ReadBuffer( ColorBuffer colorBuffer )
+    {
+        glReadBuffer( ToGLColorBuffer[ colorBuffer ] );
     }
 
     void IRenderDevice::BeginGeometry( Handle varray )
@@ -557,7 +639,7 @@ namespace Graphic
 
     void IRenderDevice::Clear( U32 mask )
     {
-        glClear( ToGLClearMask[mask] );
+        glClear( ToGLRenderMask[mask] );
     }
 
     void IRenderDevice::SetColorWrite( U32 mask )
@@ -578,6 +660,11 @@ namespace Graphic
     void IRenderDevice::EnableDepthTest( Bool enable )
     {
         enable ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
+    }
+
+    void IRenderDevice::EnableStencilTest( Bool enable )
+    {
+        enable ? glEnable( GL_STENCIL_TEST ) : glDisable( GL_STENCIL_TEST );
     }
 
     void IRenderDevice::SetDepthFunc( Function f )
@@ -605,6 +692,11 @@ namespace Graphic
         glCullFace( ToGLCullFace[ face ] );
     }
 
+    void IRenderDevice::EnableBlend( Bool enable )
+    {
+        glEnable( GL_BLEND );
+    }
+
     void IRenderDevice::SetBlendColor( F32 r, F32 g, F32 b, F32 a )
     {
         glBlendColor( r, g, b, a );
@@ -628,6 +720,34 @@ namespace Graphic
     void IRenderDevice::SetSRGBWrite( Bool enable )
     {
         enable ? glEnable( GL_FRAMEBUFFER_SRGB ) : glDisable( GL_FRAMEBUFFER_SRGB );
+    }
+
+    void IRenderDevice::CatchError()
+    {
+        switch( glGetError() )
+        {
+        case GL_INVALID_ENUM :
+            CARBON_TRACE( "Invalid enum\n" );
+            break;
+        case GL_INVALID_VALUE :
+            CARBON_TRACE( "Invalid value\n" );
+            break;
+        case GL_INVALID_OPERATION :
+            CARBON_TRACE( "Invalid operation\n" );
+            break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION :
+            CARBON_TRACE( "Invalid framebuffer operation\n" );
+            break;
+        case GL_OUT_OF_MEMORY :
+            CARBON_TRACE( "Out of memory\n" );
+            break;
+        case GL_STACK_UNDERFLOW :
+            CARBON_TRACE( "Stack underflow\n" );
+            break;
+        case GL_STACK_OVERFLOW :
+            CARBON_TRACE( "Stack overflow\n" );
+            break;
+        }
     }
 
     void IRenderDevice::ClearCache()

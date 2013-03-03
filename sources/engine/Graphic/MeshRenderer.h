@@ -18,7 +18,7 @@ namespace Graphic
         void Initialize( RenderList * opaqueList );
         void Destroy();
 
-        void Render( const Mesh * mesh, Handle sceneParameters ) const;
+        void Render( const Mesh * mesh, Handle frameParameters ) const;
 
     private:
         RenderList *    m_opaqueList;

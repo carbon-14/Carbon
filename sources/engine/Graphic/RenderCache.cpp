@@ -100,10 +100,20 @@ namespace Graphic
                 RenderDevice::EnableDepthTest( renderState.m_enableDepthTest );
                 m_renderState.m_enableDepthTest = renderState.m_enableDepthTest;
             }
+            if ( renderState.m_enableStencilTest != m_renderState.m_enableStencilTest )
+            {
+                RenderDevice::EnableStencilTest( renderState.m_enableStencilTest );
+                m_renderState.m_enableStencilTest = renderState.m_enableStencilTest;
+            }
             if ( renderState.m_enableCullFace != m_renderState.m_enableCullFace )
             {
                 RenderDevice::EnableCullFace( renderState.m_enableCullFace );
                 m_renderState.m_enableCullFace = renderState.m_enableCullFace;
+            }
+            if ( renderState.m_enableBlend != m_renderState.m_enableBlend )
+            {
+                RenderDevice::EnableBlend( renderState.m_enableBlend );
+                m_renderState.m_enableBlend = renderState.m_enableBlend;
             }
             if ( renderState.m_cullFace != m_renderState.m_cullFace )
             {

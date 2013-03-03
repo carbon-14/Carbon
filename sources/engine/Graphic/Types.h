@@ -59,8 +59,17 @@ namespace Graphic
 
     enum TextureFormat
     {
-        TF_RGBA8 = 0,
+        TF_R8 = 0,
+        TF_R16,
+        TF_R16F,
+        TF_R32F,
+        TF_RG8,
         TF_RG16,
+        TF_RG16F,
+        TF_RGBA8,
+        TF_SRGBA8,
+        TF_RGBA16,
+        TF_RGBA16F,
         TF_D24S8
     };
 
@@ -80,6 +89,22 @@ namespace Graphic
         FA_DEPTH,
         FA_STENCIL,
         FA_DEPTH_STENCIL
+    };
+
+    enum ColorBuffer
+    {
+        CB_COLOR0 = 0,
+        CB_COLOR1,
+        CB_COLOR2,
+        CB_COLOR3
+    };
+
+    enum ColorBufferBit
+    {
+        CBB_COLOR0  = 1 << 0,
+        CBB_COLOR1  = 1 << 1,
+        CBB_COLOR2  = 1 << 2,
+        CBB_COLOR3  = 1 << 3
     };
 
     enum PrimitiveType
@@ -109,11 +134,12 @@ namespace Graphic
         WT_MIRROR
     };
 
-    enum ClearMode
+    enum RenderMode
     {
-        CM_COLOR            = 1 << 0,
-        CM_DEPTH            = 1 << 1,
-        CM_STENCIL          = 1 << 2
+        RM_COLOR            = 1 << 0,
+        RM_DEPTH            = 1 << 1,
+        RM_STENCIL          = 1 << 2,
+        RM_ALL              = RM_COLOR | RM_DEPTH | RM_STENCIL
     };
 
     enum ColorMode
@@ -128,19 +154,19 @@ namespace Graphic
 
     enum Function
     {
-        F_NEVER,
+        F_NEVER = 0,
         F_LESS,
-        F_EQUAL,
         F_LEQUAL,
         F_GREATER,
-        F_NOTEQUAL,
         F_GEQUAL,
+        F_EQUAL,
+        F_NOTEQUAL,
         F_ALWAYS
     };
 
     enum Operation
     {
-        O_KEEP,
+        O_KEEP = 0,
         O_ZERO,
         O_REPLACE,
         O_INCR,
@@ -198,7 +224,7 @@ namespace Graphic
 
     enum LayoutIndex
     {
-        LI_SCENE    = 5,
+        LI_FRAME    = 5,
         LI_INSTANCE = 6,
         LI_MATERIAL = 7
     };

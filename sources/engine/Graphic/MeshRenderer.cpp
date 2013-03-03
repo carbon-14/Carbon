@@ -24,12 +24,12 @@ namespace Graphic
         m_opaqueList = 0;
     }
 
-    void MeshRenderer::Render( const Mesh * mesh, Handle sceneParameters ) const
+    void MeshRenderer::Render( const Mesh * mesh, Handle frameParameters ) const
     {
         RenderElement e;
 
-        LayoutHandle sceneParams    = { sceneParameters, LI_SCENE };
-        e.m_uniformBuffers[0]       = sceneParams;
+        LayoutHandle frameParams    = { frameParameters, LI_FRAME };
+        e.m_uniformBuffers[0]       = frameParams;
 
         LayoutHandle instanceParams = { mesh->GetUniformBuffer(), LI_INSTANCE };
         e.m_uniformBuffers[1]       = instanceParams;

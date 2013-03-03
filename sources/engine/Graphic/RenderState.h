@@ -5,6 +5,8 @@
 #include "Graphic/DLL.h"
 #include "Graphic/Types.h"
 
+#include "Core/TypeTraits.h"
+
 namespace Graphic
 {
     class _GraphicExport RenderState
@@ -24,15 +26,17 @@ namespace Graphic
                 U32 m_depthPass             : 4;    // 32
                 U32 m_depthWriteMask        : 1;    // 33
                 U32 m_enableDepthTest       : 1;    // 34
-                U32 m_enableCullFace        : 1;    // 35
-                U32 m_cullFace              : 1;    // 36
-                U32 m_srcBlendFunc          : 5;    // 41
-                U32 m_dstBlendFunc          : 5;    // 46
-                U32 m_srcAlphaBlendFunc     : 5;    // 51
-                U32 m_dstAlphaBlendFunc     : 5;    // 56
-                U32 m_blendMode             : 3;    // 59
+                U32 m_enableStencilTest     : 1;    // 35
+                U32 m_enableCullFace        : 1;    // 36
+                U32 m_enableBlend           : 1;    // 37
+                U32 m_cullFace              : 1;    // 33
+                U32 m_srcBlendFunc          : 5;    // 43
+                U32 m_dstBlendFunc          : 5;    // 48
+                U32 m_srcAlphaBlendFunc     : 5;    // 53
+                U32 m_dstAlphaBlendFunc     : 5;    // 58
+                U32 m_blendMode             : 3;    // 61
                 
-                U32 m_padding0              : 5;
+                U32 m_padding0              : 3;
 
                 U32 m_stencilWriteMask      : 8;    // 8
                 U32 m_colorWriteMask        : 4;    // 12
@@ -48,5 +52,7 @@ namespace Graphic
         };
     };
 }
+
+CARBON_DECLARE_POD_TYPE( Graphic::RenderState );
 
 #endif // _GRAPHIC_RENDERSTATE_H

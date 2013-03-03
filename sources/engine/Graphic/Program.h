@@ -5,6 +5,8 @@
 #include "Graphic/DLL.h"
 #include "Graphic/Types.h"
 
+#include "Core/TypeTraits.h"
+
 namespace Graphic
 {
     struct ProgramSet
@@ -35,5 +37,7 @@ namespace Graphic
         SizeT           m_setCount;
     };
 }
+
+CARBON_DECLARE_POD_TYPE( Graphic::ProgramSet );
 
 #endif // _GRAPHIC_PROGRAM_H

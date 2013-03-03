@@ -130,6 +130,7 @@ extern "C"
     Func ( PFNGLGETBUFFERPOINTERVPROC                   , glGetBufferPointerv                   );  \
                                                                                                     \
     /* GL_VERSION_2_0 */                                                                            \
+    Func ( PFNGLDRAWBUFFERSPROC                         , glDrawBuffers                         );  \
     Func ( PFNGLATTACHSHADERPROC                        , glAttachShader                        );  \
     Func ( PFNGLCOMPILESHADERPROC                       , glCompileShader                       );  \
     Func ( PFNGLCREATEPROGRAMPROC                       , glCreateProgram                       );  \
@@ -177,7 +178,7 @@ extern "C"
     Func ( PFNGLFRAMEBUFFERTEXTURE1DPROC                , glFramebufferTexture1D                );  \
     Func ( PFNGLFRAMEBUFFERTEXTURE2DPROC                , glFramebufferTexture2D                );  \
     Func ( PFNGLFRAMEBUFFERTEXTURE3DPROC                , glFramebufferTexture3D                );  \
-    Func ( PFNGLFRAMEBUFFERRENDERBUFFERPROC             , glFramebufferRenderbuff               );  \
+    Func ( PFNGLFRAMEBUFFERRENDERBUFFERPROC             , glFramebufferRenderbuffer             );  \
     Func ( PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC , glGetFramebufferAttachmentParameteriv );  \
     Func ( PFNGLGENERATEMIPMAPPROC                      , glGenerateMipmap                      );  \
     Func ( PFNGLBLITFRAMEBUFFERPROC                     , glBlitFramebuffer                     );  \

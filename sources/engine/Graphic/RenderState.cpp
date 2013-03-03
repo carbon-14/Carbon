@@ -10,9 +10,11 @@ namespace Graphic
         , m_depthFail           ( O_KEEP )
         , m_depthPass           ( O_KEEP )
         , m_depthWriteMask      ( 1 )
-        , m_enableDepthTest     ( 1 )
-        , m_enableCullFace      ( 1 )
-        , m_cullFace            ( CF_BACK )        
+        , m_enableDepthTest     ( 0 )
+        , m_enableStencilTest   ( 0 )
+        , m_enableCullFace      ( 0 )
+        , m_enableBlend         ( 0 )
+        , m_cullFace            ( CF_BACK )
         , m_srcBlendFunc        ( BF_ONE )
         , m_dstBlendFunc        ( BF_ZERO )
         , m_srcAlphaBlendFunc   ( BF_ONE )
@@ -20,7 +22,6 @@ namespace Graphic
         , m_blendMode           ( BM_ADD )
 
         , m_padding0            ( 0 )
-
         
         , m_stencilWriteMask    ( 0xFF )
         , m_colorWriteMask      ( CM_RGBA )

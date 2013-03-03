@@ -29,7 +29,7 @@ namespace Graphic
         static void             UseProgram( Handle program );
 
         static Handle           CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
-        static Handle           CreateRenderTarget( TextureFormat format, SizeT width, SizeT height );
+        static Handle           CreateRenderTexture( TextureFormat format, SizeT width, SizeT height );
         static void             DestroyTexture( Handle texture );
         static void             BindTexture( Handle texture, SizeT unit );
 
@@ -37,10 +37,19 @@ namespace Graphic
         static void             DestroySampler( Handle sampler );
         static void             BindSampler( Handle sampler, SizeT unit );
 
+        static Handle           CreateRenderbuffer( TextureFormat format, SizeT width, SizeT height );
+        static Handle           CreateRenderbufferMultisample( SizeT samples, TextureFormat format, SizeT width, SizeT height );
+        static void             DestroyRenderbuffer( Handle renderbufer );
+
         static Handle           CreateFramebuffer();
         static void             DestroyFramebuffer( Handle framebuffer );
         static void             BindFramebuffer( Handle framebuffer, FramebufferTarget target );
         static void             AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level );
+        static void             AttachRenderbuffer( FramebufferTarget target, FramebufferAttachment attachment, Handle renderbuffer );
+        static void             BlitFramebuffer( SizeT srcX, SizeT srcY, SizeT srcWidth, SizeT srcHeight, SizeT dstX, SizeT dstY, SizeT dstWidth, SizeT dstHeight, U32 mask, FilterType filter );
+
+        static void             DrawBuffer( U32 mask );
+        static void             ReadBuffer( ColorBuffer colorBuffer );
 
         static void             BeginGeometry( Handle varray );
         static void             EndGeometry();
@@ -60,6 +69,7 @@ namespace Graphic
         static void             SetStencilWrite( U8 mask );
 
         static void             EnableDepthTest( Bool enable );
+        static void             EnableStencilTest( Bool enable );
         static void             SetDepthFunc( Function f );
         static void             SetStencilOp( Operation stencilFail, Operation depthFail, Operation depthPass );
         static void             SetStencilFunc( Function f, U8 ref, U8 mask );
@@ -67,12 +77,15 @@ namespace Graphic
         static void             EnableCullFace( Bool enable );
         static void             SetCullFace( CullFace face );
 
+        static void             EnableBlend( Bool enable );
         static void             SetBlendColor( F32 r, F32 g, F32 b, F32 a );
         static void             SetBlendFunc( BlendFunction src, BlendFunction dst );
         static void             SetBlendFuncSeparate( BlendFunction srcRGB, BlendFunction dstRGB, BlendFunction srcAlpha, BlendFunction dstAlpha );
         static void             SetBlendMode( BlendMode mode );
 
         static void             SetSRGBWrite( Bool enable );
+
+        static void             CatchError();
 
     protected:
         static void             ClearCache();

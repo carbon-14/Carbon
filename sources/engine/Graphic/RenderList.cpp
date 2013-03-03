@@ -63,18 +63,19 @@ namespace Graphic
     void RenderList::Draw( RenderCache& renderCache )
     {
         // BEGIN
+        renderCache.SetSRGBWrite( m_sRGBWrite );
+        renderCache.SetRenderState( m_renderState );
+
         if ( m_clearMask )
         {
-            if ( m_clearMask & CM_COLOR )
+            if ( m_clearMask & RM_COLOR )
                 renderCache.SetClearColor( m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3] );
-            if ( m_clearMask & CM_DEPTH )
+            if ( m_clearMask & RM_DEPTH )
                 renderCache.SetClearDepth( m_clearDepth );
-            if ( m_clearMask & CM_STENCIL )
+            if ( m_clearMask & RM_STENCIL )
                 renderCache.SetClearStencil( m_clearStencil );
             RenderDevice::Clear( m_clearMask );
         }
-        renderCache.SetSRGBWrite( m_sRGBWrite );
-        renderCache.SetRenderState( m_renderState );
 
         // DRAW
         Array< RenderElement >::Iterator it = m_list.Begin();

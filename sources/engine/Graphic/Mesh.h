@@ -5,7 +5,7 @@
 #include "Graphic/RenderGeometry.h"
 #include "Graphic/MeshResource.h"
 
-#include "Core/Vector.h"
+#include "Core/Matrix.h"
 
 namespace Graphic
 {
@@ -14,7 +14,7 @@ namespace Graphic
     public:
         struct Parameters
         {
-            F128  m_transform[4];
+            Matrix  m_transform;
         };
 
     public:
