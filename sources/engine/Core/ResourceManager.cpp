@@ -9,6 +9,8 @@
 #include "Core/Trace.h"
 
 typedef HashTable< Resource *, U32 > ResourceTable;
+CARBON_DECLARE_POD_TYPE( ResourceTable::Pair );
+
 ResourceTable resourceTable;
 
 struct ResourceRequest

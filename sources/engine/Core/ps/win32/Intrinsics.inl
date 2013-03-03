@@ -10,7 +10,7 @@ typedef __m128                      M128;           // compute usage
 inline M128 Set( F32 x, F32 y, F32 z, F32 w )   { return _mm_set_ps( w, z, y, x );             }
 inline M128 Splat( F32 v )                      { return _mm_set_ps1( v );                     }
 
-inline M128 Load( F128 d )                      { return _mm_load_ps( d );                     }
+inline M128 Load( const F128 d )                { return _mm_load_ps( d );                     }
 inline void Store( F128 d, M128 v )             { _mm_store_ps( d, v );                        }
 
 // Arithmetic
@@ -77,7 +77,7 @@ inline M128 Select( M128 l, M128 r, M128 mask )
 }
 
 template< unsigned X, unsigned Y, unsigned Z, unsigned W >
-inline M128  Shuffle( M128 l, M128 r )
+inline M128 Shuffle( M128 l, M128 r )
 {
     return _mm_shuffle_ps( l, r, _MM_SHUFFLE( W, Z, Y, X ) );
 }

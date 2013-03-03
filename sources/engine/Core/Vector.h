@@ -2,7 +2,7 @@
 #ifndef _CORE_VECTOR_H
 #define _CORE_VECTOR_H
 
-#include "Core/Types.h"
+#include "Core/TypeTraits.h"
 #include "Core/Intrinsics.h"
 
 /*

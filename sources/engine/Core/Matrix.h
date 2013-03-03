@@ -23,7 +23,7 @@ inline void Store( F128 * d, const Matrix& m )
     Store( d[ 3 ], m.m_column[ 3 ] );
 }
 
-inline Matrix Load( F128 * d )
+inline Matrix Load( const F128 * d )
 {
     Matrix m;
     m.m_column[ 0 ] = Load( d[ 0 ] );
@@ -288,9 +288,9 @@ inline Matrix& Translate( Matrix& m, const Vector& translation )
 
 inline Matrix& Scale( Matrix& m, const Vector& scale )
 {
-    m.m_column[ 0 ] = Mul( m.m_column[ 0 ], Select( scale, One4(), Mask< 0, 1, 1, 1 >() ) );
-    m.m_column[ 1 ] = Mul( m.m_column[ 1 ], Select( scale, One4(), Mask< 1, 0, 1, 1 >() ) );
-    m.m_column[ 2 ] = Mul( m.m_column[ 2 ], Select( scale, One4(), Mask< 1, 1, 0, 1 >() ) );
+    m.m_column[ 0 ] = Mul( m.m_column[ 0 ], Swizzle<0,0,0,0>( scale ) );
+    m.m_column[ 1 ] = Mul( m.m_column[ 1 ], Swizzle<1,1,1,1>( scale ) );
+    m.m_column[ 2 ] = Mul( m.m_column[ 2 ], Swizzle<2,2,2,2>( scale ) );
     return m;
 }
 
@@ -337,5 +337,7 @@ inline Matrix Identity()
     m.m_column[ 3 ] = UnitW();
     return m;
 }
+
+CARBON_DECLARE_POD_TYPE( Matrix );
 
 #endif // _CORE_MATRIX_H
