@@ -19,8 +19,8 @@ void main()
     localMatrix[2]  = vec4( normal  , 0.0 );
     localMatrix[3]  = vec4( position, 1.0 );
 
-    DataOut.coord   = viewMatrix * worldMatrix * localMatrix;
+    DataOut.coord   = ViewMatrix * WorldMatrix * localMatrix;
     DataOut.uv      = texcoords / 128.0;
 
-    gl_Position     = projMatrix * DataOut.coord[3];
+    gl_Position     = ProjMatrix * DataOut.coord[3];
 }

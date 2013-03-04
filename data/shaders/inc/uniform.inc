@@ -5,15 +5,15 @@
 
 layout(binding=UNIFORM_BINDING_FRAME) uniform FrameParameters
 {
-    vec4    viewportSize;
-    vec4    depthRange;
-    vec4    viewScale;
-    mat4    viewMatrix;
-    mat4    projMatrix;
-    mat4    viewProjMatrix;
+    vec4    ViewportSize;
+    vec4    DepthRange;
+    vec4    ViewScale;
+    mat4    ViewMatrix;
+    mat4    ProjMatrix;
+    mat4    ViewProjMatrix;
 };
 
 layout(binding=UNIFORM_BINDING_INSTANCE) uniform InstanceParameters
 {
-    mat4    worldMatrix;
+    mat4    WorldMatrix;
 };

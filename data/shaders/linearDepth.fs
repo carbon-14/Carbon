@@ -9,5 +9,5 @@ void main()
 {
     float z = texture2D( depthTexture, uv ).x;
     
-    outValue = depthRange.x / (  depthRange.y - z * depthRange.z );
+    outValue = DepthRange.x / (  DepthRange.y - z * DepthRange.z );
 }

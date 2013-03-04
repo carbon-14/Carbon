@@ -9,23 +9,20 @@ layout(binding=2) uniform sampler2D GBufferColor;
 
 void main()
 {
-    vec2 uv = gl_FragCoord.xy * viewportSize.zw;
+    vec2 uv = gl_FragCoord.xy * ViewportSize.zw;
 
     GBuffer gbuffer = ReadGBuffer( GBufferDepth, GBufferNormal, GBufferColor, uv );
 
-    vec3 pos = vec3( 2.0 * uv - 1.0, 1.0 ) * viewScale.xyz * gbuffer.depth;
+    vec4 pos = BuildViewPositionFromDepth( uv, ViewScale, gbuffer.depth );
 
-    vec3 L = LightPosition.xyz - pos;
+    float sqr;
+    vec4 L = ComputeToLight( LightPosition, pos, sqr );
 
-    float sqr = dot( L, L );
-    float att = 1.0 - min( sqr * LightInvSqrRadius, 1.0 );
-    att *= att;
+    float intensity = LightOmniIntensity( sqr, LightInvSqrRadius );
 
-    L /= sqrt( sqr );
+    float diffuse = DiffuseTerm( gbuffer.normal, L );
 
-    float diffuse_term = max( dot( gbuffer.normal, L ), 0.0 );
+    vec3 lightColor = LightValue * intensity;
 
-    vec3 l = LightValue * att * diffuse_term;
-
-    outColor = vec4( gbuffer.albedo * l, 1.0 );
+    outColor = vec4( gbuffer.albedo * lightColor * diffuse, 1.0 );
 }

@@ -21,7 +21,7 @@ void main()
     tbn[2] = normalize( DataIn.coord[2].xyz );
 
     vec3 normal = tbn * SampleNormalMap( normalMap, DataIn.uv );
-    gbuffer.normal = normal;
+    gbuffer.normal = vec4( normal, 0.0 );
 
     vec4 color  = SampleColorMap( colorMap, DataIn.uv );
     gbuffer.albedo = color.rgb;
