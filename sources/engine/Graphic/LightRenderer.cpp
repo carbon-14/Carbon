@@ -96,7 +96,7 @@ namespace Graphic
         m_maskBack.m_depthWriteMask     = false;
         m_maskBack.m_enableStencilTest  = true;
         m_maskBack.m_stencilRef         = 1;
-        m_maskBack.m_stencilFunc        = F_EQUAL;
+        m_maskBack.m_stencilFunc        = F_ALWAYS;
         m_maskBack.m_stencilFail        = O_KEEP;
         m_maskBack.m_depthFail          = O_KEEP;
         m_maskBack.m_depthPass          = O_ZERO;
