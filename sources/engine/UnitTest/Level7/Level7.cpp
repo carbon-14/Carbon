@@ -104,28 +104,26 @@ void Level7::PreExecute()
     m_scene = MemoryManager::New< Scene >();
 
     {
-        Mesh::Parameters mesh_params;
-        mesh_params.m_transform = Identity();
-
         m_mesh = MemoryManager::New< Mesh >();
         m_mesh->SetResource( ResourceManager::Create< MeshResource >( "sibenik/sibenik.bmh" ) );
-        m_mesh->SetParameters( mesh_params );
+        m_mesh->m_position = Vector4( 0.0f, 0.0f, 0.0f );
+        m_mesh->m_scale = One4();
+        m_mesh->m_orientation = IdentityQuat();
         m_mesh->Update();
 
         m_scene->AddMesh( m_mesh );
     }
 
-    /*{
-        Mesh::Parameters sphere_params;
-        Store( sphere_params.m_transform, Identity() );
-
+    {
         m_sphere = MemoryManager::New< Mesh >();
-        m_sphere->SetResource( ResourceManager::Create< MeshResource >( "level7/sphere.bmh" ) );
-        m_sphere->SetParameters( sphere_params );
+        m_sphere->SetResource( ResourceManager::Create< MeshResource >( "sphere/sphere.bmh" ) );
+        m_sphere->m_position = Vector4( 5.0f, -10.0f, 0.0f );
+        m_sphere->m_scale = One4();
+        m_sphere->m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
         m_sphere->Update();
 
         m_scene->AddMesh( m_sphere );
-    }*/
+    }
 
     {
         SizeT X = 9;
@@ -159,12 +157,12 @@ void Level7::PreExecute()
                     light->m_value              = lightColor;
                     light->m_orientation        = MulQuat( Quaternion( UnitY(), angleY ), Quaternion( UnitX(), angleX ) );
                     light->m_position           = Vector4( x, y, z ) * light_spacing + light_offset;
-                    light->m_radius             = 12.0f;
+                    light->m_radius             = 6.0f;
                     light->m_spotInAngle        = 0.0f;
                     light->m_spotOutAngle       = HalfPi();
                     light->m_directionalWidth   = 10.0f;
                     light->m_directionalHeight  = 5.0f;
-                    light->m_type               = LT_SPOT;
+                    light->m_type               = LT_OMNI;
 
                     m_lights.PushBack( light );
                     m_scene->AddLight( light );
@@ -210,7 +208,7 @@ void Level7::PostExecute()
     }
     m_lights.Clear();
 
-    //MemoryManager::Delete( m_sphere );
+    MemoryManager::Delete( m_sphere );
     MemoryManager::Delete( m_mesh );
     MemoryManager::Delete( m_scene );
 
@@ -242,6 +240,9 @@ void Level7::Execute()
 
         m_camera->Update();
 
+        m_sphere->m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
+        m_sphere->Update();
+
         m_frameRenderer.Render( m_scene, m_frameContext );
     }
     else
@@ -260,7 +261,7 @@ void Level7::Execute()
             }
         }
 
-        /*if ( !m_sphere->IsFinalized() )
+        if ( !m_sphere->IsFinalized() )
         {
             if ( m_sphere->GetResource()->IsReady() )
             {
@@ -270,7 +271,7 @@ void Level7::Execute()
             {
                 scene_ready = false;
             }
-        }*/
+        }
     }
 }
 
