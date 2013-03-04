@@ -18,6 +18,7 @@ namespace Graphic
         Vector  m_valueInvSqrRadius;
         Vector  m_position;
         Vector  m_direction;
+        Vector  m_spotParameters;
     };
 
     void LightRenderer::Initialize()
@@ -146,13 +147,21 @@ namespace Graphic
             Vector lightDirection;
             const Matrix transform  = ComputeLightTransform( light, camera, lightDirection, useFrontFaceMask );
 
+            CARBON_ASSERT( light->m_radius > 0 );
             F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
+
+            CARBON_ASSERT( light->m_spotInAngle >= 0.0 && light->m_spotInAngle <= Pi() );
+            CARBON_ASSERT( light->m_spotOutAngle >= 0.0 && light->m_spotOutAngle <= Pi() );
+            CARBON_ASSERT( light->m_spotInAngle < light->m_spotOutAngle );
+            F32 spotCosIn = Cos( 0.5f * light->m_spotInAngle );
+            F32 spotCosOut = Cos( 0.5f * light->m_spotOutAngle );
 
             LightParameters params;
             params.m_lightMatrix        = Mul( camera->GetViewProjMatrix(), transform );
             params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
             params.m_position           = TransformVertex( camera->GetViewMatrix(), light->m_position );
             params.m_direction          = TransformVector( camera->GetViewMatrix(), lightDirection );
+            params.m_spotParameters     = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
 
             Handle uniformBuffer = GetUniformBuffer();
             void * data = RenderDevice::MapUniformBuffer( uniformBuffer, BA_WRITE_ONLY );

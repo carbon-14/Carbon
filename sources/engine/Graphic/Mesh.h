@@ -12,19 +12,14 @@ namespace Graphic
     class _GraphicExport Mesh
     {
     public:
-        struct Parameters
-        {
-            Matrix  m_transform;
-        };
-
-    public:
         Mesh();
         ~Mesh();
 
         void Update();
 
-        void SetParameters( const Parameters& parameters );
-        const Parameters& GetParameters() const;
+        Vector m_position;
+        Vector m_scale;
+        Vector m_orientation;
 
         void SetResource( MeshResource * resource );
         const MeshResource * GetResource() const;
@@ -49,7 +44,6 @@ namespace Graphic
             SizeT               m_indexCount;
         };
 
-        Parameters                  m_parameters;
         SharedPtr< MeshResource >   m_resource;
 
         Geometry                    m_geoms[ MeshResource::ms_maxSubMeshCount ];

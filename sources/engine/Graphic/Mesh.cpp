@@ -4,6 +4,11 @@
 
 namespace Graphic
 {
+    struct MeshParameters
+    {
+        Matrix  m_transform;
+    };
+
     void Mesh::Geometry::Draw() const
     {
         RenderDevice::BeginGeometry( m_vertexArray );
@@ -15,7 +20,7 @@ namespace Graphic
         : m_geomCount( 0 )
         , m_isFinalized(false)
     {
-        m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(Parameters), NULL, BU_DYNAMIC );
+        m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(MeshParameters), NULL, BU_DYNAMIC );
     }
 
     Mesh::~Mesh()
@@ -25,19 +30,14 @@ namespace Graphic
 
     void Mesh::Update()
     {
+        MeshParameters params;
+        params.m_transform = RMatrix( m_orientation );
+        Scale( params.m_transform, m_scale );
+        params.m_transform.m_column[3] = m_position;
+
         void * data = RenderDevice::MapUniformBuffer( m_uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &m_parameters, sizeof(Parameters) );
+        MemoryUtils::MemCpy( data, &params, sizeof(MeshParameters) );
         RenderDevice::UnmapUniformBuffer();
-    }
-
-    void Mesh::SetParameters( const Parameters& parameters )
-    {
-        m_parameters = parameters;
-    }
-
-    const Mesh::Parameters& Mesh::GetParameters() const
-    {
-        return m_parameters;
     }
 
     void Mesh::SetResource( MeshResource * resource )
