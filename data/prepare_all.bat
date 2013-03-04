@@ -10,7 +10,6 @@ REM Level 5
 TextureCompiler color -cmp -mipmap ../../.. level5/crack_c.png
 TextureCompiler normal -cmp -mipmap ../../.. level5/crack_n.png
 MeshCompiler -gen_ts -cmp_pos -cmp_vec -cmp_uvs ../../.. level5/sphere.dae
-MeshCompiler -cmp_pos -cmp_vec -cmp_uvs ../../.. level5/level5.dae
 
 REM Level 6
 TextureCompiler color -cmp -mipmap ../../.. level6/kamen_c.png
@@ -40,5 +39,10 @@ TextureCompiler normal -cmp -mipmap ../../.. sibenik/iron_n.png
 TextureCompiler color -cmp -mipmap ../../.. sibenik/carpet_c.png
 TextureCompiler normal -cmp -mipmap ../../.. sibenik/carpet_n.png
 MeshCompiler -gen_ts -cmp_pos -cmp_vec -cmp_uvs ../../.. sibenik/sibenik.dae
+
+REM Sphere
+TextureCompiler color -cmp -mipmap ../../.. sphere/crack_c.png
+TextureCompiler normal -cmp -mipmap ../../.. sphere/crack_n.png
+MeshCompiler -gen_ts -cmp_pos -cmp_vec -cmp_uvs ../../.. sphere/sphere.dae
 
 pause
