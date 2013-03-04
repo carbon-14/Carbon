@@ -147,18 +147,19 @@ void Level7::PreExecute()
                     F32 y = (F32)j;
                     F32 z = (F32)k;
 
-                    F32 r = ((F32)rand())/RAND_MAX;
-                    F32 g = ((F32)rand())/RAND_MAX;
-                    F32 b = ((F32)rand())/RAND_MAX;
+                    F32 lightRatio = ((F32)rand())/RAND_MAX;
+                    const Vector color = Vector4( 1.0f, 0.6881f, 0.5317f, 1.0f );
+
+                    Vector lightColor = Lerp( color, Swizzle< 2, 1, 0, 3 >( color ), Splat(lightRatio) );
 
                     F32 angleX = TwoPi()*((F32)rand())/RAND_MAX;
                     F32 angleY = TwoPi()*((F32)rand())/RAND_MAX;
 
                     Light * light               = MemoryManager::New< Light >();
-                    light->m_value              = Vector3( r, g, b );
+                    light->m_value              = lightColor;
                     light->m_orientation        = MulQuat( Quaternion( UnitY(), angleY ), Quaternion( UnitX(), angleX ) );
                     light->m_position           = Vector4( x, y, z ) * light_spacing + light_offset;
-                    light->m_radius             = 6.0f;
+                    light->m_radius             = 12.0f;
                     light->m_spotInAngle        = 0.0f;
                     light->m_spotOutAngle       = HalfPi();
                     light->m_directionalWidth   = 10.0f;
