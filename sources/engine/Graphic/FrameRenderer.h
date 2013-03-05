@@ -20,6 +20,7 @@ namespace Graphic
         SizeT       m_width;
         SizeT       m_height;
         Camera *    m_camera;
+        Scene *     m_scene;
 
         Handle      m_depthStencilTexture;
         Handle      m_normalTexture;
@@ -41,9 +42,9 @@ namespace Graphic
         void Initialize();
         void Destroy();
 
-        void Render( const Scene * scene, const FrameContext& context );
+        void Render( const FrameContext& context );
 
-        static void InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera );
+        static void InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera, Scene * scene );
         static void DestroyFrameContext( FrameContext& context );
 
     private:

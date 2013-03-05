@@ -28,11 +28,17 @@ namespace Graphic
         const MeshArray& GetMeshes() const;
         void AddLight( const Light * light );
         const LightArray& GetLights() const;
+        void SetAmbientSkyLight( const Vector& light );
+        const Vector& GetAmbientSkyLight() const;
+        void SetAmbientGroundLight( const Vector& light );
+        const Vector& GetAmbientGroundLight() const;
         void Clear();
 
     private:
         MeshArray   m_meshes;
         LightArray  m_lights;
+        Vector      m_ambientSkyLight;
+        Vector      m_ambientGroundLight;
     };
 }
 

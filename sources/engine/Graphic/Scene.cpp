@@ -7,6 +7,8 @@
 namespace Graphic
 {
     Scene::Scene()
+        : m_ambientSkyLight( Vector4( 0.0f, 0.0f, 0.0f ) )
+        , m_ambientGroundLight( Vector4( 0.0f, 0.0f, 0.0f ) )
     {
     }
 
@@ -32,6 +34,26 @@ namespace Graphic
     const Scene::LightArray& Scene::GetLights() const
     {
         return m_lights;
+    }
+
+    void Scene::SetAmbientSkyLight( const Vector& light )
+    {
+        m_ambientSkyLight = light;
+    }
+
+    const Vector& Scene::GetAmbientSkyLight() const
+    {
+        return m_ambientSkyLight;
+    }
+
+    void Scene::SetAmbientGroundLight( const Vector& light )
+    {
+        m_ambientGroundLight = light;
+    }
+
+    const Vector& Scene::GetAmbientGroundLight() const
+    {
+        return m_ambientGroundLight;
     }
 
     void Scene::Clear()

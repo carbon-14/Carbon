@@ -12,6 +12,8 @@ namespace Graphic
         Vector  m_viewportSize;
         Vector  m_depthRange;
         Vector  m_viewScale;
+        Vector  m_ambientSkyLight;
+        Vector  m_ambientGroundLight;
         Matrix  m_viewMatrix;
         Matrix  m_projMatrix;
         Matrix  m_viewProjMatrix;
@@ -61,14 +63,14 @@ namespace Graphic
         m_renderCache.Clear();
     }
 
-    void FrameRenderer::Render( const Scene * scene, const FrameContext& context )
+    void FrameRenderer::Render( const FrameContext& context )
     {
         UpdateFrameUniformBuffer( context );
 
         // Render meshes
         {
-            Scene::MeshArray::ConstIterator it  = scene->GetMeshes().Begin();
-            Scene::MeshArray::ConstIterator end = scene->GetMeshes().End();
+            Scene::MeshArray::ConstIterator it  = context.m_scene->GetMeshes().Begin();
+            Scene::MeshArray::ConstIterator end = context.m_scene->GetMeshes().End();
             for ( ; it!=end; ++it )
             {
                 m_meshRenderer.Render( *it, m_frameUniformBuffer );
@@ -77,7 +79,7 @@ namespace Graphic
 
         // Render lights
         {
-            m_lightRenderer.Render( scene, context.m_camera );
+            m_lightRenderer.Render( context.m_scene, context.m_camera );
         }
 
         // Draw G-Buffer
@@ -116,7 +118,7 @@ namespace Graphic
         }
     }
 
-    void FrameRenderer::InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera )
+    void FrameRenderer::InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera, Scene * scene )
     {
         CARBON_ASSERT( width );
         CARBON_ASSERT( height );
@@ -124,6 +126,7 @@ namespace Graphic
         context.m_width                     = width;
         context.m_height                    = height;
         context.m_camera                    = camera;
+        context.m_scene                     = scene;
 
         context.m_depthStencilTexture       = RenderDevice::CreateRenderTexture( TF_D24S8, width, height );
         context.m_normalTexture             = RenderDevice::CreateRenderTexture( TF_RG16F, width, height );
@@ -160,12 +163,14 @@ namespace Graphic
         const Camera * camera   = context.m_camera;
 
         FrameParameters params;
-        params.m_viewportSize   = Vector4( fWidth, fHeight, 1.0f/fWidth, 1.0f/fHeight );
-        params.m_depthRange     = Vector4( camera->m_near, camera->m_far, camera->m_far-camera->m_near, 1.0f/(camera->m_far-camera->m_near) );
-        params.m_viewScale      = camera->GetViewScale();
-        params.m_viewMatrix     = camera->GetViewMatrix();
-        params.m_projMatrix     = camera->GetProjMatrix();
-        params.m_viewProjMatrix = camera->GetViewProjMatrix();
+        params.m_viewportSize       = Vector4( fWidth, fHeight, 1.0f/fWidth, 1.0f/fHeight );
+        params.m_depthRange         = Vector4( camera->m_near, camera->m_far, camera->m_far-camera->m_near, 1.0f/(camera->m_far-camera->m_near) );
+        params.m_viewScale          = camera->GetViewScale();
+        params.m_ambientSkyLight    = context.m_scene->GetAmbientSkyLight();
+        params.m_ambientGroundLight = context.m_scene->GetAmbientGroundLight();
+        params.m_viewMatrix         = camera->GetViewMatrix();
+        params.m_projMatrix         = camera->GetProjMatrix();
+        params.m_viewProjMatrix     = camera->GetViewProjMatrix();
 
         void * data = RenderDevice::MapUniformBuffer( m_frameUniformBuffer, BA_WRITE_ONLY );
         MemoryUtils::MemCpy( data, &params, sizeof(FrameParameters) );

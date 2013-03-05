@@ -21,9 +21,10 @@ namespace Graphic
     public:
         struct RenderLight
         {
-            LightType   m_type;
-            Handle      m_uniformBuffer;
-            Bool        m_useFrontFace;
+            ProgramHandle       m_program;
+            RenderGeometry *    m_geometry;
+            Handle              m_uniformBuffer;
+            Bool                m_useFrontFace;
         };
 
     public:
@@ -34,40 +35,44 @@ namespace Graphic
         void Draw( RenderCache& renderCache, Handle frameParameters, Handle depthStencilTexture, Handle normalTexture, Handle colorTexture );
 
     private:
-        Matrix ComputeLightTransform( const Light * light, const Camera * camera, Vector& lightDirection, Bool& useFrontFaceMask ) const;
-        Matrix DirectionalTransform( const Light * light, const Camera * camera, Vector& lightDirection, Bool& useFrontFaceMask ) const;
-        Matrix OmniTransform( const Light * light, const Camera * camera, Vector& lightDirection, Bool& useFrontFaceMask ) const;
-        Matrix SpotTransform( const Light * light, const Camera * camera, Vector& lightDirection, Bool& useFrontFaceMask ) const;
+        void RenderLightVolume( const Light * light, const Camera * camera );
+        void RenderDirectional( const Light * light, const Camera * camera );
+        void RenderOmni( const Light * light, const Camera * camera );
+        void RenderSpot( const Light * light, const Camera * camera );
 
         Handle GetUniformBuffer();
 
     private:
         typedef Array< RenderLight > LightArray;
         typedef Array< Handle > UniformBufferArray;
-        typedef Matrix (Graphic::LightRenderer::*TransformFunc)( const Light *, const Camera *, Vector&, Bool& ) const;
+        typedef void (Graphic::LightRenderer::*RenderFunc)( const Light *, const Camera * );
 
-        struct RenderConfig
-        {
-            ProgramHandle       m_program;
-            RenderGeometry *    m_geometry;
-            TransformFunc       m_func;
-        };
+        static const F32    ms_distanceThreshold;
 
         LightArray          m_lights;
         UniformBufferArray  m_uniformBufferPool;
         SizeT               m_uniformBufferCount;
 
-        DirectionalGeometry m_directionalGeometry;
-        OmniGeometry        m_omniGeometry;
-        SpotGeometry        m_spotGeometry;
+        RenderFunc          m_renderFunc[LT_COUNT];
 
-        RenderConfig        m_configs[LT_COUNT];
-        ProgramHandle       m_mask;
-        RenderState         m_maskClear0;
-        RenderState         m_maskClear1;
-        RenderState         m_maskFront;
-        RenderState         m_maskBack;
-        RenderState         m_lighting;
+        DirectionalGeometry m_geomDirectional;
+        OmniGeometry        m_geomOmni;
+        SpotGeometry        m_geomSpot;
+
+        ProgramHandle       m_programMask;
+        ProgramHandle       m_programAmbientMask;
+        ProgramHandle       m_programAmbient;
+        ProgramHandle       m_programDirectional;
+        ProgramHandle       m_programOmni;
+        ProgramHandle       m_programSpot;
+
+        RenderState         m_stateMaskClear0;
+        RenderState         m_stateMaskClear1;
+        RenderState         m_stateMaskFront;
+        RenderState         m_stateMaskBack;
+        RenderState         m_stateLighting;
+        RenderState         m_stateAmbientMask;
+        RenderState         m_stateAmbientLighting;
     };
 }
 
