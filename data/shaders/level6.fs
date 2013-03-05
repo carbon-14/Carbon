@@ -70,7 +70,7 @@ void main()
         float d = length(l);
         l /= d;
 
-        float att = max( 1.0 - d * d / ( flashRadius * flashRadius ), 0.0 );
+        float att = max( 1.0 - d * d / ( lightRadius * lightRadius ), 0.0 );
 
         float diff  = max( dot( l, n ), 0.0 );
         float spec  = SpecParams.x * pow( max( dot( normalize( l + v ), n ), 0.0 ), SpecParams.y );

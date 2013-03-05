@@ -8,6 +8,8 @@ layout(binding=UNIFORM_BINDING_FRAME) uniform FrameParameters
     vec4    ViewportSize;
     vec4    DepthRange;
     vec4    ViewScale;
+    vec4    AmbientSkyLight;
+    vec4    AmbientGroundLight;
     mat4    ViewMatrix;
     mat4    ProjMatrix;
     mat4    ViewProjMatrix;
