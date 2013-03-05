@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <samplers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=". samplers.xsd">
     <sampler id="DefaultSampler"/>
-    <sampler id="PointSampler" min="point" mag="point" mip="point"/>
+    <sampler id="PointSampler" min="point" mag="point" mip="none"/>
     <sampler id="LinearSampler" min="linear" mag="linear" mip="linear"/>
 </samplers>
