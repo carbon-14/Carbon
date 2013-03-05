@@ -269,6 +269,18 @@ void Level7::Execute()
         m_flash->m_orientation          = m_camera->m_orientation;
         m_flash->m_position             = m_camera->m_position;
 
+        Vector debug_color = Vector4( 1.0f, 1.0f, 1.0f );
+
+        Array< Light * >::Iterator light_it = m_lights.Begin();
+        Array< Light * >::Iterator light_end = m_lights.End();
+        for ( ; light_it != light_end; ++light_it )
+        {
+            Light * light = *light_it;
+            m_frameRenderer.RenderDebugLine( light->m_position + Vector3( -1.0f, 0.0f, 0.0f ), light->m_position + Vector3( +1.0f, 0.0f, 0.0f ), debug_color );
+            m_frameRenderer.RenderDebugLine( light->m_position + Vector3( 0.0f, -1.0f, 0.0f ), light->m_position + Vector3( 0.0f, +1.0f, 0.0f ), debug_color );
+            m_frameRenderer.RenderDebugLine( light->m_position + Vector3( 0.0f, 0.0f, -1.0f ), light->m_position + Vector3( 0.0f, 0.0f, +1.0f ), debug_color );
+        }
+
         m_frameRenderer.Render( m_frameContext );
     }
     else

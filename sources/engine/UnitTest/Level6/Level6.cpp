@@ -240,7 +240,7 @@ namespace Level6_NS
             m_uniformBuffers[2].m_index     = 2;
             m_uniformBuffers[3].m_handle    = flashParameters;
             m_uniformBuffers[3].m_index     = 3;
-            m_uniformBuffers[4].m_handle    = RenderDevice::CreateUniformBuffer( sizeof(SphereParameters), NULL, BU_STREAM );
+            m_uniformBuffers[4].m_handle    = RenderDevice::CreateUniformBuffer( sizeof(SphereParameters), NULL, BU_DYNAMIC );
             m_uniformBuffers[4].m_index     = 4;
 
             const MeshResource::SubMesh * sub_mesh = m_mesh->GetSubMeshes();
@@ -580,7 +580,7 @@ void Level6::PreExecute()
     m_renderList.SetClearMask( RM_ALL );
     m_renderList.SetSRGBWrite( true );
 
-    cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_STREAM );
+    cameraParameters = RenderDevice::CreateUniformBuffer( sizeof(CameraData),NULL, BU_DYNAMIC );
 
     AmbientData ambient;
     ambient.groundColor = Vector4( 0.01f, 0.01f, 0.01f, 1.0f );
@@ -592,13 +592,13 @@ void Level6::PreExecute()
     light.position = Vector4( 10.0f, 0.0f, 0.0f );
     light.radius = 20.0f;
 
-    lightParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&light, BU_STREAM );
+    lightParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&light, BU_DYNAMIC );
 
     LightData flash;
     flash.color = Zero4();
     flash.radius = 15.0f;
 
-    flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_STREAM );
+    flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_DYNAMIC );
 
     meshRenderer.Initialize();
 
