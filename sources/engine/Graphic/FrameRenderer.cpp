@@ -33,6 +33,8 @@ namespace Graphic
     {
         m_meshRenderer.Initialize( &m_opaqueList );
         m_lightRenderer.Initialize();
+        m_debugRenderer.Initialize();
+
         m_renderCache.Clear();
 
         RenderState opaque;
@@ -51,7 +53,7 @@ namespace Graphic
         m_renderStateLinearDepth.m_depthWriteMask = false;
         m_renderStateToneMapping.m_depthWriteMask = false;
 
-        m_frameUniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(FrameParameters), 0, BU_STREAM );
+        m_frameUniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(FrameParameters), 0, BU_DYNAMIC );
     }
 
     void FrameRenderer::Destroy()
@@ -116,6 +118,11 @@ namespace Graphic
 
             ApplyToneMapping( context.m_lightTexture );
         }
+
+        // Debug
+        {
+            m_debugRenderer.Draw( m_renderCache, m_frameUniformBuffer );
+        }
     }
 
     void FrameRenderer::InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera, Scene * scene )
@@ -154,6 +161,11 @@ namespace Graphic
         RenderDevice::DestroyTexture( context.m_depthStencilTexture );
 
         Handle framebuffer = RenderDevice::CreateFramebuffer();
+    }
+
+    void FrameRenderer::RenderDebugLine( const Vector& position0, const Vector& position1, const Vector& color )
+    {
+        m_debugRenderer.RenderLine( position0, position1, color );
     }
 
     void FrameRenderer::UpdateFrameUniformBuffer( const FrameContext& context )

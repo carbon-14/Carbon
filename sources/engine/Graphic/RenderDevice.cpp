@@ -16,9 +16,10 @@ namespace Graphic
 
     const GLenum ToGLBufferUsage[] =
     {
+        GL_STREAM_DRAW,     // BU_STREAM
         GL_STATIC_DRAW,     // BU_STATIC
-        GL_DYNAMIC_DRAW,    // BU_DYNAMIC
-        GL_STREAM_DRAW      // BU_STREAM
+        GL_DYNAMIC_DRAW     // BU_DYNAMIC
+
     };
 
     const GLenum ToGLBufferAccess[] =
@@ -285,6 +286,13 @@ namespace Graphic
         return buffer;
     }
 
+    void * MapBuffer( GLuint buffer, GLenum access, GLenum target )
+    {
+        glBindBuffer( target, buffer );
+
+        return glMapBuffer( target, access );
+    }
+
     //===================================================================================
 
     Handle IRenderDevice::CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage )
@@ -292,9 +300,29 @@ namespace Graphic
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ARRAY_BUFFER );
     }
 
+    void * IRenderDevice::MapVertexBuffer( Handle buffer, BufferAccess access )
+    {
+        return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_ARRAY_BUFFER ); 
+    }
+
+    void IRenderDevice::UnmapVertexBuffer( )
+    {
+        glUnmapBuffer( GL_ARRAY_BUFFER );
+    }
+
     Handle IRenderDevice::CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage )
     {
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ELEMENT_ARRAY_BUFFER );
+    }
+
+    void * IRenderDevice::MapIndexBuffer( Handle buffer, BufferAccess access )
+    {
+        return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_ELEMENT_ARRAY_BUFFER ); 
+    }
+
+    void IRenderDevice::UnmapIndexBuffer( )
+    {
+        glUnmapBuffer( GL_ELEMENT_ARRAY_BUFFER );
     }
 
     Handle IRenderDevice::CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage )
@@ -302,16 +330,9 @@ namespace Graphic
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_UNIFORM_BUFFER );
     }
 
-    void IRenderDevice::DestroyBuffer( Handle buffer )
-    {
-        glDeleteBuffers( 1, (GLuint*)&buffer );
-    }
-
     void * IRenderDevice::MapUniformBuffer( Handle buffer, BufferAccess access )
     {
-        glBindBuffer( GL_UNIFORM_BUFFER, buffer );
-
-        return glMapBuffer( GL_UNIFORM_BUFFER, ToGLBufferAccess[ access ] );
+        return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_UNIFORM_BUFFER ); 
     }
 
     void IRenderDevice::UnmapUniformBuffer( )
@@ -326,6 +347,11 @@ namespace Graphic
             glBindBufferBase( GL_UNIFORM_BUFFER, location, ubuffer );
             s_uniformCache[location] = ubuffer;
         }
+    }
+
+    void IRenderDevice::DestroyBuffer( Handle buffer )
+    {
+        glDeleteBuffers( 1, (GLuint*)&buffer );
     }
 
     Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )

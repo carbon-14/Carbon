@@ -11,13 +11,16 @@ namespace Graphic
     {
     public:
         static Handle           CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void *           MapVertexBuffer( Handle buffer, BufferAccess access );
+        static void             UnmapVertexBuffer( );
         static Handle           CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void *           MapIndexBuffer( Handle buffer, BufferAccess access );
+        static void             UnmapIndexBuffer( );
         static Handle           CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage );
-        static void             DestroyBuffer( Handle buffer );
-
         static void *           MapUniformBuffer( Handle buffer, BufferAccess access );
         static void             UnmapUniformBuffer( );
         static void             BindUniformBuffer( Handle ubuffer, SizeT location );
+        static void             DestroyBuffer( Handle buffer );
 
         static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer = 0 );
         static void             DestroyVertexArray( Handle varray );

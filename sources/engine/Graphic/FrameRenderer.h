@@ -9,6 +9,7 @@
 #include "Graphic/RenderList.h"
 #include "Graphic/MeshRenderer.h"
 #include "Graphic/LightRenderer.h"
+#include "Graphic/DebugRenderer.h"
 
 namespace Graphic
 {
@@ -47,6 +48,8 @@ namespace Graphic
         static void InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera, Scene * scene );
         static void DestroyFrameContext( FrameContext& context );
 
+        void RenderDebugLine( const Vector& position0, const Vector& position1, const Vector& color );
+
     private:
         void UpdateFrameUniformBuffer( const FrameContext& context );
         void LinearizeDepth( Handle depthStencilTexture );
@@ -57,6 +60,7 @@ namespace Graphic
 
         MeshRenderer    m_meshRenderer;
         LightRenderer   m_lightRenderer;
+        DebugRenderer   m_debugRenderer;
 
         ProgramHandle   m_programLinearDepth;
         ProgramHandle   m_programToneMapping;
