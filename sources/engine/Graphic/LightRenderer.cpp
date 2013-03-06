@@ -6,6 +6,7 @@
 #include "Graphic/Scene.h"
 #include "Graphic/Camera.h"
 #include "Graphic/QuadGeometry.h"
+#include "Graphic/DebugRenderer.h"
 
 #include "Core/Math.h"
 #include "Core/Matrix.h"
@@ -23,7 +24,7 @@ namespace Graphic
 
     const F32 LightRenderer::ms_distanceThreshold = 0.1f;
 
-    void LightRenderer::Initialize()
+    void LightRenderer::Initialize(  DebugRenderer * debugRenderer )
     {
         // Directional light
         {
@@ -118,16 +119,24 @@ namespace Graphic
         m_stateAmbientLighting.m_stencilFunc        = F_EQUAL;
 
         m_uniformBufferCount = 0;
+
+        m_debugRenderer = debugRenderer;
+        m_debugDraw     = false;
     }
 
     void LightRenderer::Destroy()
     {
+        m_debugRenderer = 0;
+
         UniformBufferArray::Iterator it = m_uniformBufferPool.Begin();
         UniformBufferArray::Iterator end = m_uniformBufferPool.End();
         for ( ; it!=end; ++it )
         {
             RenderDevice::DestroyBuffer( *it );
         }
+        m_uniformBufferPool.Reserve(0);
+
+        m_lights.Reserve(0);
 
         m_geomSpot.Destroy();
         m_geomOmni.Destroy();
@@ -206,9 +215,24 @@ namespace Graphic
         m_uniformBufferCount = 0;
     }
 
+    void LightRenderer::SetDebugDraw( Bool enable )
+    {
+        m_debugDraw = enable;
+    }
+
+    Bool LightRenderer::GetDebugDraw() const
+    {
+        return m_debugDraw;
+    }
+
     void LightRenderer::RenderLightVolume( const Light * light, const Camera * camera )
     {
-        return (this->*(m_renderFunc[light->m_type]))( light, camera );
+        F128 v;
+        Store( v, light->m_value );
+        if ( v[0] > 0.0f || v[1] > 0.0f || v[2] > 0.0f )
+        {
+            (this->*(m_renderFunc[light->m_type]))( light, camera );
+        }
     }
 
     void LightRenderer::RenderDirectional( const Light * light, const Camera * camera )
@@ -277,6 +301,22 @@ namespace Graphic
 
         RenderLight renderLight = { m_programDirectional, &m_geomDirectional, uniformBuffer, useFrontFaceMask };
         m_lights.PushBack( renderLight );
+
+        if ( m_debugDraw )
+        {
+            Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
+
+            Vector geom[4];
+            geom[0] = TransformVertex( ori, Vector4( 0.0f, 0.0f, 0.0f ) );
+            geom[1] = TransformVertex( ori, Vector4( 0.0f, 0.0f, -light->m_radius ) );
+            geom[2] = TransformVertex( ori, scale );
+            geom[3] = TransformVertex( ori, Swizzle<1,0,2,3>( scale ) );
+
+            Vector color = One4();
+            m_debugRenderer->RenderLine( geom[1], geom[0], color );
+            m_debugRenderer->RenderLine( geom[1], geom[2], color );
+            m_debugRenderer->RenderLine( geom[1], geom[3], color );
+        }
     }
 
     void LightRenderer::RenderOmni( const Light * light, const Camera * camera )
@@ -323,12 +363,32 @@ namespace Graphic
 
         RenderLight renderLight = { m_programOmni, &m_geomOmni, uniformBuffer, useFrontFaceMask };
         m_lights.PushBack( renderLight );
+
+        if ( m_debugDraw )
+        {
+            Vector scale = Vector4( -0.05f, +0.05f, 0.0f );
+
+            Vector geom[6];
+            geom[0] = TransformVertex( m, Swizzle<0,2,2,3>( scale ) );
+            geom[1] = TransformVertex( m, Swizzle<1,2,2,3>( scale ) );
+            geom[2] = TransformVertex( m, Swizzle<2,0,2,3>( scale ) );
+            geom[3] = TransformVertex( m, Swizzle<2,1,2,3>( scale ) );
+            geom[4] = TransformVertex( m, Swizzle<2,2,0,3>( scale ) );
+            geom[5] = TransformVertex( m, Swizzle<2,2,1,3>( scale ) );
+
+            Vector color = One4();
+            m_debugRenderer->RenderLine( geom[0], geom[1], color );
+            m_debugRenderer->RenderLine( geom[2], geom[3], color );
+            m_debugRenderer->RenderLine( geom[4], geom[5], color );
+        }
     }
 
     void LightRenderer::RenderSpot( const Light * light, const Camera * camera )
     {
-        Matrix m = RMatrix( light->m_orientation );
-        Vector lightDirection = -m.m_column[2];
+        Matrix ori = RMatrix( light->m_orientation );
+        ori.m_column[3] = light->m_position;
+
+        Matrix m = ori;
 
         Vector points[5];
         points[0] = camera->m_position;
@@ -345,7 +405,6 @@ namespace Graphic
 
             F32 tangent = Tan( 0.5f * light->m_spotOutAngle );
             Scale( m, Vector3( tangent, tangent, 1.0f ) * Splat(light->m_radius) );
-            m.m_column[3] = light->m_position;
 
             // Check if camera position and frustum near corners are outside the light volume
             //
@@ -363,7 +422,7 @@ namespace Graphic
             spot_vecs[3] = spot_points[4] - spot_points[0];
 
             Vector spot_normals[5];
-            spot_normals[0] = lightDirection;
+            spot_normals[0] = -ori.m_column[2];
             spot_normals[1] = Normalize( Cross( spot_vecs[0], spot_vecs[1] ) );
             spot_normals[2] = Normalize( Cross( spot_vecs[1], spot_vecs[3] ) );
             spot_normals[3] = Normalize( Cross( spot_vecs[3], spot_vecs[2] ) );
@@ -394,11 +453,9 @@ namespace Graphic
         else
         {
             geom = &m_geomDirectional;
-            Matrix ori = m;
 
             F32 sinus = Sin( 0.5f * light->m_spotOutAngle ) * light->m_radius;
             Scale( m, Vector3( sinus, sinus, light->m_radius ) );
-            m.m_column[3] = light->m_position;
 
             Vector normals[6];
             normals[0] = -ori.m_column[0];
@@ -449,7 +506,7 @@ namespace Graphic
         params.m_lightMatrix        = Mul( camera->GetViewProjMatrix(), m );
         params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
         params.m_position           = TransformVertex( camera->GetViewMatrix(), light->m_position );
-        params.m_direction          = TransformVector( camera->GetViewMatrix(), lightDirection );
+        params.m_direction          = TransformVector( camera->GetViewMatrix(), -ori.m_column[2] );
         params.m_spotParameters     = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
 
         Handle uniformBuffer = GetUniformBuffer();
@@ -459,6 +516,22 @@ namespace Graphic
 
         RenderLight renderLight = { m_programSpot, geom, uniformBuffer, useFrontFaceMask };
         m_lights.PushBack( renderLight );
+
+        if ( m_debugDraw )
+        {
+            Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
+
+            Vector geom[4];
+            geom[0] = TransformVertex( ori, Vector4( 0.0f, 0.0f, 0.0f ) );
+            geom[1] = TransformVertex( ori, Vector4( 0.0f, 0.0f, -light->m_radius ) );
+            geom[2] = TransformVertex( ori, scale );
+            geom[3] = TransformVertex( ori, Swizzle<1,0,2,3>( scale ) );
+
+            Vector color = One4();
+            m_debugRenderer->RenderLine( geom[1], geom[0], color );
+            m_debugRenderer->RenderLine( geom[1], geom[2], color );
+            m_debugRenderer->RenderLine( geom[1], geom[3], color );
+        }
     }
 
     Handle LightRenderer::GetUniformBuffer()

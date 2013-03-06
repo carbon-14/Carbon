@@ -123,7 +123,8 @@ namespace Graphic
         GL_COLOR_ATTACHMENT0,   // CB_COLOR0
         GL_COLOR_ATTACHMENT1,   // CB_COLOR1
         GL_COLOR_ATTACHMENT2,   // CB_COLOR2
-        GL_COLOR_ATTACHMENT3    // CB_COLOR3
+        GL_COLOR_ATTACHMENT3,   // CB_COLOR3
+        GL_BACK_LEFT            // CB_BACK
     };
 
     const GLenum ToGLColorBuffers[][4] =
@@ -143,10 +144,11 @@ namespace Graphic
         { GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  , GL_NONE               , GL_NONE               },
         { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  , GL_NONE               },
         { GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  , GL_NONE               },
-        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  }
+        { GL_COLOR_ATTACHMENT0  , GL_COLOR_ATTACHMENT1  , GL_COLOR_ATTACHMENT2  , GL_COLOR_ATTACHMENT3  },
+        { GL_BACK_LEFT          , GL_NONE               , GL_NONE               , GL_NONE               }
     };
 
-    const GLenum ToGLColorBufferCount[] =   { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 };
+    const GLenum ToGLColorBufferCount[] =   { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1 };
 
     const GLenum ToGLFunction[] =
     {
@@ -753,25 +755,25 @@ namespace Graphic
         switch( glGetError() )
         {
         case GL_INVALID_ENUM :
-            CARBON_TRACE( "Invalid enum\n" );
+            CARBON_TRACE( "GL ERROR : Invalid enum\n" );
             break;
         case GL_INVALID_VALUE :
-            CARBON_TRACE( "Invalid value\n" );
+            CARBON_TRACE( "GL ERROR : Invalid value\n" );
             break;
         case GL_INVALID_OPERATION :
-            CARBON_TRACE( "Invalid operation\n" );
+            CARBON_TRACE( "GL ERROR : Invalid operation\n" );
             break;
         case GL_INVALID_FRAMEBUFFER_OPERATION :
-            CARBON_TRACE( "Invalid framebuffer operation\n" );
+            CARBON_TRACE( "GL ERROR : Invalid framebuffer operation\n" );
             break;
         case GL_OUT_OF_MEMORY :
-            CARBON_TRACE( "Out of memory\n" );
+            CARBON_TRACE( "GL ERROR : Out of memory\n" );
             break;
         case GL_STACK_UNDERFLOW :
-            CARBON_TRACE( "Stack underflow\n" );
+            CARBON_TRACE( "GL ERROR : Stack underflow\n" );
             break;
         case GL_STACK_OVERFLOW :
-            CARBON_TRACE( "Stack overflow\n" );
+            CARBON_TRACE( "GL ERROR : Stack overflow\n" );
             break;
         }
     }

@@ -96,7 +96,8 @@ namespace Graphic
         CB_COLOR0 = 0,
         CB_COLOR1,
         CB_COLOR2,
-        CB_COLOR3
+        CB_COLOR3,
+        CB_BACK
     };
 
     enum ColorBufferBit
@@ -104,7 +105,8 @@ namespace Graphic
         CBB_COLOR0  = 1 << 0,
         CBB_COLOR1  = 1 << 1,
         CBB_COLOR2  = 1 << 2,
-        CBB_COLOR3  = 1 << 3
+        CBB_COLOR3  = 1 << 3,
+        CBB_BACK    = 1 << 4
     };
 
     enum PrimitiveType

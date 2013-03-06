@@ -11,6 +11,7 @@
 
 namespace Graphic
 {
+    class DebugRenderer;
     class RenderCache;
     class RenderGeometry;
     class Scene;
@@ -28,11 +29,14 @@ namespace Graphic
         };
 
     public:
-        void Initialize();
+        void Initialize( DebugRenderer * debugRenderer );
         void Destroy();
 
         void Render( const Scene * scene, const Camera * camera );
         void Draw( RenderCache& renderCache, Handle frameParameters, Handle depthStencilTexture, Handle normalTexture, Handle colorTexture );
+
+        void SetDebugDraw( Bool enable );
+        Bool GetDebugDraw() const;
 
     private:
         void RenderLightVolume( const Light * light, const Camera * camera );
@@ -73,6 +77,9 @@ namespace Graphic
         RenderState         m_stateLighting;
         RenderState         m_stateAmbientMask;
         RenderState         m_stateAmbientLighting;
+
+        DebugRenderer *     m_debugRenderer;
+        Bool                m_debugDraw;
     };
 }
 

@@ -28,10 +28,12 @@ namespace Graphic
         Handle      m_colorTexture;
         Handle      m_linearDepthTexture;
         Handle      m_lightTexture;
+        Handle      m_finalColorBuffer;
 
         Handle      m_geomFramebuffer;
         Handle      m_linearizeDepthFramebuffer;
         Handle      m_lightFramebuffer;
+        Handle      m_finalFramebuffer;
     };
 
     class _GraphicExport FrameRenderer
@@ -47,6 +49,9 @@ namespace Graphic
 
         static void InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera, Scene * scene );
         static void DestroyFrameContext( FrameContext& context );
+
+        void SetLightDebugDraw( Bool enable );
+        Bool GetLightDebugDraw() const;
 
         void RenderDebugLine( const Vector& position0, const Vector& position1, const Vector& color );
 
