@@ -11,7 +11,6 @@ void main()
 {
     GBuffer gbuffer = ReadGBuffer( GBufferDepth, GBufferNormal, GBufferColor, uv );
 
-    vec4 ambientLight = LightAmbient( gbuffer.normal, ViewMatrix[1], AmbientGroundLight, AmbientSkyLight );
-
-    outColor = ambientLight;
+    outColor = vec4( gbuffer.albedo, 1.0 );
+    //outColor = vec4( 1.0 );
 }

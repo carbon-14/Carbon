@@ -13,11 +13,9 @@ void main()
 
     GBuffer gbuffer = ReadGBuffer( GBufferDepth, GBufferNormal, GBufferColor, uv );
 
-    float intensity = LightDirectionalIntensity();
+    float diffuse = DiffuseTerm( gbuffer.normal, -LightDirection );
 
-    float diffuse_term = DiffuseTerm( gbuffer.normal, -LightDirection );
+    diffuse *= LightDirectionalIntensity();
 
-    vec3 lightColor = LightValue * intensity;
-
-    outColor = vec4( gbuffer.albedo * lightColor * diffuse_term, 1.0 );
+    outColor = vec4( LightValue * diffuse, 1.0 );
 }

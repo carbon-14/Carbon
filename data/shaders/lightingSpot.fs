@@ -18,11 +18,9 @@ void main()
     float sqr;
     vec4 L = ComputeToLight( LightPosition, pos, sqr );
 
-    float intensity = LightSpotIntensity( sqr, LightInvSqrRadius, LightDirection, L, LightSpotParameters.xy );
-
     float diffuse = DiffuseTerm( gbuffer.normal, L );
 
-    vec3 lightColor = LightValue * intensity;
+    diffuse *= LightSpotIntensity( sqr, LightInvSqrRadius, LightDirection, L, LightSpotParameters.xy );
 
-    outColor = vec4( gbuffer.albedo * lightColor * diffuse, 1.0 );
+    outColor = vec4( LightValue * diffuse, 1.0 );
 }
