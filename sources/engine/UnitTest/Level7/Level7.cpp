@@ -58,6 +58,9 @@ void Level7::ProcessInputs( RAWINPUT * raw )
             case VK_F4:
                 ProgramCache::NotifySourceChange();
                 break;
+            case 'L':
+                m_frameRenderer.SetLightDebugDraw( !m_frameRenderer.GetLightDebugDraw() );
+                break;
             case 'Z':
                 moveY = Min( 1.0f, moveY + 1.0f );
                 break;
@@ -196,14 +199,14 @@ void Level7::PreExecute()
     }
     
     {
-        m_flash                         = MemoryManager::New< Light >();
-        m_flash->m_value                = Vector4( 0.0f, 0.0f, 0.0f );
-        m_flash->m_orientation          = m_camera->m_orientation;
-        m_flash->m_position             = m_camera->m_position;
-        m_flash->m_radius               = 10.0f;
-        m_flash->m_spotInAngle          = 0.0f;
-        m_flash->m_spotOutAngle         = 0.85f;
-        m_flash->m_type                 = LT_SPOT;
+        m_flash                     = MemoryManager::New< Light >();
+        m_flash->m_value            = Vector4( 0.0f, 0.0f, 0.0f );
+        m_flash->m_orientation      = m_camera->m_orientation;
+        m_flash->m_position         = m_camera->m_position;
+        m_flash->m_radius           = 10.0f;
+        m_flash->m_spotInAngle      = 0.0f;
+        m_flash->m_spotOutAngle     = 0.85f;
+        m_flash->m_type             = LT_SPOT;
 
         m_scene->AddLight( m_flash );
     }
@@ -265,21 +268,9 @@ void Level7::Execute()
         m_sphere->m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
         m_sphere->Update();
 
-        m_flash->m_value                = useFlashLight ? Vector4( 5.0f, 5.0f, 5.0f ) : Vector4( 0.0f, 0.0f, 0.0f );
-        m_flash->m_orientation          = m_camera->m_orientation;
-        m_flash->m_position             = m_camera->m_position;
-
-        Vector debug_color = Vector4( 1.0f, 1.0f, 1.0f );
-
-        Array< Light * >::Iterator light_it = m_lights.Begin();
-        Array< Light * >::Iterator light_end = m_lights.End();
-        for ( ; light_it != light_end; ++light_it )
-        {
-            Light * light = *light_it;
-            m_frameRenderer.RenderDebugLine( light->m_position + Vector3( -1.0f, 0.0f, 0.0f ), light->m_position + Vector3( +1.0f, 0.0f, 0.0f ), debug_color );
-            m_frameRenderer.RenderDebugLine( light->m_position + Vector3( 0.0f, -1.0f, 0.0f ), light->m_position + Vector3( 0.0f, +1.0f, 0.0f ), debug_color );
-            m_frameRenderer.RenderDebugLine( light->m_position + Vector3( 0.0f, 0.0f, -1.0f ), light->m_position + Vector3( 0.0f, 0.0f, +1.0f ), debug_color );
-        }
+        m_flash->m_value        = useFlashLight ? Vector4( 5.0f, 5.0f, 5.0f ) : Vector4( 0.0f, 0.0f, 0.0f );
+        m_flash->m_orientation  = m_camera->m_orientation;
+        m_flash->m_position     = m_camera->m_position;
 
         m_frameRenderer.Render( m_frameContext );
     }

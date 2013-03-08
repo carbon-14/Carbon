@@ -17,8 +17,8 @@ protected:
     void PostExecute();
     void Execute();
 
-    Graphic::FrameRenderer  m_frameRenderer;
-    Graphic::FrameContext   m_frameContext;
+    Graphic::FrameRenderer          m_frameRenderer;
+    Graphic::FrameRenderer::Context m_frameContext;
 };
 
 #endif // _UNITTEST_LEVEL7_H
