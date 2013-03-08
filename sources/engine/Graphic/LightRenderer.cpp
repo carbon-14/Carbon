@@ -6,6 +6,7 @@
 #include "Graphic/Scene.h"
 #include "Graphic/Camera.h"
 #include "Graphic/QuadGeometry.h"
+#include "Graphic/DebugRenderer.h"
 
 #include "Core/Math.h"
 #include "Core/Matrix.h"
@@ -21,9 +22,7 @@ namespace Graphic
         Vector  m_spotParameters;
     };
 
-    const F32 LightRenderer::ms_distanceThreshold = 0.1f;
-
-    void LightRenderer::Initialize()
+    void LightRenderer::Initialize(  DebugRenderer * debugRenderer )
     {
         // Directional light
         {
@@ -58,6 +57,9 @@ namespace Graphic
 
         U32 ambientLightingId       = ProgramCache::CreateId( "lightingAmbient" );
         m_programAmbient            = ProgramCache::GetProgram( ambientLightingId );
+
+        U32 albedoLightingId        = ProgramCache::CreateId( "lightingAlbedo" );
+        m_programAlbedo             = ProgramCache::GetProgram( albedoLightingId );
 
         m_stateMaskClear0.m_colorWriteMask          = 0;
         m_stateMaskClear0.m_enableCullFace          = true;
@@ -117,17 +119,40 @@ namespace Graphic
         m_stateAmbientLighting.m_stencilRef         = 0;
         m_stateAmbientLighting.m_stencilFunc        = F_EQUAL;
 
+        m_stateAlbedoMask.m_colorWriteMask          = 0;
+        m_stateAlbedoMask.m_enableDepthTest         = false;
+        m_stateAlbedoMask.m_depthWriteMask          = false;
+        m_stateAlbedoMask.m_enableStencilTest       = true;
+        m_stateAlbedoMask.m_depthPass               = O_ZERO;
+
+        m_stateAlbedoLighting.m_depthWriteMask      = false;
+        m_stateAlbedoLighting.m_enableStencilTest   = true;
+        m_stateAlbedoLighting.m_stencilRef          = 0;
+        m_stateAlbedoLighting.m_stencilFunc         = F_EQUAL;
+        m_stateAlbedoLighting.m_enableBlend         = true;
+        m_stateAlbedoLighting.m_srcBlendFunc        = BF_ZERO;
+        m_stateAlbedoLighting.m_dstBlendFunc        = BF_SRC_COLOR;
+        m_stateAlbedoLighting.m_blendMode           = BM_ADD;
+
         m_uniformBufferCount = 0;
+
+        m_debugRenderer = debugRenderer;
+        m_debugDraw     = false;
     }
 
     void LightRenderer::Destroy()
     {
+        m_debugRenderer = 0;
+
         UniformBufferArray::Iterator it = m_uniformBufferPool.Begin();
         UniformBufferArray::Iterator end = m_uniformBufferPool.End();
         for ( ; it!=end; ++it )
         {
             RenderDevice::DestroyBuffer( *it );
         }
+        m_uniformBufferPool.Reserve(0);
+
+        m_lights.Reserve(0);
 
         m_geomSpot.Destroy();
         m_geomOmni.Destroy();
@@ -136,12 +161,30 @@ namespace Graphic
 
     void LightRenderer::Render( const Scene * scene, const Camera * camera )
     {
+        const Matrix tr =
+        {
+            camera->GetFrustum().GetCorners()[FC_LEFT_BOTTOM_NEAR],
+            camera->GetFrustum().GetCorners()[FC_RIGHT_BOTTOM_NEAR],
+            camera->GetFrustum().GetCorners()[FC_LEFT_TOP_NEAR],
+            camera->GetFrustum().GetCorners()[FC_RIGHT_TOP_NEAR]
+        };
+
+        Vector c = Select( camera->GetViewScaleNear(), Zero4(), Mask<0,0,0,1>() );
+        Vector cos = Abs( Swizzle<2,2,2,2>(c) );
+
+        const Vector distanceThreshold  = Splat( 0.5f ) * SquareLength(c) / cos;
+
+        const Vector center             = camera->m_position - distanceThreshold * camera->GetInvViewMatrix().m_column[2];
+
+        const Matrix& viewMatrix        = camera->GetViewMatrix();
+        const Matrix& viewProjMatrix    = camera->GetViewProjMatrix();
+
         const Scene::LightArray& lights = scene->GetLights();
         Scene::LightArray::ConstIterator it = lights.Begin();
         Scene::LightArray::ConstIterator end = lights.End();
         for ( ; it != end; ++it )
         {
-            RenderLightVolume( *it, camera );
+            RenderLightVolume( *it, viewMatrix, viewProjMatrix, center, distanceThreshold );
         }
     }
 
@@ -202,16 +245,43 @@ namespace Graphic
             light.m_geometry->Draw();
         }
 
+        ProgramCache::UseProgram( m_programAmbientMask );
+        renderCache.SetRenderState( m_stateAlbedoMask );
+        QuadGeometry::GetInstance().Draw();
+
+        ProgramCache::UseProgram( m_programAmbientMask );
+        renderCache.SetRenderState( m_stateAmbientMask );
+        QuadGeometry::GetInstance().Draw();
+
+        ProgramCache::UseProgram( m_programAlbedo );
+        renderCache.SetRenderState( m_stateAlbedoLighting );
+        QuadGeometry::GetInstance().Draw();
+
         m_lights.Clear();
         m_uniformBufferCount = 0;
     }
 
-    void LightRenderer::RenderLightVolume( const Light * light, const Camera * camera )
+    void LightRenderer::SetDebugDraw( Bool enable )
     {
-        return (this->*(m_renderFunc[light->m_type]))( light, camera );
+        m_debugDraw = enable;
     }
 
-    void LightRenderer::RenderDirectional( const Light * light, const Camera * camera )
+    Bool LightRenderer::GetDebugDraw() const
+    {
+        return m_debugDraw;
+    }
+
+    void LightRenderer::RenderLightVolume( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
+    {
+        F128 v;
+        Store( v, light->m_value );
+        if ( v[0] > 0.0f || v[1] > 0.0f || v[2] > 0.0f )
+        {
+            (this->*(m_renderFunc[light->m_type]))( light, viewMatrix, viewProjMatrix, center, distanceThreshold );
+        }
+    }
+
+    void LightRenderer::RenderDirectional( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
     {
         Matrix ori = RMatrix( light->m_orientation );
 
@@ -221,53 +291,27 @@ namespace Graphic
 
         // Check if camera position and frustum near corners are outside the light volume
         //
-        Vector points[5];
-        points[0] = camera->m_position;
-        points[1] = camera->GetFrustum().GetCorners()[FC_LEFT_BOTTOM_NEAR];
-        points[2] = camera->GetFrustum().GetCorners()[FC_RIGHT_BOTTOM_NEAR];
-        points[3] = camera->GetFrustum().GetCorners()[FC_LEFT_TOP_NEAR];
-        points[4] = camera->GetFrustum().GetCorners()[FC_RIGHT_TOP_NEAR];
 
-        Vector normals[6];
-        normals[0] = -ori.m_column[0];
-        normals[1] = ori.m_column[0];
-        normals[2] = -ori.m_column[1];
-        normals[3] = ori.m_column[1];
-        normals[4] = -ori.m_column[2];
-        normals[5] = ori.m_column[2];
+        Matrix plane_matrix = Transpose( ori );
+        plane_matrix.m_column[3] = Vector3( 0.0f, 0.0f, 0.5f*light->m_radius );
 
-        F128 p;
-        Store( p, light->m_position );
+        Vector proj = Abs( TransformVertex( plane_matrix, center - light->m_position ) );
+        Vector dist = distanceThreshold + Splat(0.5f) * Vector4( light->m_directionalWidth, light->m_directionalHeight, light->m_radius );
 
-        Vector planes[6];
-        planes[0] = Select( normals[0], -(Splat( 0.5f*light->m_directionalWidth )+Dot( normals[0], light->m_position )), Mask<0,0,0,1>() );
-        planes[1] = Select( normals[1], -(Splat( 0.5f*light->m_directionalWidth )+Dot( normals[1], light->m_position )), Mask<0,0,0,1>() );
-        planes[2] = Select( normals[2], -(Splat( 0.5f*light->m_directionalHeight )+Dot( normals[2], light->m_position )), Mask<0,0,0,1>() );
-        planes[3] = Select( normals[3], -(Splat( 0.5f*light->m_directionalHeight )+Dot( normals[3], light->m_position )), Mask<0,0,0,1>() );
-        planes[4] = Select( normals[4], -(Splat( light->m_radius )+Dot( normals[4], light->m_position )), Mask<0,0,0,1>() );
-        planes[5] = Select( normals[5], -(Dot( normals[5], light->m_position )), Mask<0,0,0,1>() );
+        Vector outside =  proj > dist;
+        outside = Or( outside, Swizzle<1,2,0,3>( outside ) );
+        outside = Or( outside, Swizzle<2,0,1,3>( outside ) );
 
-        Bool useFrontFaceMask = true;
-        for ( SizeT i=0; useFrontFaceMask && i<5; ++i )
-        {
-            SizeT j=0;
-            for ( ; j<6; ++j )
-            {
-                F128 d;
-                Store( d, Dot( points[i], planes[j] ) );
+        F128 c;
+        Store(c,outside);
 
-                if ( d[0] > ms_distanceThreshold )
-                    break;
-            }
-
-            useFrontFaceMask = j != 6;
-        }
+        Bool useFrontFaceMask = c[0] != 0.0f;
 
         LightParameters params;
-        params.m_lightMatrix        = Mul( camera->GetViewProjMatrix(), m );
+        params.m_lightMatrix        = Mul( viewProjMatrix, m );
         params.m_valueInvSqrRadius  = Select( light->m_value, Zero4(), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( camera->GetViewMatrix(), light->m_position );
-        params.m_direction          = TransformVector( camera->GetViewMatrix(), -ori.m_column[2] );
+        params.m_position           = TransformVertex( viewMatrix, light->m_position );
+        params.m_direction          = TransformVector( viewMatrix, -ori.m_column[2] );
         params.m_spotParameters     = Zero4();
 
         Handle uniformBuffer = GetUniformBuffer();
@@ -277,42 +321,52 @@ namespace Graphic
 
         RenderLight renderLight = { m_programDirectional, &m_geomDirectional, uniformBuffer, useFrontFaceMask };
         m_lights.PushBack( renderLight );
+
+        if ( m_debugDraw )
+        {
+            Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
+            ori.m_column[3] = light->m_position;
+
+            Vector geom[4];
+            geom[0] = TransformVertex( ori, Vector4( 0.0f, 0.0f, 0.0f ) );
+            geom[1] = TransformVertex( ori, Vector4( 0.0f, 0.0f, -light->m_radius ) );
+            geom[2] = TransformVertex( ori, scale );
+            geom[3] = TransformVertex( ori, Swizzle<1,0,2,3>( scale ) );
+
+            Vector color = One4();
+            m_debugRenderer->RenderLine( geom[1], geom[0], color );
+            m_debugRenderer->RenderLine( geom[1], geom[2], color );
+            m_debugRenderer->RenderLine( geom[1], geom[3], color );
+        }
     }
 
-    void LightRenderer::RenderOmni( const Light * light, const Camera * camera )
+    void LightRenderer::RenderOmni( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
     {
         Matrix m = SMatrix( Splat( light->m_radius ) );
         m.m_column[3] = light->m_position;
 
         // Check if camera position and frustum near corners are outside the light volume
         //
-        Vector points[5];
-        points[0] = camera->m_position;
-        points[1] = camera->GetFrustum().GetCorners()[FC_LEFT_BOTTOM_NEAR];
-        points[2] = camera->GetFrustum().GetCorners()[FC_RIGHT_BOTTOM_NEAR];
-        points[3] = camera->GetFrustum().GetCorners()[FC_LEFT_TOP_NEAR];
-        points[4] = camera->GetFrustum().GetCorners()[FC_RIGHT_TOP_NEAR];
+        Vector dist = Abs( center - light->m_position );
 
-        Bool useFrontFaceMask = true;
-        for ( SizeT i=0; useFrontFaceMask && i<5; ++i )
-        {
-            Vector dist = Abs( points[i] - light->m_position );
-            dist = Max( dist, Swizzle<1,2,0,3>(dist) );
-            dist = Max( dist, Swizzle<2,0,1,3>(dist) );
+        Vector threshold = distanceThreshold + Splat( light->m_radius );
 
-            F128 d;
-            Store( d, dist );
+        dist = dist > threshold;
+        dist = Or( dist, Swizzle<1,2,0,3>(dist) );
+        dist = Or( dist, Swizzle<2,0,1,3>(dist) );
 
-            useFrontFaceMask = d[0] > ( light->m_radius + ms_distanceThreshold );
-        }
+        F128 d;
+        Store(d,dist);
+
+        Bool useFrontFaceMask = d[0] != 0.0f;
 
         CARBON_ASSERT( light->m_radius > 0 );
         F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
 
         LightParameters params;
-        params.m_lightMatrix        = Mul( camera->GetViewProjMatrix(), m );
+        params.m_lightMatrix        = Mul( viewProjMatrix, m );
         params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( camera->GetViewMatrix(), light->m_position );
+        params.m_position           = TransformVertex( viewMatrix, light->m_position );
         params.m_direction          = Zero4();
         params.m_spotParameters     = Zero4();
 
@@ -323,118 +377,91 @@ namespace Graphic
 
         RenderLight renderLight = { m_programOmni, &m_geomOmni, uniformBuffer, useFrontFaceMask };
         m_lights.PushBack( renderLight );
+
+        if ( m_debugDraw )
+        {
+            Vector scale = Vector4( -0.05f, +0.05f, 0.0f );
+
+            Vector geom[6];
+            geom[0] = TransformVertex( m, Swizzle<0,2,2,3>( scale ) );
+            geom[1] = TransformVertex( m, Swizzle<1,2,2,3>( scale ) );
+            geom[2] = TransformVertex( m, Swizzle<2,0,2,3>( scale ) );
+            geom[3] = TransformVertex( m, Swizzle<2,1,2,3>( scale ) );
+            geom[4] = TransformVertex( m, Swizzle<2,2,0,3>( scale ) );
+            geom[5] = TransformVertex( m, Swizzle<2,2,1,3>( scale ) );
+
+            Vector color = One4();
+            m_debugRenderer->RenderLine( geom[0], geom[1], color );
+            m_debugRenderer->RenderLine( geom[2], geom[3], color );
+            m_debugRenderer->RenderLine( geom[4], geom[5], color );
+        }
     }
 
-    void LightRenderer::RenderSpot( const Light * light, const Camera * camera )
+    void LightRenderer::RenderSpot( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
     {
-        Matrix m = RMatrix( light->m_orientation );
-        Vector lightDirection = -m.m_column[2];
+        Matrix ori = RMatrix( light->m_orientation );
 
-        Vector points[5];
-        points[0] = camera->m_position;
-        points[1] = camera->GetFrustum().GetCorners()[FC_LEFT_BOTTOM_NEAR];
-        points[2] = camera->GetFrustum().GetCorners()[FC_RIGHT_BOTTOM_NEAR];
-        points[3] = camera->GetFrustum().GetCorners()[FC_LEFT_TOP_NEAR];
-        points[4] = camera->GetFrustum().GetCorners()[FC_RIGHT_TOP_NEAR];
+        Matrix m = ori;
+        m.m_column[3] = light->m_position;
 
         RenderGeometry * geom;
-        Bool useFrontFaceMask = true;
+        Vector outside;
         if ( light->m_spotOutAngle < HalfPi() )
         {
             geom = &m_geomSpot;
 
-            F32 tangent = Tan( 0.5f * light->m_spotOutAngle );
+            F32 sinus = Sin( 0.5f * light->m_spotOutAngle );
+            F32 cosinus = Cos( 0.5f * light->m_spotOutAngle );
+            F32 tangent = sinus / cosinus;
             Scale( m, Vector3( tangent, tangent, 1.0f ) * Splat(light->m_radius) );
-            m.m_column[3] = light->m_position;
 
             // Check if camera position and frustum near corners are outside the light volume
             //
-            Vector spot_points[5];
-            spot_points[0] = light->m_position;
-            spot_points[1] = TransformVertex( m, Vector4( -1.0f, -1.0f, -1.0f ) );
-            spot_points[2] = TransformVertex( m, Vector4( +1.0f, -1.0f, -1.0f ) );
-            spot_points[3] = TransformVertex( m, Vector4( -1.0f, +1.0f, -1.0f ) );
-            spot_points[4] = TransformVertex( m, Vector4( +1.0f, +1.0f, -1.0f ) );
 
-            Vector spot_vecs[4];
-            spot_vecs[0] = spot_points[1] - spot_points[0];
-            spot_vecs[1] = spot_points[2] - spot_points[0];
-            spot_vecs[2] = spot_points[3] - spot_points[0];
-            spot_vecs[3] = spot_points[4] - spot_points[0];
+            Vector projX = Splat(cosinus) * ori.m_column[0];
+            Vector projY = Splat(cosinus) * ori.m_column[1];
+            Vector projZ = Splat(sinus) * ori.m_column[2];
 
-            Vector spot_normals[5];
-            spot_normals[0] = lightDirection;
-            spot_normals[1] = Normalize( Cross( spot_vecs[0], spot_vecs[1] ) );
-            spot_normals[2] = Normalize( Cross( spot_vecs[1], spot_vecs[3] ) );
-            spot_normals[3] = Normalize( Cross( spot_vecs[3], spot_vecs[2] ) );
-            spot_normals[4] = Normalize( Cross( spot_vecs[2], spot_vecs[0] ) );
-
-            Vector planes[5];
-            planes[0] = Select( spot_normals[0], -(Splat( light->m_radius )+Dot( spot_normals[0], light->m_position )), Mask<0,0,0,1>() );
-            planes[1] = Select( spot_normals[1], -Dot( spot_normals[1], light->m_position ), Mask<0,0,0,1>() );
-            planes[2] = Select( spot_normals[2], -Dot( spot_normals[2], light->m_position ), Mask<0,0,0,1>() );
-            planes[3] = Select( spot_normals[3], -Dot( spot_normals[3], light->m_position ), Mask<0,0,0,1>() );
-            planes[4] = Select( spot_normals[4], -Dot( spot_normals[4], light->m_position ), Mask<0,0,0,1>() );
-
-            for ( SizeT i=0; useFrontFaceMask && i<5; ++i )
+            Matrix plane_matrix =
             {
-                SizeT j=0;
-                for ( ; j<5; ++j )
-                {
-                    F128 d;
-                    Store( d, Dot( points[i], planes[j] ) );
+                projZ - projX,
+                projZ + projX,
+                projZ - projY,
+                projZ + projY,
+            };
+            plane_matrix = Transpose( plane_matrix );
 
-                    if ( d[0] > ms_distanceThreshold )
-                        break;
-                }
+            Vector pos = center - Select(light->m_position,Zero4(),Mask<0,0,0,1>());
 
-                useFrontFaceMask = j != 5;
-            }
+            Vector proj = Dot( -ori.m_column[2], pos );
+
+            outside = Mul( plane_matrix, pos ) > distanceThreshold;
+            outside = Or( outside, proj > (distanceThreshold+Splat(light->m_radius)) );
+            outside = Or( outside, Swizzle<1,0,3,2>( outside ) );
+            outside = Or( outside, Swizzle<2,3,0,1>( outside ) );
         }
         else
         {
             geom = &m_geomDirectional;
-            Matrix ori = m;
 
             F32 sinus = Sin( 0.5f * light->m_spotOutAngle ) * light->m_radius;
             Scale( m, Vector3( sinus, sinus, light->m_radius ) );
-            m.m_column[3] = light->m_position;
 
-            Vector normals[6];
-            normals[0] = -ori.m_column[0];
-            normals[1] = ori.m_column[0];
-            normals[2] = -ori.m_column[1];
-            normals[3] = ori.m_column[1];
-            normals[4] = -ori.m_column[2];
-            normals[5] = ori.m_column[2];
+            Matrix plane_matrix = Transpose( ori );
+            plane_matrix.m_column[3] = Vector3( 0.0f, 0.0f, 0.5f*light->m_radius );
 
-            F128 p;
-            Store( p, light->m_position ); 
+            Vector proj = Abs( TransformVertex( plane_matrix, center - light->m_position ) );
+            Vector dist = distanceThreshold + Vector4( sinus, sinus, 0.5f*light->m_radius );
 
-            Vector planes[6];
-            planes[0] = Select( normals[0], -(Splat( sinus )+Dot( normals[0], light->m_position )), Mask<0,0,0,1>() );
-            planes[1] = Select( normals[1], -(Splat( sinus )+Dot( normals[1], light->m_position )), Mask<0,0,0,1>() );
-            planes[2] = Select( normals[2], -(Splat( sinus )+Dot( normals[2], light->m_position )), Mask<0,0,0,1>() );
-            planes[3] = Select( normals[3], -(Splat( sinus )+Dot( normals[3], light->m_position )), Mask<0,0,0,1>() );
-            planes[4] = Select( normals[4], -(Splat( light->m_radius )+Dot( normals[4], light->m_position )), Mask<0,0,0,1>() );
-            planes[5] = Select( normals[5], -(Dot( normals[5], light->m_position )), Mask<0,0,0,1>() );
-
-            for ( SizeT i=0; useFrontFaceMask && i<5; ++i )
-            {
-                SizeT j=0;
-                for ( ; j<6; ++j )
-                {
-                    F128 d;
-                    Store( d, Dot( points[i], planes[j] ) );
-
-                    if ( d[0] > ms_distanceThreshold )
-                        break;
-                }
-
-                useFrontFaceMask = j != 6;
-            }
-
+            outside =  proj > dist;
+            outside = Or( outside, Swizzle<1,2,0,3>( outside ) );
+            outside = Or( outside, Swizzle<2,0,1,3>( outside ) );
         }
+
+        F128 c;
+        Store(c,outside);
+
+        Bool useFrontFaceMask = c[0] != 0.0f;
 
         CARBON_ASSERT( light->m_radius > 0 );
         F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
@@ -446,10 +473,10 @@ namespace Graphic
         F32 spotCosOut = Cos( 0.5f * light->m_spotOutAngle );
 
         LightParameters params;
-        params.m_lightMatrix        = Mul( camera->GetViewProjMatrix(), m );
+        params.m_lightMatrix        = Mul( viewProjMatrix, m );
         params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( camera->GetViewMatrix(), light->m_position );
-        params.m_direction          = TransformVector( camera->GetViewMatrix(), lightDirection );
+        params.m_position           = TransformVertex( viewMatrix, light->m_position );
+        params.m_direction          = TransformVector( viewMatrix, -ori.m_column[2] );
         params.m_spotParameters     = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
 
         Handle uniformBuffer = GetUniformBuffer();
@@ -459,6 +486,24 @@ namespace Graphic
 
         RenderLight renderLight = { m_programSpot, geom, uniformBuffer, useFrontFaceMask };
         m_lights.PushBack( renderLight );
+
+        if ( m_debugDraw )
+        {
+            Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
+
+            ori.m_column[3] = light->m_position;
+
+            Vector geom[4];
+            geom[0] = TransformVertex( ori, Vector4( 0.0f, 0.0f, 0.0f ) );
+            geom[1] = TransformVertex( ori, Vector4( 0.0f, 0.0f, -light->m_radius ) );
+            geom[2] = TransformVertex( ori, scale );
+            geom[3] = TransformVertex( ori, Swizzle<1,0,2,3>( scale ) );
+
+            Vector color = One4();
+            m_debugRenderer->RenderLine( geom[1], geom[0], color );
+            m_debugRenderer->RenderLine( geom[1], geom[2], color );
+            m_debugRenderer->RenderLine( geom[1], geom[3], color );
+        }
     }
 
     Handle LightRenderer::GetUniformBuffer()

@@ -7,24 +7,17 @@
 
 namespace Graphic
 {
-    MeshRenderer::MeshRenderer()
-        : m_opaqueList( 0 )
+    void MeshRenderer::Initialize( DebugRenderer * debugRenderer )
     {
-
-    }
-
-    void MeshRenderer::Initialize( RenderList * opaqueList )
-    {
-        CARBON_ASSERT( !m_opaqueList );
-        m_opaqueList = opaqueList;
+        m_debugRenderer = debugRenderer;
     }
 
     void MeshRenderer::Destroy()
     {
-        m_opaqueList = 0;
+        m_debugRenderer = 0;
     }
 
-    void MeshRenderer::Render( const Mesh * mesh, Handle frameParameters ) const
+    void MeshRenderer::Render( const Mesh * mesh, RenderList * opaqueList, Handle frameParameters ) const
     {
         RenderElement e;
 
@@ -51,7 +44,7 @@ namespace Graphic
                 e.m_textures[ e.m_textureCount ].m_index    = texture.m_index;
             }
 
-            m_opaqueList->Push( e );
+            opaqueList->Push( e );
         }
     }
 }

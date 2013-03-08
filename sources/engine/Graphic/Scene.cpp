@@ -58,7 +58,7 @@ namespace Graphic
 
     void Scene::Clear()
     {
-        m_meshes.Clear();
-        m_lights.Clear();
+        m_meshes.Reserve(0);
+        m_lights.Reserve(0);
     }
 }

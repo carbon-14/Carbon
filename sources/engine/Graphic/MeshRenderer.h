@@ -9,19 +9,18 @@ namespace Graphic
 {
     class RenderList;
     class Mesh;
+    class DebugRenderer;
 
     class _GraphicExport MeshRenderer
     {
     public:
-        MeshRenderer();
-
-        void Initialize( RenderList * opaqueList );
+        void Initialize( DebugRenderer * debugRenderer );
         void Destroy();
 
-        void Render( const Mesh * mesh, Handle frameParameters ) const;
+        void Render( const Mesh * mesh, RenderList * opaqueList, Handle frameParameters ) const;
 
     private:
-        RenderList *    m_opaqueList;
+        DebugRenderer * m_debugRenderer;
     };
 }
 

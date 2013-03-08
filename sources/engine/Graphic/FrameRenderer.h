@@ -2,10 +2,6 @@
 #ifndef _GRAPHIC_FRAMERENDERER_H
 #define _GRAPHIC_FRAMERENDERER_H
 
-#include "Graphic/DLL.h"
-
-#include "Core/Matrix.h"
-
 #include "Graphic/RenderList.h"
 #include "Graphic/MeshRenderer.h"
 #include "Graphic/LightRenderer.h"
@@ -16,26 +12,29 @@ namespace Graphic
     class Scene;
     class Camera;
 
-    struct FrameContext
-    {
-        SizeT       m_width;
-        SizeT       m_height;
-        Camera *    m_camera;
-        Scene *     m_scene;
-
-        Handle      m_depthStencilTexture;
-        Handle      m_normalTexture;
-        Handle      m_colorTexture;
-        Handle      m_linearDepthTexture;
-        Handle      m_lightTexture;
-
-        Handle      m_geomFramebuffer;
-        Handle      m_linearizeDepthFramebuffer;
-        Handle      m_lightFramebuffer;
-    };
-
     class _GraphicExport FrameRenderer
     {
+    public:
+        struct Context
+        {
+            SizeT       m_width;
+            SizeT       m_height;
+            Camera *    m_camera;
+            Scene *     m_scene;
+
+            Handle      m_depthStencilTexture;
+            Handle      m_normalTexture;
+            Handle      m_colorTexture;
+            Handle      m_linearDepthTexture;
+            Handle      m_lightTexture;
+            Handle      m_finalColorBuffer;
+
+            Handle      m_geomFramebuffer;
+            Handle      m_linearizeDepthFramebuffer;
+            Handle      m_lightFramebuffer;
+            Handle      m_finalFramebuffer;
+        };
+
     public:
         FrameRenderer();
         ~FrameRenderer();
@@ -43,15 +42,18 @@ namespace Graphic
         void Initialize();
         void Destroy();
 
-        void Render( const FrameContext& context );
+        void Render( const Context& context );
 
-        static void InitializeFrameContext( FrameContext& context, SizeT width, SizeT height, Camera * camera, Scene * scene );
-        static void DestroyFrameContext( FrameContext& context );
+        static void InitializeFrameContext( Context& context, SizeT width, SizeT height, Camera * camera, Scene * scene );
+        static void DestroyFrameContext( Context& context );
+
+        void SetLightDebugDraw( Bool enable );
+        Bool GetLightDebugDraw() const;
 
         void RenderDebugLine( const Vector& position0, const Vector& position1, const Vector& color );
 
     private:
-        void UpdateFrameUniformBuffer( const FrameContext& context );
+        void UpdateFrameUniformBuffer( const Context& context );
         void LinearizeDepth( Handle depthStencilTexture );
         void ApplyToneMapping( Handle lightTexture );
 
@@ -72,6 +74,6 @@ namespace Graphic
     };
 }
 
-CARBON_DECLARE_POD_TYPE( Graphic::FrameContext );
+CARBON_DECLARE_POD_TYPE( Graphic::FrameRenderer::Context );
 
 #endif // _GRAPHIC_FRAMERENDERER_H

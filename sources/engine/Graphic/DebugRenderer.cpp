@@ -32,7 +32,7 @@ namespace Graphic
         U32 programId   = ProgramCache::CreateId( "debugLine" );
         m_program       = ProgramCache::GetProgram( programId );
 
-        //m_state.m_enableDepthTest = true;
+        m_state.m_enableDepthTest = true;
 
         m_vertexBuffer      = 0;
         m_vertexBufferSize  = 0;
@@ -41,6 +41,8 @@ namespace Graphic
 
     void DebugRenderer::Destroy()
     {
+        m_vertices.Reserve(0);
+
         RenderDevice::DestroyVertexArray( m_vertexArray );
         RenderDevice::DestroyBuffer( m_vertexBuffer );
     }

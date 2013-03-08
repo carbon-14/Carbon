@@ -11,6 +11,7 @@
 
 namespace Graphic
 {
+    class DebugRenderer;
     class RenderCache;
     class RenderGeometry;
     class Scene;
@@ -28,26 +29,27 @@ namespace Graphic
         };
 
     public:
-        void Initialize();
+        void Initialize( DebugRenderer * debugRenderer );
         void Destroy();
 
         void Render( const Scene * scene, const Camera * camera );
         void Draw( RenderCache& renderCache, Handle frameParameters, Handle depthStencilTexture, Handle normalTexture, Handle colorTexture );
 
+        void SetDebugDraw( Bool enable );
+        Bool GetDebugDraw() const;
+
     private:
-        void RenderLightVolume( const Light * light, const Camera * camera );
-        void RenderDirectional( const Light * light, const Camera * camera );
-        void RenderOmni( const Light * light, const Camera * camera );
-        void RenderSpot( const Light * light, const Camera * camera );
+        void RenderLightVolume( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
+        void RenderDirectional( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
+        void RenderOmni( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
+        void RenderSpot( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
 
         Handle GetUniformBuffer();
 
     private:
         typedef Array< RenderLight > LightArray;
         typedef Array< Handle > UniformBufferArray;
-        typedef void (Graphic::LightRenderer::*RenderFunc)( const Light *, const Camera * );
-
-        static const F32    ms_distanceThreshold;
+        typedef void (Graphic::LightRenderer::*RenderFunc)( const Light *, const Matrix&, const Matrix&, const Vector&, const Vector& );
 
         LightArray          m_lights;
         UniformBufferArray  m_uniformBufferPool;
@@ -65,6 +67,7 @@ namespace Graphic
         ProgramHandle       m_programDirectional;
         ProgramHandle       m_programOmni;
         ProgramHandle       m_programSpot;
+        ProgramHandle       m_programAlbedo;
 
         RenderState         m_stateMaskClear0;
         RenderState         m_stateMaskClear1;
@@ -73,6 +76,11 @@ namespace Graphic
         RenderState         m_stateLighting;
         RenderState         m_stateAmbientMask;
         RenderState         m_stateAmbientLighting;
+        RenderState         m_stateAlbedoMask;
+        RenderState         m_stateAlbedoLighting;
+
+        DebugRenderer *     m_debugRenderer;
+        Bool                m_debugDraw;
     };
 }
 

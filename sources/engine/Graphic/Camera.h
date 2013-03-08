@@ -25,7 +25,8 @@ namespace Graphic
         const Matrix& GetInvViewMatrix() const;
         const Matrix& GetProjMatrix() const;
         const Matrix& GetViewProjMatrix() const;
-        const Vector& GetViewScale() const;
+        const Vector& GetViewScaleFar() const;
+        const Vector& GetViewScaleNear() const;
         const Frustum& GetFrustum() const;
 
     public:
@@ -44,7 +45,8 @@ namespace Graphic
         Matrix          m_invViewMatrix;
         Matrix          m_projMatrix;
         Matrix          m_viewProjMatrix;
-        Vector          m_viewScale;
+        Vector          m_viewScaleFar;
+        Vector          m_viewScaleNear;
         Frustum         m_frustum;
     };
 }

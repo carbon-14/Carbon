@@ -37,8 +37,6 @@ namespace Graphic
             viewCorners[FC_RIGHT_BOTTOM_NEAR]   = n * s * Vector4( +1.0f, -1.0f, -1.0f );
             viewCorners[FC_LEFT_TOP_NEAR]       = n * s * Vector4( -1.0f, +1.0f, -1.0f );
             viewCorners[FC_RIGHT_TOP_NEAR]      = n * s * Vector4( +1.0f, +1.0f, -1.0f );
-
-            m_viewScale = viewCorners[FC_RIGHT_TOP_FAR];
         }
         else
         {
@@ -58,9 +56,10 @@ namespace Graphic
             viewCorners[FC_RIGHT_BOTTOM_NEAR]   = n * Vector4( +1.0f, -1.0f, -1.0f );
             viewCorners[FC_LEFT_TOP_NEAR]       = n * Vector4( -1.0f, +1.0f, -1.0f );
             viewCorners[FC_RIGHT_TOP_NEAR]      = n * Vector4( +1.0f, +1.0f, -1.0f );
-
-            m_viewScale = viewCorners[FC_RIGHT_TOP_FAR];
         }
+
+        m_viewScaleFar = viewCorners[FC_RIGHT_TOP_FAR];
+        m_viewScaleNear = viewCorners[FC_RIGHT_TOP_NEAR];
 
         m_viewProjMatrix = Mul( m_projMatrix, m_viewMatrix );
 
@@ -87,9 +86,14 @@ namespace Graphic
         return m_viewProjMatrix;
     }
 
-    const Vector& Camera::GetViewScale() const
+    const Vector& Camera::GetViewScaleFar() const
     {
-        return m_viewScale;
+        return m_viewScaleFar;
+    }
+
+    const Vector& Camera::GetViewScaleNear() const
+    {
+        return m_viewScaleNear;
     }
 
     const Frustum& Camera::GetFrustum() const
