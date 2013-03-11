@@ -490,7 +490,6 @@ namespace Graphic
         if ( m_debugDraw )
         {
             Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
-
             ori.m_column[3] = light->m_position;
 
             Vector geom[4];
