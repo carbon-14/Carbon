@@ -76,11 +76,11 @@ inline Vector Length( Vector v )                            { return Sqrt( Squar
 inline Vector Normalize( Vector v )                         { return Div( v, Length( v ) );         }
 
 // Units
-inline Vector Zero4()                                       { return Splat( 0.0f );                 }
-inline Vector One4()                                        { return Splat( 1.0f );                 }
-inline Vector UnitX()                                       { return Set( 1.0f, 0.0f, 0.0f, 0.0f ); }
-inline Vector UnitY()                                       { return Set( 0.0f, 1.0f, 0.0f, 0.0f ); }
-inline Vector UnitZ()                                       { return Set( 0.0f, 0.0f, 1.0f, 0.0f ); }
-inline Vector UnitW()                                       { return Set( 0.0f, 0.0f, 0.0f, 1.0f ); }
+const Vector Zero4                                          = Splat( 0.0f );
+const Vector One4                                           = Splat( 1.0f );
+const Vector UnitX                                          = Set( 1.0f, 0.0f, 0.0f, 0.0f );
+const Vector UnitY                                          = Set( 0.0f, 1.0f, 0.0f, 0.0f );
+const Vector UnitZ                                          = Set( 0.0f, 0.0f, 1.0f, 0.0f );
+const Vector UnitW                                          = Set( 0.0f, 0.0f, 0.0f, 1.0f );
 
 #endif // _CORE_VECTOR_H

@@ -217,20 +217,20 @@ inline Matrix Inverse( const Matrix& m )
 inline Matrix TMatrix( Vector translation )
 {
     Matrix m;
-    m.m_column[ 0 ] = UnitX();
-    m.m_column[ 1 ] = UnitY();
-    m.m_column[ 2 ] = UnitZ();
-    m.m_column[ 3 ] = Select( translation, One4(), Mask< 0, 0, 0, 1 >() );
+    m.m_column[ 0 ] = UnitX;
+    m.m_column[ 1 ] = UnitY;
+    m.m_column[ 2 ] = UnitZ;
+    m.m_column[ 3 ] = Select( translation, One4, Mask< 0, 0, 0, 1 >() );
     return m;
 }
 
 inline Matrix SMatrix( Vector scale )
 {
     Matrix m;
-    m.m_column[ 0 ] = Select( scale, Zero4(), Mask< 0, 1, 1, 1 >() );
-    m.m_column[ 1 ] = Select( scale, Zero4(), Mask< 1, 0, 1, 1 >() );
-    m.m_column[ 2 ] = Select( scale, Zero4(), Mask< 1, 1, 0, 1 >() );
-    m.m_column[ 3 ] = UnitW();
+    m.m_column[ 0 ] = Select( scale, Zero4, Mask< 0, 1, 1, 1 >() );
+    m.m_column[ 1 ] = Select( scale, Zero4, Mask< 1, 0, 1, 1 >() );
+    m.m_column[ 2 ] = Select( scale, Zero4, Mask< 1, 1, 0, 1 >() );
+    m.m_column[ 3 ] = UnitW;
     return m;
 }
 
@@ -258,22 +258,22 @@ inline Matrix RMatrix( Vector rotation )
         Vector left     = Mul( zzzz, zwx0 );
         Vector right    = Mul( yyyy, yxw0 );
         Vector col0     = Sub( left, right );
-        m.m_column[0]   = Add( col0, UnitX() );
+        m.m_column[0]   = Add( col0, UnitX );
     }
     {
         Vector left     = Mul( xxxx, yxw0 );
         Vector right    = Mul( zzzz, wzy0 );
         Vector col1     = Sub( left, right );
-        m.m_column[1]   = Add( col1, UnitY() );
+        m.m_column[1]   = Add( col1, UnitY );
     }
     {
         Vector left     = Mul( yyyy, wzy0 );
         Vector right    = Mul( xxxx, zwx0 );
         Vector col2     = Sub( left, right );
-        m.m_column[2]   = Add( col2, UnitZ() );
+        m.m_column[2]   = Add( col2, UnitZ );
     }
 
-    m.m_column[3] = UnitW();
+    m.m_column[3] = UnitW;
 
     return m;
 }
@@ -328,15 +328,13 @@ inline Vector TransformVertex( const Matrix& m, const Vector& v )
 }
 
 // Units
-inline Matrix Identity()
+const Matrix Identity =
 {
-    Matrix m;
-    m.m_column[ 0 ] = UnitX();
-    m.m_column[ 1 ] = UnitY();
-    m.m_column[ 2 ] = UnitZ();
-    m.m_column[ 3 ] = UnitW();
-    return m;
-}
+    UnitX,
+    UnitY,
+    UnitZ,
+    UnitW
+};
 
 CARBON_DECLARE_POD_TYPE( Matrix );
 

@@ -14,7 +14,7 @@ inline Vector Quaternion( Vector axis, F32 angle )
 
     Vector factor = Set( sin, sin, sin, cos );
 
-    return Mul( factor, Select( axis, One4(), Mask< 0, 0, 0, 1 >() ) );
+    return Mul( factor, Select( axis, One4, Mask< 0, 0, 0, 1 >() ) );
 }
 
 // Arithmetic
@@ -57,9 +57,6 @@ inline Vector InverseQuat( Vector q )
 }
 
 // Units
-inline Vector IdentityQuat()
-{
-    return UnitW();
-}
+const Vector IdentityQuat = UnitW;
 
 #endif // _CORE_QUATERNION_H
