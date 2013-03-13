@@ -29,7 +29,7 @@ namespace Level7_NS
     Camera * m_camera = 0;
     
     const F32 moveSpeed = 10.0f;
-    const F32 turnSpeed = 0.2f * Pi();
+    const F32 turnSpeed = 0.2f * Pi;
 
     F32 moveX = 0.0f;
     F32 moveY = 0.0f;
@@ -59,7 +59,7 @@ void Level7::ProcessInputs( RAWINPUT * raw )
                 ProgramCache::NotifySourceChange();
                 break;
             case 'L':
-                m_frameRenderer.SetLightDebugDraw( !m_frameRenderer.GetLightDebugDraw() );
+                m_frameContext->m_lightRendererContext->m_debugDraw = !m_frameContext->m_lightRendererContext->m_debugDraw;
                 break;
             case 'Z':
                 moveY = Min( 1.0f, moveY + 1.0f );
@@ -108,7 +108,10 @@ void Level7::PreExecute()
 {
     QuadGeometry::GetInstance().Initialize();
 
-    m_frameRenderer.Initialize();
+    m_debugRenderer.Initialize();
+    m_meshRenderer.Initialize( &m_debugRenderer );
+    m_lightRenderer.Initialize( &m_debugRenderer );
+    m_frameRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer );
 
     m_scene = MemoryManager::New< Scene >();
     m_scene->SetAmbientSkyLight( Vector4( 0.00185f, 0.003325f, 0.00625f ) );
@@ -118,8 +121,8 @@ void Level7::PreExecute()
         m_mesh = MemoryManager::New< Mesh >();
         m_mesh->SetResource( ResourceManager::Create< MeshResource >( "sibenik/sibenik.bmh" ) );
         m_mesh->m_position = Vector4( 0.0f, 0.0f, 0.0f );
-        m_mesh->m_scale = One4();
-        m_mesh->m_orientation = IdentityQuat();
+        m_mesh->m_scale = One4;
+        m_mesh->m_orientation = IdentityQuat;
         m_mesh->Update();
 
         m_scene->AddMesh( m_mesh );
@@ -129,7 +132,7 @@ void Level7::PreExecute()
         m_sphere = MemoryManager::New< Mesh >();
         m_sphere->SetResource( ResourceManager::Create< MeshResource >( "sphere/sphere.bmh" ) );
         m_sphere->m_position = Vector4( 5.0f, -10.0f, 0.0f );
-        m_sphere->m_scale = One4();
+        m_sphere->m_scale = One4;
         m_sphere->m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
         m_sphere->Update();
 
@@ -142,7 +145,7 @@ void Level7::PreExecute()
         SizeT Z = 3;
 
         const Vector light_spacing = Splat( 6.0f );
-        const Vector light_offset  = Vector4( 0.0f, 0.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
+        const Vector light_offset  = Vector4( -3.0f, -6.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
 
         m_lights.Reserve( X * Y * Z );
 
@@ -161,18 +164,18 @@ void Level7::PreExecute()
 
                     Vector lightColor = Lerp( color, Swizzle< 2, 1, 0, 3 >( color ), Splat(lightRatio) );
 
-                    F32 angleX = TwoPi()*((F32)rand())/RAND_MAX;
-                    F32 angleY = TwoPi()*((F32)rand())/RAND_MAX;
+                    F32 angleX = TwoPi*((F32)rand())/RAND_MAX;
+                    F32 angleY = TwoPi*((F32)rand())/RAND_MAX;
 
                     Light * light               = MemoryManager::New< Light >();
                     light->m_value              = lightColor;
                     light->m_position           = Vector4( x, y, z ) * light_spacing + light_offset;
-                    light->m_orientation        = MulQuat( Quaternion( UnitY(), angleY ), Quaternion( UnitX(), angleX ) );
+                    light->m_orientation        = MulQuat( Quaternion( UnitY, angleY ), Quaternion( UnitX, angleX ) );
                     light->m_radius             = 12.0f;
                     light->m_directionalWidth   = 10.0f;
                     light->m_directionalHeight  = 5.0f;
                     light->m_spotInAngle        = 0.0f;
-                    light->m_spotOutAngle       = HalfPi();
+                    light->m_spotOutAngle       = 0.75f*Pi;
                     light->m_type               = LT_SPOT;
 
                     m_lights.PushBack( light );
@@ -186,11 +189,11 @@ void Level7::PreExecute()
         m_camera = MemoryManager::New< Camera >();
 
         m_camera->m_position        = Vector4( -15.0f, -11.5f, 1.0f );
-        m_camera->m_orientation     = Quaternion( UnitY(), -HalfPi() );
+        m_camera->m_orientation     = Quaternion( UnitY, -HalfPi );
 
         m_camera->m_near            = 0.25f;
         m_camera->m_far             = 100.0f;
-        m_camera->m_fov             = HalfPi();
+        m_camera->m_fov             = HalfPi;
         m_camera->m_aspectRatio     = static_cast< F32 >( m_window.width ) / static_cast< F32 >( m_window.height );
 
         m_camera->m_projectionType  = PT_PERSPECTIVE;
@@ -211,14 +214,14 @@ void Level7::PreExecute()
         m_scene->AddLight( m_flash );
     }
 
-    FrameRenderer::InitializeFrameContext( m_frameContext, m_window.width, m_window.height, m_camera, m_scene );
+    m_frameContext = FrameRenderer::CreateContext();
 
     scene_ready = false;
 }
 
 void Level7::PostExecute()
 {
-    FrameRenderer::DestroyFrameContext( m_frameContext );
+    FrameRenderer::DestroyContext( m_frameContext );
 
     m_scene->Clear();
 
@@ -238,8 +241,13 @@ void Level7::PostExecute()
     MemoryManager::Delete( m_scene );
 
     m_frameRenderer.Destroy();
+    m_lightRenderer.Destroy();
+    m_meshRenderer.Destroy();
+    m_debugRenderer.Destroy();
 
     QuadGeometry::GetInstance().Destroy();
+
+    m_renderCache.Clear();
 }
 
 void Level7::Execute()
@@ -249,10 +257,10 @@ void Level7::Execute()
         F32 time = static_cast< F32 >( m_clockTicks * TimeUtils::ClockPeriod() );
         F32 elapsedTime = static_cast< F32 >( m_frameTicks * TimeUtils::ClockPeriod() );
 
-        Vector rotateY = Quaternion( UnitY(), -mousedX * elapsedTime * turnSpeed );
+        Vector rotateY = Quaternion( UnitY, -mousedX * elapsedTime * turnSpeed );
         mousedX = 0.0f;
 
-        Vector rotateX = Quaternion( UnitX(), -mousedY * elapsedTime * turnSpeed );
+        Vector rotateX = Quaternion( UnitX, -mousedY * elapsedTime * turnSpeed );
         mousedY = 0.0f;
 
         m_camera->m_orientation = MulQuat( m_camera->m_orientation, rotateX );
@@ -272,7 +280,10 @@ void Level7::Execute()
         m_flash->m_orientation  = m_camera->m_orientation;
         m_flash->m_position     = m_camera->m_position;
 
+        FrameRenderer::UpdateContext( m_frameContext, m_window.width, m_window.height, m_camera, m_scene );
+
         m_frameRenderer.Render( m_frameContext );
+        m_frameRenderer.Draw( m_frameContext, m_renderCache );
     }
     else
     {

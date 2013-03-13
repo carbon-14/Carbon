@@ -42,12 +42,12 @@ void Level2()
 
     // Creation de la matrice de transformation du triangle : local -> world
 
-    Vector orientation  = Quaternion( UnitX(), 0.25f * Pi() );
+    Vector orientation  = Quaternion( UnitX, QuarterPi );
     Vector scale        = Vector3( 2.0f, 2.0f, 2.0f );
     Vector translation  = Vector3( 1.0f, 1.0f, 1.0f );
 
     UNIT_TEST_MESSAGE( "Transformation dans le repere monde :\n" );
-    UNIT_TEST_MESSAGE( "Orientation : %0.2f rad sur l'axe ( %s )\n", 0.25f * Pi(), SerializeVector( v_serial, UnitX() ) );
+    UNIT_TEST_MESSAGE( "Orientation : %0.2f rad sur l'axe ( %s )\n", QuarterPi, SerializeVector( v_serial, UnitX ) );
     UNIT_TEST_MESSAGE( "Echelle : ( %s )\n", SerializeVector( v_serial, scale )  );
     UNIT_TEST_MESSAGE( "Translation : ( %s )\n\n", SerializeVector( v_serial, translation )  );
 
@@ -72,7 +72,7 @@ void Level2()
     UNIT_TEST_MESSAGE( "La camera 'regarde' a la position du triangle : ( %s )\n\n", SerializeVector( v_serial, cam_at ) );
 
     Vector cam_dir      = Normalize( cam_at - cam_pos );
-    Vector cam_up       = UnitY();
+    Vector cam_up       = UnitY;
     Vector cam_right    = Normalize( Cross( cam_dir, cam_up ) );
     cam_up              = Normalize( Cross( cam_right, cam_dir ) );
 
@@ -143,7 +143,7 @@ void Level2()
     // - Bonus -
     // Projection perspective
 
-    F32 fov = HalfPi();         // need more ??? :)
+    F32 fov = HalfPi;         // need more ??? :)
     F32 ratio = 16.0f / 10.0f;
 
     F32 cotan = 1.0f / Tan( 0.5f * fov ) ;
@@ -168,9 +168,9 @@ void Level2()
 
     const Vector maskZ = Mask< 0, 0, 1, 0 >();
 
-    homogeneous[ 0 ] = Select( homogeneous[ 0 ], One4(), maskZ );
-    homogeneous[ 1 ] = Select( homogeneous[ 1 ], One4(), maskZ );
-    homogeneous[ 2 ] = Select( homogeneous[ 2 ], One4(), maskZ );
+    homogeneous[ 0 ] = Select( homogeneous[ 0 ], One4, maskZ );
+    homogeneous[ 1 ] = Select( homogeneous[ 1 ], One4, maskZ );
+    homogeneous[ 2 ] = Select( homogeneous[ 2 ], One4, maskZ );
 
     screen_triangle[ 0 ] = Div( screen_triangle[ 0 ], homogeneous[ 0 ] );
     screen_triangle[ 1 ] = Div( screen_triangle[ 1 ], homogeneous[ 1 ] );

@@ -42,7 +42,7 @@ namespace Level5_NS
     };
 
     const F32 moveSpeed = 10.0f;
-    const F32 turnSpeed = 0.2f * Pi();
+    const F32 turnSpeed = 0.2f * Pi;
 
     F32 moveX = 0.0f;
     F32 moveY = 0.0f;
@@ -53,7 +53,7 @@ namespace Level5_NS
     F32 mousedY = 0.0f;
 
     Vector cameraPosition       = Vector4( 0.0f, 0.0f, 0.0f );
-    Vector cameraOrientation    = Quaternion( UnitY(), -HalfPi() );
+    Vector cameraOrientation    = Quaternion( UnitY, -HalfPi );
 
     const Vector gravity = Vector3( 0.0f, -1.0f, 0.0f );
     const Vector arenaMax = Vector4( 3.0f, 100.0f, 7.0f );
@@ -65,7 +65,7 @@ namespace Level5_NS
     const F32 friction = 10.0f;
 
     Vector bodyPosition = Vector4( 0.0f, 0.0f, 0.0f );
-    Vector bodySpeed    = Zero4();
+    Vector bodySpeed    = Zero4;
     F32 bodyMass        = 50.0f;
     F32 bodyMaxSpeed    = bodyWalkSpeed;
     Bool bodyFall       = true;
@@ -253,7 +253,7 @@ namespace Level5_NS
             m_textures[1]   = ResourceManager::Create< TextureResource >( "level5/crack_n.btx" );
 
             m_position      = Vector4( 5.0f, -10.0f, 0.0f );
-            m_scale         = One4();
+            m_scale         = One4;
             m_orientation   = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.0f );
         }
 
@@ -391,7 +391,7 @@ namespace Level5_NS
                 case VK_F3:
                     cameraMode = CM_FPS;
                     bodyPosition = cameraPosition - bodyOffset;
-                    bodySpeed = Zero4();
+                    bodySpeed = Zero4;
                     bodyFall = true;
                     break;
                 case VK_SHIFT:
@@ -526,7 +526,7 @@ namespace Level5_NS
 
                 F32 angleX = ASin( dir[1] );
 
-                Vector cam_proj     = Normalize( Select( cam_dir, Zero4(), Mask< 0, 1, 0, 1 >() ) );
+                Vector cam_proj     = Normalize( Select( cam_dir, Zero4, Mask< 0, 1, 0, 1 >() ) );
                 F128 proj;
                 Store( proj, cam_proj );
 
@@ -534,16 +534,16 @@ namespace Level5_NS
                 if ( proj[2] > 0.0f )
                     angleY = -angleY;
 
-                cameraOrientation = MulQuat( Quaternion( UnitY(), angleY - HalfPi() ), Quaternion( UnitX(), angleX ) );
+                cameraOrientation = MulQuat( Quaternion( UnitY, angleY - HalfPi ), Quaternion( UnitX, angleX ) );
 
                 break;
             }
         case CM_Free:
             {
-                Vector rotateY = Quaternion( UnitY(), -mousedX * elapsedTime * turnSpeed );
+                Vector rotateY = Quaternion( UnitY, -mousedX * elapsedTime * turnSpeed );
                 mousedX = 0.0f;
 
-                Vector rotateX = Quaternion( UnitX(), -mousedY * elapsedTime * turnSpeed );
+                Vector rotateX = Quaternion( UnitX, -mousedY * elapsedTime * turnSpeed );
                 mousedY = 0.0f;
 
                 cameraOrientation = MulQuat( cameraOrientation, rotateX );
@@ -558,10 +558,10 @@ namespace Level5_NS
             }
         case CM_FPS:
             {
-                Vector rotateY = Quaternion( UnitY(), -mousedX * elapsedTime * turnSpeed );
+                Vector rotateY = Quaternion( UnitY, -mousedX * elapsedTime * turnSpeed );
                 mousedX = 0.0f;
 
-                Vector rotateX = Quaternion( UnitX(), -mousedY * elapsedTime * turnSpeed );
+                Vector rotateX = Quaternion( UnitX, -mousedY * elapsedTime * turnSpeed );
                 mousedY = 0.0f;
 
                 Vector rotate = MulQuat( rotateY, rotateX );
@@ -576,12 +576,12 @@ namespace Level5_NS
                 }
                 else
                 {
-                    Vector move = Zero4();
+                    Vector move = Zero4;
                     if ( moveX != 0.0f || moveY != 0.0f )
                     {
                         Matrix ori = RMatrix( cameraOrientation );
-                        Vector right = Splat( moveX ) * Select( ori.m_column[0], Zero4(), Mask< 0, 1, 0, 1 >() );
-                        Vector front = Splat( moveY ) * Select( ori.m_column[2], Zero4(), Mask< 0, 1, 0, 1 >() );
+                        Vector right = Splat( moveX ) * Select( ori.m_column[0], Zero4, Mask< 0, 1, 0, 1 >() );
+                        Vector front = Splat( moveY ) * Select( ori.m_column[2], Zero4, Mask< 0, 1, 0, 1 >() );
                         move = right - front;
                     }
 
@@ -591,7 +591,7 @@ namespace Level5_NS
 
                     if ( bodyJump )
                     {
-                        bodySpeed = bodySpeed + Normalize( UnitY() + Splat(0.1f) * move ) * Splat(bodyJumpForce);
+                        bodySpeed = bodySpeed + Normalize( UnitY + Splat(0.1f) * move ) * Splat(bodyJumpForce);
                         bodyFall = true;
                         bodyJump = false;
                     }
@@ -621,7 +621,7 @@ namespace Level5_NS
 
         flash->position     = cam_base.m_column[3];
         flash->direction    = -cam_base.m_column[2];
-        flash->color        = useFlashLight ? One4() : Zero4();
+        flash->color        = useFlashLight ? One4 : Zero4;
 
         RenderDevice::UnmapUniformBuffer( );
 
@@ -629,7 +629,7 @@ namespace Level5_NS
 
         F32 n       = 0.25f;
         F32 f       = 50.0f;
-        F32 fov     = HalfPi();                 // need more ??? :)
+        F32 fov     = HalfPi;                 // need more ??? :)
 
         F32 cotan   = 1.0f / Tan( 0.5f * fov ) ;
 
@@ -753,7 +753,7 @@ WPARAM Level5( HINSTANCE hInstance, int nCmdShow )
     lightParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&light, BU_DYNAMIC );
 
     LightData flash;
-    flash.color = Zero4();
+    flash.color = Zero4;
     flash.radius = 15.0f;
 
     flashParameters = RenderDevice::CreateUniformBuffer( sizeof(LightData),&flash, BU_DYNAMIC );

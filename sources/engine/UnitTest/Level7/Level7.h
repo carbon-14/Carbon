@@ -17,8 +17,13 @@ protected:
     void PostExecute();
     void Execute();
 
-    Graphic::FrameRenderer          m_frameRenderer;
-    Graphic::FrameRenderer::Context m_frameContext;
+    Graphic::DebugRenderer              m_debugRenderer;
+    Graphic::MeshRenderer               m_meshRenderer;
+    Graphic::LightRenderer              m_lightRenderer;
+    Graphic::FrameRenderer              m_frameRenderer;
+    Graphic::FrameRenderer::Context *   m_frameContext;
+
+    Graphic::RenderCache                m_renderCache;
 };
 
 #endif // _UNITTEST_LEVEL7_H
