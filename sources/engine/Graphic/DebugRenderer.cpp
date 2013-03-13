@@ -27,74 +27,85 @@ namespace Graphic
 
     void DebugRenderer::Initialize()
     {
-        m_vertices.Reserve( 128 );
-
         U32 programId   = ProgramCache::CreateId( "debugLine" );
         m_program       = ProgramCache::GetProgram( programId );
 
         m_state.m_enableDepthTest = true;
-
-        m_vertexBuffer      = 0;
-        m_vertexBufferSize  = 0;
-        m_vertexArray       = 0;
     }
 
     void DebugRenderer::Destroy()
     {
-        m_vertices.Reserve(0);
-
-        RenderDevice::DestroyVertexArray( m_vertexArray );
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
     }
 
-    void DebugRenderer::RenderLine( const Vector& position0, const Vector& position1, const Vector& color )
+    DebugRenderer::Context * DebugRenderer::CreateContext()
+    {
+        Context * context = MemoryManager::New< Context >();
+
+        context->m_vertices.Reserve(128);
+        context->m_vertexBuffer = 0;
+        context->m_vertexBufferSize = 0;
+        context->m_vertexArray = 0;
+
+        return context;
+    }
+
+    void DebugRenderer::UpdateContext( Context * context )
+    {
+        context->m_vertices.Clear();
+    }
+
+    void DebugRenderer::DestroyContext( Context * context )
+    {
+        RenderDevice::DestroyVertexArray( context->m_vertexArray );
+        RenderDevice::DestroyBuffer( context->m_vertexBuffer );
+
+        MemoryManager::Delete( context );
+    }
+
+    void DebugRenderer::Render( const DebugLine& line, Context * context ) const
     {
         F128 tmp;
         Vertex p;
 
-        Store( tmp, color * Splat( 255.0f ) );
+        Store( tmp, line.m_color * Splat( 255.0f ) );
         p.m_color[0] = (U8)tmp[0];
         p.m_color[1] = (U8)tmp[1];
         p.m_color[2] = (U8)tmp[2];
         p.m_color[3] = (U8)tmp[3];
 
-        Store( tmp, position0 );
+        Store( tmp, line.m_position0 );
         MemoryUtils::MemCpy( p.m_pos, tmp, 12 );
-        m_vertices.PushBack( p );
+        context->m_vertices.PushBack( p );
 
-        Store( tmp, position1 );
+        Store( tmp, line.m_position1 );
         MemoryUtils::MemCpy( p.m_pos, tmp, 12 );
-        m_vertices.PushBack( p );
+        context->m_vertices.PushBack( p );
     }
 
-    void DebugRenderer::Draw( RenderCache& renderCache, Handle frameParameters )
+    void DebugRenderer::Draw( Context * context, RenderCache& renderCache ) const
     {
-        if ( ! m_vertices.Empty() )
+        if ( ! context->m_vertices.Empty() )
         {
-            if ( m_vertexBufferSize < m_vertices.Capacity() )
+            if ( context->m_vertexBufferSize < context->m_vertices.Capacity() )
             {
-                RenderDevice::DestroyVertexArray( m_vertexArray );
-                RenderDevice::DestroyBuffer( m_vertexBuffer );
-                m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(Vertex) * m_vertices.Capacity(), 0, BU_DYNAMIC );
-                m_vertexBufferSize = m_vertices.Capacity();
-                m_vertexArray = RenderDevice::CreateVertexArray( m_vdecl, m_vertexBuffer );
+                RenderDevice::DestroyVertexArray( context->m_vertexArray );
+                RenderDevice::DestroyBuffer( context->m_vertexBuffer );
+                context->m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(Vertex) * context->m_vertices.Capacity(), 0, BU_DYNAMIC );
+                context->m_vertexBufferSize = context->m_vertices.Capacity();
+                context->m_vertexArray = RenderDevice::CreateVertexArray( m_vdecl, context->m_vertexBuffer );
             }
 
-            void * data = RenderDevice::MapVertexBuffer( m_vertexBuffer, BA_WRITE_ONLY );
-            MemoryUtils::MemCpy( data, m_vertices.ConstPtr(), sizeof(Vertex) * m_vertices.Size() );
+            void * data = RenderDevice::MapVertexBuffer( context->m_vertexBuffer, BA_WRITE_ONLY );
+            MemoryUtils::MemCpy( data, context->m_vertices.ConstPtr(), sizeof(Vertex) * context->m_vertices.Size() );
             RenderDevice::UnmapVertexBuffer();
 
             ProgramCache::UseProgram( m_program );
             renderCache.SetSRGBWrite( false );
             renderCache.SetRenderState( m_state );
 
-            RenderDevice::BindUniformBuffer( frameParameters, LI_FRAME );
-
-            RenderDevice::BeginGeometry( m_vertexArray );
-            RenderDevice::Draw( PT_LINES, m_vertices.Size() );
+            RenderDevice::BeginGeometry( context->m_vertexArray );
+            RenderDevice::Draw( PT_LINES, context->m_vertices.Size() );
             RenderDevice::EndGeometry();
-
-            m_vertices.Clear();
         }
     }
 }

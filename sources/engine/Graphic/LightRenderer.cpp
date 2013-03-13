@@ -6,22 +6,12 @@
 #include "Graphic/Scene.h"
 #include "Graphic/Camera.h"
 #include "Graphic/QuadGeometry.h"
-#include "Graphic/DebugRenderer.h"
 
 #include "Core/Math.h"
 #include "Core/Matrix.h"
 
 namespace Graphic
 {
-    struct LightParameters
-    {
-        Matrix  m_lightMatrix;
-        Vector  m_valueInvSqrRadius;
-        Vector  m_position;
-        Vector  m_direction;
-        Vector  m_spotParameters;
-    };
-
     void LightRenderer::Initialize(  DebugRenderer * debugRenderer )
     {
         // Directional light
@@ -134,32 +124,45 @@ namespace Graphic
         m_stateAlbedoLighting.m_dstBlendFunc        = BF_SRC_COLOR;
         m_stateAlbedoLighting.m_blendMode           = BM_ADD;
 
-        m_uniformBufferCount = 0;
-
         m_debugRenderer = debugRenderer;
-        m_debugDraw     = false;
     }
 
     void LightRenderer::Destroy()
     {
         m_debugRenderer = 0;
 
-        UniformBufferArray::Iterator it = m_uniformBufferPool.Begin();
-        UniformBufferArray::Iterator end = m_uniformBufferPool.End();
-        for ( ; it!=end; ++it )
-        {
-            RenderDevice::DestroyBuffer( *it );
-        }
-        m_uniformBufferPool.Reserve(0);
-
-        m_lights.Reserve(0);
-
         m_geomSpot.Destroy();
         m_geomOmni.Destroy();
         m_geomDirectional.Destroy();
     }
 
-    void LightRenderer::Render( const Scene * scene, const Camera * camera )
+    LightRenderer::Context * LightRenderer::CreateContext( DebugRenderer::Context * debugContext )
+    {
+        Context * context = MemoryManager::New< Context >();
+
+        context->m_renderLights         = (RenderLight*)MemoryManager::Malloc( 16 * sizeof(RenderLight), MemoryUtils::AlignOf<RenderLight>() );
+
+        RenderLight * it                = context->m_renderLights;
+        const RenderLight * end         = it + 16;
+        for ( ; it!=end; ++it )
+        {
+            it->m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(LightParameters), 0, BU_DYNAMIC );
+        }
+
+        context->m_renderLightSize      = 16;
+        context->m_renderLightCount     = 0;
+
+        context->m_linearDepthTexture   = 0;
+        context->m_normalTexture        = 0;
+        context->m_colorTexture         = 0;
+
+        context->m_debugContext         = debugContext;
+        context->m_debugDraw            = false;
+
+        return context;
+    }
+
+    void LightRenderer::UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture )
     {
         const Matrix tr =
         {
@@ -169,37 +172,47 @@ namespace Graphic
             camera->GetFrustum().GetCorners()[FC_RIGHT_TOP_NEAR]
         };
 
-        Vector c = Select( camera->GetViewScaleNear(), Zero4(), Mask<0,0,0,1>() );
+        Vector c = Select( camera->GetViewScaleNear(), Zero4, Mask<0,0,0,1>() );
         Vector cos = Abs( Swizzle<2,2,2,2>(c) );
 
-        const Vector distanceThreshold  = Splat( 0.5f ) * SquareLength(c) / cos;
-
-        const Vector center             = camera->m_position - distanceThreshold * camera->GetInvViewMatrix().m_column[2];
-
-        const Matrix& viewMatrix        = camera->GetViewMatrix();
-        const Matrix& viewProjMatrix    = camera->GetViewProjMatrix();
-
-        const Scene::LightArray& lights = scene->GetLights();
-        Scene::LightArray::ConstIterator it = lights.Begin();
-        Scene::LightArray::ConstIterator end = lights.End();
-        for ( ; it != end; ++it )
-        {
-            RenderLightVolume( *it, viewMatrix, viewProjMatrix, center, distanceThreshold );
-        }
+        context->m_renderLightCount     = 0;
+        context->m_colSphereRadius      = Splat( 0.5f ) * SquareLength(c) / cos;
+        context->m_colSphereCenter      = camera->m_position - context->m_colSphereRadius * camera->GetInvViewMatrix().m_column[2];
+        context->m_viewMatrix           = camera->GetViewMatrix();
+        context->m_viewProjMatrix       = camera->GetViewProjMatrix();
+        context->m_linearDepthTexture   = linearDepthTexture;
+        context->m_normalTexture        = normalTexture;
+        context->m_colorTexture         = colorTexture;
     }
 
-    void LightRenderer::Draw( RenderCache& renderCache, Handle frameParameters, Handle depthStencilTexture, Handle normalTexture, Handle colorTexture )
+    void LightRenderer::DestroyContext( Context * context )
     {
-        RenderDevice::BindTexture( depthStencilTexture  , 0 );
-        RenderDevice::BindTexture( normalTexture        , 1 );
-        RenderDevice::BindTexture( colorTexture         , 2 );
+        RenderLight * it = context->m_renderLights;
+        const RenderLight * end = it + context->m_renderLightSize;
+        for ( ; it!=end; ++it )
+        {
+            RenderDevice::DestroyBuffer( it->m_uniformBuffer );
+        }
+        MemoryManager::Free( context->m_renderLights );
+
+        MemoryManager::Delete( context );
+    }
+
+    void LightRenderer::Render( const Light * light, Context * context ) const
+    {
+        (this->*(m_renderFunc[light->m_type]))( light, context );
+    }
+
+    void LightRenderer::Draw( Context * context, RenderCache& renderCache ) const
+    {
+        RenderDevice::BindTexture( context->m_linearDepthTexture     , 0 );
+        RenderDevice::BindTexture( context->m_normalTexture          , 1 );
+        RenderDevice::BindTexture( context->m_colorTexture           , 2 );
 
         renderCache.SetClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
         RenderDevice::Clear( RM_COLOR );
 
         renderCache.SetSRGBWrite( false );
-
-        RenderDevice::BindUniformBuffer( frameParameters, LI_FRAME );
 
         ProgramCache::UseProgram( m_programAmbientMask );
         renderCache.SetRenderState( m_stateAmbientMask );
@@ -209,40 +222,37 @@ namespace Graphic
         renderCache.SetRenderState( m_stateAmbientLighting );
         QuadGeometry::GetInstance().Draw();
 
-        LightArray::ConstIterator it = m_lights.Begin();
-        LightArray::ConstIterator end = m_lights.End();
+        const RenderLight * it = context->m_renderLights;
+        const RenderLight * end = it + context->m_renderLightCount;
         for ( ; it!=end; ++it )
         {
-            const RenderLight& light = *it;
-
-            RenderDevice::BindUniformBuffer( frameParameters, LI_FRAME );
             RenderDevice::BindUniformBuffer( it->m_uniformBuffer, 0 );
 
             // Stencil masking
             ProgramCache::UseProgram( m_programMask );
 
-            if ( light.m_useFrontFace )
+            if ( it->m_useFrontFace )
             {
                 renderCache.SetRenderState( m_stateMaskClear0 );
-                 light.m_geometry->Draw();
+                 it->m_geometry->Draw();
         
                 renderCache.SetRenderState( m_stateMaskFront );
-                 light.m_geometry->Draw();
+                 it->m_geometry->Draw();
             }
             else
             {
                 renderCache.SetRenderState( m_stateMaskClear1 );
-                light.m_geometry->Draw();
+                it->m_geometry->Draw();
             }
 
             renderCache.SetRenderState( m_stateMaskBack );
-            light.m_geometry->Draw();
+            it->m_geometry->Draw();
 
             // Lighting 
-            ProgramCache::UseProgram( light.m_program );
+            ProgramCache::UseProgram( it->m_program );
 
             renderCache.SetRenderState( m_stateLighting );
-            light.m_geometry->Draw();
+            it->m_geometry->Draw();
         }
 
         ProgramCache::UseProgram( m_programAmbientMask );
@@ -256,38 +266,30 @@ namespace Graphic
         ProgramCache::UseProgram( m_programAlbedo );
         renderCache.SetRenderState( m_stateAlbedoLighting );
         QuadGeometry::GetInstance().Draw();
-
-        m_lights.Clear();
-        m_uniformBufferCount = 0;
     }
 
-    void LightRenderer::SetDebugDraw( Bool enable )
+    void LightRenderer::RenderDirectional( const Light * light, Context * context ) const
     {
-        m_debugDraw = enable;
-    }
+        RenderLight * render_light = GetRenderLight( context );
+        render_light->m_program  = m_programDirectional;
+        render_light->m_geometry = &m_geomDirectional;
 
-    Bool LightRenderer::GetDebugDraw() const
-    {
-        return m_debugDraw;
-    }
-
-    void LightRenderer::RenderLightVolume( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
-    {
-        F128 v;
-        Store( v, light->m_value );
-        if ( v[0] > 0.0f || v[1] > 0.0f || v[2] > 0.0f )
-        {
-            (this->*(m_renderFunc[light->m_type]))( light, viewMatrix, viewProjMatrix, center, distanceThreshold );
-        }
-    }
-
-    void LightRenderer::RenderDirectional( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
-    {
         Matrix ori = RMatrix( light->m_orientation );
 
         Matrix m = ori;
         Scale( m, Vector4( 0.5f*light->m_directionalWidth, 0.5f*light->m_directionalHeight, light->m_radius ) );
         m.m_column[3] = light->m_position;
+
+        LightParameters params;
+        params.m_lightMatrix        = Mul( context->m_viewProjMatrix, m );
+        params.m_valueInvSqrRadius  = Select( light->m_value, Zero4, Mask<0,0,0,1>() );
+        params.m_position           = TransformVertex( context->m_viewMatrix, light->m_position );
+        params.m_direction          = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
+        params.m_spotParameters     = Zero4;
+
+        void * data = RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY );
+        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
+        RenderDevice::UnmapUniformBuffer();
 
         // Check if camera position and frustum near corners are outside the light volume
         //
@@ -295,8 +297,8 @@ namespace Graphic
         Matrix plane_matrix = Transpose( ori );
         plane_matrix.m_column[3] = Vector3( 0.0f, 0.0f, 0.5f*light->m_radius );
 
-        Vector proj = Abs( TransformVertex( plane_matrix, center - light->m_position ) );
-        Vector dist = distanceThreshold + Splat(0.5f) * Vector4( light->m_directionalWidth, light->m_directionalHeight, light->m_radius );
+        Vector proj = Abs( TransformVertex( plane_matrix, context->m_colSphereCenter - light->m_position ) );
+        Vector dist = context->m_colSphereRadius + Splat(0.5f) * Vector4( light->m_directionalWidth, light->m_directionalHeight, light->m_radius );
 
         Vector outside =  proj > dist;
         outside = Or( outside, Swizzle<1,2,0,3>( outside ) );
@@ -305,24 +307,9 @@ namespace Graphic
         F128 c;
         Store(c,outside);
 
-        Bool useFrontFaceMask = c[0] != 0.0f;
+        render_light->m_useFrontFace = c[0] != 0.0f;
 
-        LightParameters params;
-        params.m_lightMatrix        = Mul( viewProjMatrix, m );
-        params.m_valueInvSqrRadius  = Select( light->m_value, Zero4(), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( viewMatrix, light->m_position );
-        params.m_direction          = TransformVector( viewMatrix, -ori.m_column[2] );
-        params.m_spotParameters     = Zero4();
-
-        Handle uniformBuffer = GetUniformBuffer();
-        void * data = RenderDevice::MapUniformBuffer( uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
-        RenderDevice::UnmapUniformBuffer();
-
-        RenderLight renderLight = { m_programDirectional, &m_geomDirectional, uniformBuffer, useFrontFaceMask };
-        m_lights.PushBack( renderLight );
-
-        if ( m_debugDraw )
+        if ( context->m_debugDraw )
         {
             Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
             ori.m_column[3] = light->m_position;
@@ -333,23 +320,45 @@ namespace Graphic
             geom[2] = TransformVertex( ori, scale );
             geom[3] = TransformVertex( ori, Swizzle<1,0,2,3>( scale ) );
 
-            Vector color = One4();
-            m_debugRenderer->RenderLine( geom[1], geom[0], color );
-            m_debugRenderer->RenderLine( geom[1], geom[2], color );
-            m_debugRenderer->RenderLine( geom[1], geom[3], color );
+            Vector color = One4;
+            DebugLine a = { geom[1], geom[0], color };
+            DebugLine b = { geom[1], geom[2], color };
+            DebugLine c = { geom[1], geom[3], color };
+
+            m_debugRenderer->Render( a, context->m_debugContext );
+            m_debugRenderer->Render( b, context->m_debugContext );
+            m_debugRenderer->Render( c, context->m_debugContext );
         }
     }
 
-    void LightRenderer::RenderOmni( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
+    void LightRenderer::RenderOmni( const Light * light, Context * context ) const
     {
+        RenderLight * render_light = GetRenderLight( context );
+        render_light->m_program  = m_programOmni;
+        render_light->m_geometry = &m_geomOmni;
+
         Matrix m = SMatrix( Splat( light->m_radius ) );
         m.m_column[3] = light->m_position;
 
+        CARBON_ASSERT( light->m_radius > 0 );
+        F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
+
+        LightParameters params;
+        params.m_lightMatrix        = Mul( context->m_viewProjMatrix, m );
+        params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
+        params.m_position           = TransformVertex( context->m_viewMatrix, light->m_position );
+        params.m_direction          = Zero4;
+        params.m_spotParameters     = Zero4;
+
+        void * data = RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY );
+        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
+        RenderDevice::UnmapUniformBuffer();
+
         // Check if camera position and frustum near corners are outside the light volume
         //
-        Vector dist = Abs( center - light->m_position );
+        Vector dist = Abs( context->m_colSphereCenter - light->m_position );
 
-        Vector threshold = distanceThreshold + Splat( light->m_radius );
+        Vector threshold = context->m_colSphereRadius + Splat( light->m_radius );
 
         dist = dist > threshold;
         dist = Or( dist, Swizzle<1,2,0,3>(dist) );
@@ -358,27 +367,9 @@ namespace Graphic
         F128 d;
         Store(d,dist);
 
-        Bool useFrontFaceMask = d[0] != 0.0f;
+        render_light->m_useFrontFace = d[0] != 0.0f;
 
-        CARBON_ASSERT( light->m_radius > 0 );
-        F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
-
-        LightParameters params;
-        params.m_lightMatrix        = Mul( viewProjMatrix, m );
-        params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( viewMatrix, light->m_position );
-        params.m_direction          = Zero4();
-        params.m_spotParameters     = Zero4();
-
-        Handle uniformBuffer = GetUniformBuffer();
-        void * data = RenderDevice::MapUniformBuffer( uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
-        RenderDevice::UnmapUniformBuffer();
-
-        RenderLight renderLight = { m_programOmni, &m_geomOmni, uniformBuffer, useFrontFaceMask };
-        m_lights.PushBack( renderLight );
-
-        if ( m_debugDraw )
+        if ( context->m_debugDraw )
         {
             Vector scale = Vector4( -0.05f, +0.05f, 0.0f );
 
@@ -390,25 +381,40 @@ namespace Graphic
             geom[4] = TransformVertex( m, Swizzle<2,2,0,3>( scale ) );
             geom[5] = TransformVertex( m, Swizzle<2,2,1,3>( scale ) );
 
-            Vector color = One4();
-            m_debugRenderer->RenderLine( geom[0], geom[1], color );
-            m_debugRenderer->RenderLine( geom[2], geom[3], color );
-            m_debugRenderer->RenderLine( geom[4], geom[5], color );
+            Vector color = One4;
+            DebugLine a = { geom[0], geom[1], color };
+            DebugLine b = { geom[2], geom[3], color };
+            DebugLine c = { geom[4], geom[5], color };
+
+            m_debugRenderer->Render( a, context->m_debugContext );
+            m_debugRenderer->Render( b, context->m_debugContext );
+            m_debugRenderer->Render( c, context->m_debugContext );
         }
     }
 
-    void LightRenderer::RenderSpot( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold )
+    void LightRenderer::RenderSpot( const Light * light, Context * context ) const
     {
+        RenderLight * render_light = GetRenderLight( context );
+        render_light->m_program  = m_programSpot;
+
         Matrix ori = RMatrix( light->m_orientation );
 
         Matrix m = ori;
         m.m_column[3] = light->m_position;
 
-        RenderGeometry * geom;
+        CARBON_ASSERT( light->m_radius > 0 );
+        F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
+
+        CARBON_ASSERT( light->m_spotInAngle >= 0.0 && light->m_spotInAngle <= Pi );
+        CARBON_ASSERT( light->m_spotOutAngle >= 0.0 && light->m_spotOutAngle <= Pi );
+        CARBON_ASSERT( light->m_spotInAngle < light->m_spotOutAngle );
+        F32 spotCosIn = Cos( 0.5f * light->m_spotInAngle );
+        F32 spotCosOut = Cos( 0.5f * light->m_spotOutAngle );
+
         Vector outside;
-        if ( light->m_spotOutAngle < HalfPi() )
+        if ( light->m_spotOutAngle < HalfPi )
         {
-            geom = &m_geomSpot;
+            render_light->m_geometry = &m_geomSpot;
 
             F32 sinus = Sin( 0.5f * light->m_spotOutAngle );
             F32 cosinus = Cos( 0.5f * light->m_spotOutAngle );
@@ -431,18 +437,18 @@ namespace Graphic
             };
             plane_matrix = Transpose( plane_matrix );
 
-            Vector pos = center - Select(light->m_position,Zero4(),Mask<0,0,0,1>());
+            Vector pos = context->m_colSphereCenter - Select(light->m_position,Zero4,Mask<0,0,0,1>());
 
             Vector proj = Dot( -ori.m_column[2], pos );
 
-            outside = Mul( plane_matrix, pos ) > distanceThreshold;
-            outside = Or( outside, proj > (distanceThreshold+Splat(light->m_radius)) );
+            outside = Mul( plane_matrix, pos ) > context->m_colSphereRadius;
+            outside = Or( outside, proj > (context->m_colSphereRadius+Splat(light->m_radius)) );
             outside = Or( outside, Swizzle<1,0,3,2>( outside ) );
             outside = Or( outside, Swizzle<2,3,0,1>( outside ) );
         }
         else
         {
-            geom = &m_geomDirectional;
+            render_light->m_geometry = &m_geomDirectional;
 
             F32 sinus = Sin( 0.5f * light->m_spotOutAngle ) * light->m_radius;
             Scale( m, Vector3( sinus, sinus, light->m_radius ) );
@@ -450,8 +456,8 @@ namespace Graphic
             Matrix plane_matrix = Transpose( ori );
             plane_matrix.m_column[3] = Vector3( 0.0f, 0.0f, 0.5f*light->m_radius );
 
-            Vector proj = Abs( TransformVertex( plane_matrix, center - light->m_position ) );
-            Vector dist = distanceThreshold + Vector4( sinus, sinus, 0.5f*light->m_radius );
+            Vector proj = Abs( TransformVertex( plane_matrix, context->m_colSphereCenter - light->m_position ) );
+            Vector dist = context->m_colSphereRadius + Vector4( sinus, sinus, 0.5f*light->m_radius );
 
             outside =  proj > dist;
             outside = Or( outside, Swizzle<1,2,0,3>( outside ) );
@@ -461,33 +467,20 @@ namespace Graphic
         F128 c;
         Store(c,outside);
 
-        Bool useFrontFaceMask = c[0] != 0.0f;
-
-        CARBON_ASSERT( light->m_radius > 0 );
-        F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
-
-        CARBON_ASSERT( light->m_spotInAngle >= 0.0 && light->m_spotInAngle <= Pi() );
-        CARBON_ASSERT( light->m_spotOutAngle >= 0.0 && light->m_spotOutAngle <= Pi() );
-        CARBON_ASSERT( light->m_spotInAngle < light->m_spotOutAngle );
-        F32 spotCosIn = Cos( 0.5f * light->m_spotInAngle );
-        F32 spotCosOut = Cos( 0.5f * light->m_spotOutAngle );
+        render_light->m_useFrontFace = c[0] != 0.0f;
 
         LightParameters params;
-        params.m_lightMatrix        = Mul( viewProjMatrix, m );
+        params.m_lightMatrix        = Mul( context->m_viewProjMatrix, m );
         params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( viewMatrix, light->m_position );
-        params.m_direction          = TransformVector( viewMatrix, -ori.m_column[2] );
+        params.m_position           = TransformVertex( context->m_viewMatrix, light->m_position );
+        params.m_direction          = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
         params.m_spotParameters     = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
 
-        Handle uniformBuffer = GetUniformBuffer();
-        void * data = RenderDevice::MapUniformBuffer( uniformBuffer, BA_WRITE_ONLY );
+        void * data = RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY );
         MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
         RenderDevice::UnmapUniformBuffer();
 
-        RenderLight renderLight = { m_programSpot, geom, uniformBuffer, useFrontFaceMask };
-        m_lights.PushBack( renderLight );
-
-        if ( m_debugDraw )
+        if ( context->m_debugDraw )
         {
             Vector scale = Vector4( -0.05f, +0.05f, -0.9f ) * Vector4( light->m_radius, light->m_radius, light->m_radius );
             ori.m_column[3] = light->m_position;
@@ -498,20 +491,36 @@ namespace Graphic
             geom[2] = TransformVertex( ori, scale );
             geom[3] = TransformVertex( ori, Swizzle<1,0,2,3>( scale ) );
 
-            Vector color = One4();
-            m_debugRenderer->RenderLine( geom[1], geom[0], color );
-            m_debugRenderer->RenderLine( geom[1], geom[2], color );
-            m_debugRenderer->RenderLine( geom[1], geom[3], color );
+            Vector color = One4;
+            DebugLine a = { geom[1], geom[0], color };
+            DebugLine b = { geom[1], geom[2], color };
+            DebugLine c = { geom[1], geom[3], color };
+
+            m_debugRenderer->Render( a, context->m_debugContext );
+            m_debugRenderer->Render( b, context->m_debugContext );
+            m_debugRenderer->Render( c, context->m_debugContext );
         }
     }
 
-    Handle LightRenderer::GetUniformBuffer()
+    RenderLight * LightRenderer::GetRenderLight( Context * context ) const
     {
-        if ( m_uniformBufferCount == m_uniformBufferPool.Size() )
+        if ( context->m_renderLightCount == context->m_renderLightSize )
         {
-            m_uniformBufferPool.PushBack( RenderDevice::CreateUniformBuffer( sizeof(LightParameters), 0, BU_DYNAMIC ) );
+            context->m_renderLightSize = 2 * context->m_renderLightSize;
+
+            RenderLight * render_lights = (RenderLight*)MemoryManager::Malloc( context->m_renderLightSize * sizeof(RenderLight), MemoryUtils::AlignOf<RenderLight>() );
+            MemoryUtils::MemCpy( render_lights, context->m_renderLights, context->m_renderLightCount * sizeof(RenderLight) );
+            MemoryManager::Free( context->m_renderLights );
+            context->m_renderLights = render_lights;
+
+            RenderLight * it = render_lights + context->m_renderLightCount;
+            const RenderLight * end = it + context->m_renderLightCount;
+            for ( ; it!=end; ++it )
+            {
+                it->m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(LightParameters), 0, BU_DYNAMIC );
+            }
         }
 
-        return m_uniformBufferPool[ m_uniformBufferCount++ ];
+        return context->m_renderLights + context->m_renderLightCount++;
     }
 }

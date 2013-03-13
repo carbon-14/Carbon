@@ -3,6 +3,8 @@
 #define _GRAPHIC_LIGHT_H
 
 #include "Graphic/DLL.h"
+#include "Graphic/Types.h"
+
 #include "Core/Vector.h"
 
 namespace Graphic
@@ -27,8 +29,19 @@ namespace Graphic
         F32         m_spotOutAngle;
         LightType   m_type;
     };
+
+    class RenderGeometry;
+
+    struct RenderLight
+    {
+        ProgramHandle           m_program;
+        const RenderGeometry *  m_geometry;
+        Handle                  m_uniformBuffer;
+        Bool                    m_useFrontFace;
+    };
 }
 
 CARBON_DECLARE_POD_TYPE( Graphic::Light );
+CARBON_DECLARE_POD_TYPE( Graphic::RenderLight );
 
 #endif // _GRAPHIC_LIGHT_H

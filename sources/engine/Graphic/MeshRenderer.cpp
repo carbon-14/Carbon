@@ -17,17 +17,28 @@ namespace Graphic
         m_debugRenderer = 0;
     }
 
-    void MeshRenderer::Render( const Mesh * mesh, RenderList * opaqueList, Handle frameParameters ) const
+    MeshRenderer::Context * MeshRenderer::CreateContext( RenderList * opaqueList )
+    {
+        Context * context = MemoryManager::New< Context >();
+
+        context->m_opaqueList = opaqueList;
+
+        return context;
+    }
+
+    void MeshRenderer::DestroyContext( Context * context )
+    {
+        MemoryManager::Delete( context );
+    }
+
+    void MeshRenderer::Render( const Mesh * mesh, Context * context ) const
     {
         RenderElement e;
 
-        LayoutHandle frameParams    = { frameParameters, LI_FRAME };
-        e.m_uniformBuffers[0]       = frameParams;
-
         LayoutHandle instanceParams = { mesh->GetUniformBuffer(), LI_INSTANCE };
-        e.m_uniformBuffers[1]       = instanceParams;
+        e.m_uniformBuffers[0]       = instanceParams;
 
-        e.m_uniformBufferCount=2;
+        e.m_uniformBufferCount=1;
 
         const MeshResource * rsc = mesh->GetResource();
         for ( SizeT i=0; i<rsc->GetSubMeshCount(); ++i )
@@ -44,7 +55,7 @@ namespace Graphic
                 e.m_textures[ e.m_textureCount ].m_index    = texture.m_index;
             }
 
-            opaqueList->Push( e );
+            context->m_opaqueList->Push( e );
         }
     }
 }

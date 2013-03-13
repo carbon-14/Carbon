@@ -3,77 +3,87 @@
 #define _GRAPHIC_FRAMERENDERER_H
 
 #include "Graphic/RenderList.h"
+#include "Graphic/DebugRenderer.h"
 #include "Graphic/MeshRenderer.h"
 #include "Graphic/LightRenderer.h"
-#include "Graphic/DebugRenderer.h"
 
 namespace Graphic
 {
     class Scene;
     class Camera;
 
+    struct _GraphicExport FrameParameters
+    {
+        Vector  m_viewportSize;
+        Vector  m_depthRange;
+        Vector  m_viewScale;
+        Vector  m_ambientSkyLight;
+        Vector  m_ambientGroundLight;
+        Matrix  m_viewMatrix;
+        Matrix  m_projMatrix;
+        Matrix  m_viewProjMatrix;
+    };
+
     class _GraphicExport FrameRenderer
     {
     public:
         struct Context
         {
-            SizeT       m_width;
-            SizeT       m_height;
-            Camera *    m_camera;
-            Scene *     m_scene;
+            Camera *                m_camera;
+            Scene *                 m_scene;
 
-            Handle      m_depthStencilTexture;
-            Handle      m_normalTexture;
-            Handle      m_colorTexture;
-            Handle      m_linearDepthTexture;
-            Handle      m_lightTexture;
-            Handle      m_finalColorBuffer;
+            SizeT                   m_width;
+            SizeT                   m_height;
+            Handle                  m_depthStencilTexture;
+            Handle                  m_normalTexture;
+            Handle                  m_colorTexture;
+            Handle                  m_linearDepthTexture;
+            Handle                  m_lightTexture;
+            Handle                  m_finalColorBuffer;
 
-            Handle      m_geomFramebuffer;
-            Handle      m_linearizeDepthFramebuffer;
-            Handle      m_lightFramebuffer;
-            Handle      m_finalFramebuffer;
+            Handle                  m_geomFramebuffer;
+            Handle                  m_linearizeDepthFramebuffer;
+            Handle                  m_lightFramebuffer;
+            Handle                  m_finalFramebuffer;
+
+            Handle                  m_uniformBuffer;
+            RenderList              m_opaqueList;
+
+            DebugRenderer::Context *m_debugRendererContext;
+            MeshRenderer::Context * m_meshRendererContext;
+            LightRenderer::Context *m_lightRendererContext;
         };
 
     public:
         FrameRenderer();
         ~FrameRenderer();
 
-        void Initialize();
+        void Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer );
         void Destroy();
 
-        void Render( const Context& context );
+        static Context * CreateContext();
+        static void UpdateContext( Context * context, SizeT width, SizeT height, Camera * camera, Scene * scene );
+        static void DestroyContext( Context * context );
 
-        static void InitializeFrameContext( Context& context, SizeT width, SizeT height, Camera * camera, Scene * scene );
-        static void DestroyFrameContext( Context& context );
-
-        void SetLightDebugDraw( Bool enable );
-        Bool GetLightDebugDraw() const;
-
-        void RenderDebugLine( const Vector& position0, const Vector& position1, const Vector& color );
+        void Render( Context * context ) const;
+        void Draw( Context * context, RenderCache& renderCache ) const;
 
     private:
-        void UpdateFrameUniformBuffer( const Context& context );
-        void LinearizeDepth( Handle depthStencilTexture );
-        void ApplyToneMapping( Handle lightTexture );
+        void LinearizeDepth( Context * context, RenderCache& renderCache ) const;
+        void ApplyToneMapping( Context * context, RenderCache& renderCache ) const;
 
-        RenderCache     m_renderCache;
-        RenderList      m_opaqueList;
-
-        MeshRenderer    m_meshRenderer;
-        LightRenderer   m_lightRenderer;
-        DebugRenderer   m_debugRenderer;
+        DebugRenderer * m_debugRenderer;
+        MeshRenderer *  m_meshRenderer;
+        LightRenderer * m_lightRenderer;
 
         ProgramHandle   m_programLinearDepth;
         ProgramHandle   m_programToneMapping;
 
         RenderState     m_renderStateLinearDepth;
         RenderState     m_renderStateToneMapping;
-
-        Handle          m_frameUniformBuffer;
     };
 }
 
-CARBON_DECLARE_POD_TYPE( Graphic::FrameRenderer::Context );
+CARBON_DECLARE_POD_TYPE( Graphic::FrameParameters );
 
 #endif // _GRAPHIC_FRAMERENDERER_H

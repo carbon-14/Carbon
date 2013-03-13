@@ -14,10 +14,19 @@ namespace Graphic
     class _GraphicExport MeshRenderer
     {
     public:
+        struct Context
+        {
+            RenderList *    m_opaqueList;
+        };
+
+    public:
         void Initialize( DebugRenderer * debugRenderer );
         void Destroy();
 
-        void Render( const Mesh * mesh, RenderList * opaqueList, Handle frameParameters ) const;
+        static Context * CreateContext( RenderList * opaqueList );
+        static void DestroyContext( Context * context );
+
+        void Render( const Mesh * mesh, Context * context ) const;
 
     private:
         DebugRenderer * m_debugRenderer;

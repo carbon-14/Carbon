@@ -6,6 +6,7 @@
 #include "Graphic/ProgramCache.h"
 #include "Graphic/Light.h"
 #include "Graphic/LightGeometry.h"
+#include "Graphic/DebugRenderer.h"
 
 #include "Core/Matrix.h"
 
@@ -13,47 +14,60 @@ namespace Graphic
 {
     class DebugRenderer;
     class RenderCache;
-    class RenderGeometry;
     class Scene;
     class Camera;
+
+    struct _GraphicExport LightParameters
+    {
+        Matrix  m_lightMatrix;
+        Vector  m_valueInvSqrRadius;
+        Vector  m_position;
+        Vector  m_direction;
+        Vector  m_spotParameters;
+    };
 
     class _GraphicExport LightRenderer
     {
     public:
-        struct RenderLight
+        struct Context
         {
-            ProgramHandle       m_program;
-            RenderGeometry *    m_geometry;
-            Handle              m_uniformBuffer;
-            Bool                m_useFrontFace;
+            RenderLight *               m_renderLights;
+            SizeT                       m_renderLightSize;
+            SizeT                       m_renderLightCount;
+
+            Vector                      m_colSphereRadius;
+            Vector                      m_colSphereCenter;
+            Matrix                      m_viewMatrix;
+            Matrix                      m_viewProjMatrix;
+
+            Handle                      m_linearDepthTexture;
+            Handle                      m_normalTexture;
+            Handle                      m_colorTexture;
+
+            DebugRenderer::Context *    m_debugContext;
+            Bool                        m_debugDraw;
         };
 
     public:
         void Initialize( DebugRenderer * debugRenderer );
         void Destroy();
 
-        void Render( const Scene * scene, const Camera * camera );
-        void Draw( RenderCache& renderCache, Handle frameParameters, Handle depthStencilTexture, Handle normalTexture, Handle colorTexture );
+        static Context * CreateContext( DebugRenderer::Context * context );
+        static void UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture );
+        static void DestroyContext( Context * context );
 
-        void SetDebugDraw( Bool enable );
-        Bool GetDebugDraw() const;
-
-    private:
-        void RenderLightVolume( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
-        void RenderDirectional( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
-        void RenderOmni( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
-        void RenderSpot( const Light * light, const Matrix& viewMatrix, const Matrix& viewProjMatrix, const Vector& center, const Vector& distanceThreshold );
-
-        Handle GetUniformBuffer();
+        void Render( const Light * lights, Context * context ) const;
+        void Draw( Context * context, RenderCache& renderCache ) const;
 
     private:
-        typedef Array< RenderLight > LightArray;
-        typedef Array< Handle > UniformBufferArray;
-        typedef void (Graphic::LightRenderer::*RenderFunc)( const Light *, const Matrix&, const Matrix&, const Vector&, const Vector& );
+        void RenderDirectional( const Light * lights, Context * context ) const;
+        void RenderOmni( const Light * lights, Context * context ) const;
+        void RenderSpot( const Light * lights, Context * context ) const;
 
-        LightArray          m_lights;
-        UniformBufferArray  m_uniformBufferPool;
-        SizeT               m_uniformBufferCount;
+        RenderLight * GetRenderLight( Context * context ) const;
+
+    private:
+        typedef void (Graphic::LightRenderer::*RenderFunc)( const Light *, Context * ) const;
 
         RenderFunc          m_renderFunc[LT_COUNT];
 
@@ -80,10 +94,9 @@ namespace Graphic
         RenderState         m_stateAlbedoLighting;
 
         DebugRenderer *     m_debugRenderer;
-        Bool                m_debugDraw;
     };
 }
 
-CARBON_DECLARE_POD_TYPE( Graphic::LightRenderer::RenderLight );
+CARBON_DECLARE_POD_TYPE( Graphic::LightParameters );
 
 #endif // _GRAPHIC_LIGHTRENDERER

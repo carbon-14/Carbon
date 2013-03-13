@@ -20,7 +20,7 @@ namespace Graphic
         : m_geomCount( 0 )
         , m_isFinalized(false)
     {
-        m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(MeshParameters), NULL, BU_DYNAMIC );
+        m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(MeshParameters), 0, BU_DYNAMIC );
     }
 
     Mesh::~Mesh()
