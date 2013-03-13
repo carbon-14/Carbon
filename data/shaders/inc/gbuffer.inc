@@ -4,10 +4,10 @@
 
 struct GBuffer
 {
-    float   depth;
     vec4    normal;
     vec3    albedo;
-    float   gloss_emissive;
+    float   mask;
+    float   depth;
 };
 
 vec2 EncodeNormal( in vec4 n )
@@ -25,22 +25,22 @@ vec4 DecodeNormal( in vec2 n )
 void WriteGBuffer( in GBuffer gbuffer, out vec2 normal, out vec4 color )
 {
     normal  = EncodeNormal( gbuffer.normal );
-    color   = vec4( gbuffer.albedo, gbuffer.gloss_emissive );
+    color   = vec4( gbuffer.albedo, gbuffer.mask );
 }
 
 GBuffer ReadGBuffer( in sampler2D depthMap, in sampler2D normalMap, in sampler2D colorMap, in vec2 uv )
 {
     GBuffer gbuffer;
 
-    float d = texture2D( depthMap, uv ).r;
-    gbuffer.depth = d;
+    vec2 n          = texture2D( normalMap, uv ).rg;
+    gbuffer.normal  = DecodeNormal( n );
 
-    vec2 n = texture2D( normalMap, uv ).rg;
-    gbuffer.normal = DecodeNormal( n );
+    vec4 color      = texture2D( colorMap, uv );
+    gbuffer.albedo  = color.rgb;
+    gbuffer.mask    = color.a;
 
-    vec4 color = texture2D( colorMap, uv );
-    gbuffer.albedo = color.rgb;
-    gbuffer.gloss_emissive = color.a;
+    float d         = texture2D( depthMap, uv ).r;
+    gbuffer.depth   = d;
 
     return gbuffer;
 }

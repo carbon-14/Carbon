@@ -20,12 +20,12 @@ void main()
     tbn[1] = normalize( DataIn.coord[1].xyz );
     tbn[2] = normalize( DataIn.coord[2].xyz );
 
-    vec3 normal = tbn * SampleNormalMap( normalMap, DataIn.uv );
-    gbuffer.normal = vec4( normal, 0.0 );
+    vec3 normal     = tbn * SampleNormalMap( normalMap, DataIn.uv );
+    gbuffer.normal  = vec4( normal, 0.0 );
 
-    vec4 color  = SampleColorMap( colorMap, DataIn.uv );
-    gbuffer.albedo = color.rgb;
-    gbuffer.gloss_emissive = color.a;
+    vec4 color      = SampleColorMap( colorMap, DataIn.uv );
+    gbuffer.albedo  = color.rgb;
+    gbuffer.mask    = color.a;
 
     WriteGBuffer( gbuffer, gNormal, gColor );
 }
