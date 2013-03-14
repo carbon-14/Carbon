@@ -20,6 +20,7 @@ protected:
     Graphic::DebugRenderer              m_debugRenderer;
     Graphic::MeshRenderer               m_meshRenderer;
     Graphic::LightRenderer              m_lightRenderer;
+    Graphic::EnvMapRenderer             m_envMapRenderer;
     Graphic::FrameRenderer              m_frameRenderer;
     Graphic::FrameRenderer::Context *   m_frameContext;
 

@@ -111,7 +111,8 @@ void Level7::PreExecute()
     m_debugRenderer.Initialize();
     m_meshRenderer.Initialize( &m_debugRenderer );
     m_lightRenderer.Initialize( &m_debugRenderer );
-    m_frameRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer );
+    m_envMapRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer );
+    m_frameRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer, &m_envMapRenderer );
 
     m_scene = MemoryManager::New< Scene >();
     m_scene->SetAmbientSkyLight( Vector4( 0.00185f, 0.003325f, 0.00625f ) );
@@ -140,9 +141,9 @@ void Level7::PreExecute()
     }
 
     {
-        SizeT X = 9;
-        SizeT Y = 5;
-        SizeT Z = 3;
+        SizeT X = 5;
+        SizeT Y = 2;
+        SizeT Z = 2;
 
         const Vector light_spacing = Splat( 6.0f );
         const Vector light_offset  = Vector4( -3.0f, -6.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
@@ -241,6 +242,7 @@ void Level7::PostExecute()
     MemoryManager::Delete( m_scene );
 
     m_frameRenderer.Destroy();
+    m_envMapRenderer.Destroy();
     m_lightRenderer.Destroy();
     m_meshRenderer.Destroy();
     m_debugRenderer.Destroy();
@@ -280,7 +282,7 @@ void Level7::Execute()
         m_flash->m_orientation  = m_camera->m_orientation;
         m_flash->m_position     = m_camera->m_position;
 
-        FrameRenderer::UpdateContext( m_frameContext, m_window.width, m_window.height, m_camera, m_scene );
+        FrameRenderer::UpdateContext( m_frameContext, m_window.width, m_window.height, m_camera, m_scene, 256 );
 
         m_frameRenderer.Render( m_frameContext );
         m_frameRenderer.Draw( m_frameContext, m_renderCache );

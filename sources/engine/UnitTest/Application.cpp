@@ -8,7 +8,7 @@
 
 using namespace Graphic;
 
-const SizeT frameAllocatorSize  = 10 * 1024;
+const SizeT frameAllocatorSize  = 32 * 1024;
 
 const SizeT frameWidth          = 1280;
 const SizeT frameHeight         = 720;
