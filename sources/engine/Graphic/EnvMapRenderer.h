@@ -49,10 +49,10 @@ namespace Graphic
         void Destroy();
 
         static Context * CreateContext();
-        static void Update( Context * context, SizeT size, Camera * camera, Scene * scene );
+        static void UpdateContext( Context * context, SizeT size, Camera * camera, Scene * scene );
         static void DestroyContext( Context * context );
 
-        void Render( Context * context, RenderCache& renderCache ) const;
+        void Render( Context * context ) const;
         void Draw( Context * context, RenderCache& renderCache ) const;
 
     private:

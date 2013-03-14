@@ -43,6 +43,7 @@ namespace Graphic
             Handle                      m_linearDepthTexture;
             Handle                      m_normalTexture;
             Handle                      m_colorTexture;
+            Handle                      m_envTexture;
 
             DebugRenderer::Context *    m_debugContext;
             Bool                        m_debugDraw;
@@ -53,11 +54,12 @@ namespace Graphic
         void Destroy();
 
         static Context * CreateContext( DebugRenderer::Context * context );
-        static void UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture );
+        static void UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture );
         static void DestroyContext( Context * context );
 
         void Render( const Light * lights, Context * context ) const;
         void Draw( Context * context, RenderCache& renderCache ) const;
+        void DrawEnv( Context * context, RenderCache& renderCache ) const;
 
     private:
         void RenderDirectional( const Light * lights, Context * context ) const;

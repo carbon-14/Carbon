@@ -6,6 +6,7 @@
 #include "Graphic/DebugRenderer.h"
 #include "Graphic/MeshRenderer.h"
 #include "Graphic/LightRenderer.h"
+#include "Graphic/EnvMapRenderer.h"
 
 namespace Graphic
 {
@@ -29,40 +30,41 @@ namespace Graphic
     public:
         struct Context
         {
-            Camera *                m_camera;
-            Scene *                 m_scene;
+            Camera *                    m_camera;
+            Scene *                     m_scene;
 
-            SizeT                   m_width;
-            SizeT                   m_height;
-            Handle                  m_depthStencilTexture;
-            Handle                  m_normalTexture;
-            Handle                  m_colorTexture;
-            Handle                  m_linearDepthTexture;
-            Handle                  m_lightTexture;
-            Handle                  m_finalColorBuffer;
+            SizeT                       m_width;
+            SizeT                       m_height;
+            Handle                      m_depthStencilTexture;
+            Handle                      m_normalTexture;
+            Handle                      m_colorTexture;
+            Handle                      m_linearDepthTexture;
+            Handle                      m_lightTexture;
+            Handle                      m_finalColorBuffer;
 
-            Handle                  m_geomFramebuffer;
-            Handle                  m_linearizeDepthFramebuffer;
-            Handle                  m_lightFramebuffer;
-            Handle                  m_finalFramebuffer;
+            Handle                      m_geomFramebuffer;
+            Handle                      m_linearizeDepthFramebuffer;
+            Handle                      m_lightFramebuffer;
+            Handle                      m_finalFramebuffer;
 
-            Handle                  m_uniformBuffer;
-            RenderList              m_opaqueList;
+            Handle                      m_uniformBuffer;
+            RenderList                  m_opaqueList;
 
-            DebugRenderer::Context *m_debugRendererContext;
-            MeshRenderer::Context * m_meshRendererContext;
-            LightRenderer::Context *m_lightRendererContext;
+            DebugRenderer::Context *    m_debugRendererContext;
+            MeshRenderer::Context *     m_meshRendererContext;
+            LightRenderer::Context *    m_lightRendererContext;
+            EnvMapRenderer::Context *   m_envMapRendererContext;
         };
 
     public:
         FrameRenderer();
         ~FrameRenderer();
 
-        void Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer );
+        void Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer );
         void Destroy();
 
         static Context * CreateContext();
-        static void UpdateContext( Context * context, SizeT width, SizeT height, Camera * camera, Scene * scene );
+        static void UpdateContext( Context * context, SizeT width, SizeT height, Camera * camera, Scene * scene, SizeT envMapSize );
         static void DestroyContext( Context * context );
 
         void Render( Context * context ) const;
@@ -72,15 +74,16 @@ namespace Graphic
         void LinearizeDepth( Context * context, RenderCache& renderCache ) const;
         void ApplyToneMapping( Context * context, RenderCache& renderCache ) const;
 
-        DebugRenderer * m_debugRenderer;
-        MeshRenderer *  m_meshRenderer;
-        LightRenderer * m_lightRenderer;
+        DebugRenderer *     m_debugRenderer;
+        MeshRenderer *      m_meshRenderer;
+        LightRenderer *     m_lightRenderer;
+        EnvMapRenderer *    m_envMapRenderer;
 
-        ProgramHandle   m_programLinearDepth;
-        ProgramHandle   m_programToneMapping;
+        ProgramHandle       m_programLinearDepth;
+        ProgramHandle       m_programToneMapping;
 
-        RenderState     m_renderStateLinearDepth;
-        RenderState     m_renderStateToneMapping;
+        RenderState         m_renderStateLinearDepth;
+        RenderState         m_renderStateToneMapping;
     };
 }
 

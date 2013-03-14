@@ -17,11 +17,12 @@ namespace Graphic
 
     }
 
-    void FrameRenderer::Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer )
+    void FrameRenderer::Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer )
     {
         m_debugRenderer                             = debugRenderer;
         m_meshRenderer                              = meshRenderer;
         m_lightRenderer                             = lightRenderer;
+        m_envMapRenderer                            = envMapRenderer;
 
         const U32 programLinearDepthId              = ProgramCache::CreateId( "linearDepth" );
         m_programLinearDepth                        = ProgramCache::GetProgram( programLinearDepthId );
@@ -59,6 +60,7 @@ namespace Graphic
         context->m_debugRendererContext         = DebugRenderer::CreateContext();
         context->m_meshRendererContext          = MeshRenderer::CreateContext( &context->m_opaqueList );
         context->m_lightRendererContext         = LightRenderer::CreateContext( context->m_debugRendererContext );
+        context->m_envMapRendererContext        = EnvMapRenderer::CreateContext();
 
         RenderState opaque;
         opaque.m_enableDepthTest    = true;
@@ -70,7 +72,7 @@ namespace Graphic
         return context;
     }
 
-    void FrameRenderer::UpdateContext( Context * context, SizeT width, SizeT height, Camera * camera, Scene * scene )
+    void FrameRenderer::UpdateContext( Context * context, SizeT width, SizeT height, Camera * camera, Scene * scene, SizeT envMapSize )
     {
         context->m_camera    = camera;
         context->m_scene     = scene;
@@ -119,11 +121,13 @@ namespace Graphic
         context->m_opaqueList.Clear();
 
         DebugRenderer::UpdateContext( context->m_debugRendererContext );
-        LightRenderer::UpdateContext( context->m_lightRendererContext, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture );
+        EnvMapRenderer::UpdateContext( context->m_envMapRendererContext, envMapSize, camera, scene );
+        LightRenderer::UpdateContext( context->m_lightRendererContext, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightTexture );
     }
 
     void FrameRenderer::DestroyContext( Context * context )
     {
+        EnvMapRenderer::DestroyContext( context->m_envMapRendererContext );
         LightRenderer::DestroyContext( context->m_lightRendererContext );
         MeshRenderer::DestroyContext( context->m_meshRendererContext );
         DebugRenderer::DestroyContext( context->m_debugRendererContext );
@@ -148,6 +152,8 @@ namespace Graphic
     void FrameRenderer::Render( Context * context ) const
     {
         const Scene * scene = context->m_scene;
+
+        m_envMapRenderer->Render( context->m_envMapRendererContext );
 
         // Render meshes
         {
@@ -174,6 +180,10 @@ namespace Graphic
 
     void FrameRenderer::Draw( Context * context, RenderCache& renderCache ) const
     {
+        m_envMapRenderer->Draw( context->m_envMapRendererContext, renderCache );
+
+        RenderDevice::SetViewport( 0, 0, context->m_width, context->m_height );
+
         RenderDevice::BindUniformBuffer( context->m_uniformBuffer, LI_FRAME );
 
         // Draw G-Buffer
@@ -194,8 +204,6 @@ namespace Graphic
 
             LinearizeDepth( context, renderCache );
         }
-
-        RenderDevice::BindUniformBuffer( context->m_uniformBuffer, LI_FRAME );
 
         // Draw Lights
         {

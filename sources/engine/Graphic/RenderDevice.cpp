@@ -45,6 +45,16 @@ namespace Graphic
         GL_DEPTH24_STENCIL8     // TF_D24S8
     };
 
+    const GLenum ToGLTextureTargetCube[] =
+    {
+        GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+    };
+
     const GLenum ToGLFramebufferTarget[] =
     {
         GL_READ_FRAMEBUFFER,    // FT_READ
@@ -516,6 +526,16 @@ namespace Graphic
         return texture;
     }
 
+    Handle IRenderDevice::CreateRenderTextureCube( TextureFormat format, SizeT size )
+    {
+        GLuint texture;
+        glGenTextures( 1, &texture );
+        glBindTexture( GL_TEXTURE_CUBE_MAP, texture );
+        s_textureCache[s_activeTexture] = texture;
+        glTexStorage2D( GL_TEXTURE_CUBE_MAP, 1, ToGLTextureFormat[ format ], size, size );
+        return texture;
+    }
+
     void IRenderDevice::DestroyTexture( Handle texture )
     {
         glDeleteTextures( 1, (GLuint*)&texture );
@@ -531,6 +551,20 @@ namespace Graphic
         if ( texture != s_textureCache[unit] )
         {
             glBindTexture( GL_TEXTURE_2D, texture );
+            s_textureCache[unit] = texture;
+        }
+    }
+
+    void IRenderDevice::BindTextureCube( Handle texture, SizeT unit )
+    {
+        if ( unit != s_activeTexture )
+        {
+            glActiveTexture( GL_TEXTURE0 + unit );
+            s_activeTexture = unit;
+        }
+        if ( texture != s_textureCache[unit] )
+        {
+            glBindTexture( GL_TEXTURE_CUBE_MAP, texture );
             s_textureCache[unit] = texture;
         }
     }
@@ -608,6 +642,11 @@ namespace Graphic
     void IRenderDevice::AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level )
     {
         glFramebufferTexture2D( ToGLFramebufferTarget[ target ], ToGLFramebufferAttachment[ attachment ], GL_TEXTURE_2D, texture, level );
+    }
+
+    void IRenderDevice::AttachTextureCube( FramebufferTarget target, FramebufferAttachment attachment, CubeFace face, Handle texture, SizeT level )
+    {
+        glFramebufferTexture2D( ToGLFramebufferTarget[ target ], ToGLFramebufferAttachment[ attachment ], ToGLTextureTargetCube[ face ], texture, level );
     }
 
     void IRenderDevice::AttachRenderbuffer( FramebufferTarget target, FramebufferAttachment attachment, Handle renderbuffer )
@@ -750,6 +789,11 @@ namespace Graphic
         enable ? glEnable( GL_FRAMEBUFFER_SRGB ) : glDisable( GL_FRAMEBUFFER_SRGB );
     }
 
+    void IRenderDevice::SetViewport( SizeT x, SizeT y, SizeT width, SizeT height )
+    {
+        glViewport( x, y, width, height );
+    }
+
     void IRenderDevice::CatchError()
     {
         switch( glGetError() )
@@ -784,6 +828,7 @@ namespace Graphic
         {
             glActiveTexture( GL_TEXTURE0 + i );
             glBindTexture( GL_TEXTURE_2D, 0 );
+            glBindTexture( GL_TEXTURE_CUBE_MAP, 0 );
             s_samplerCache[i] = 0;
             s_textureCache[i] = 0;
         }

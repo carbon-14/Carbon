@@ -162,7 +162,7 @@ namespace Graphic
         return context;
     }
 
-    void LightRenderer::UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture )
+    void LightRenderer::UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture )
     {
         const Matrix tr =
         {
@@ -183,6 +183,7 @@ namespace Graphic
         context->m_linearDepthTexture   = linearDepthTexture;
         context->m_normalTexture        = normalTexture;
         context->m_colorTexture         = colorTexture;
+        context->m_envTexture           = envTexture;
     }
 
     void LightRenderer::DestroyContext( Context * context )
@@ -205,9 +206,10 @@ namespace Graphic
 
     void LightRenderer::Draw( Context * context, RenderCache& renderCache ) const
     {
-        RenderDevice::BindTexture( context->m_linearDepthTexture     , 0 );
-        RenderDevice::BindTexture( context->m_normalTexture          , 1 );
-        RenderDevice::BindTexture( context->m_colorTexture           , 2 );
+        RenderDevice::BindTexture( context->m_linearDepthTexture    , 0 );
+        RenderDevice::BindTexture( context->m_normalTexture         , 1 );
+        RenderDevice::BindTexture( context->m_colorTexture          , 2 );
+        RenderDevice::BindTextureCube( context->m_envTexture        , 3 );
 
         renderCache.SetClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
         RenderDevice::Clear( RM_COLOR );
@@ -221,6 +223,63 @@ namespace Graphic
         ProgramCache::UseProgram( m_programAmbient );
         renderCache.SetRenderState( m_stateAmbientLighting );
         QuadGeometry::GetInstance().Draw();
+
+        const RenderLight * it = context->m_renderLights;
+        const RenderLight * end = it + context->m_renderLightCount;
+        for ( ; it!=end; ++it )
+        {
+            RenderDevice::BindUniformBuffer( it->m_uniformBuffer, 0 );
+
+            // Stencil masking
+            ProgramCache::UseProgram( m_programMask );
+
+            if ( it->m_useFrontFace )
+            {
+                renderCache.SetRenderState( m_stateMaskClear0 );
+                 it->m_geometry->Draw();
+        
+                renderCache.SetRenderState( m_stateMaskFront );
+                 it->m_geometry->Draw();
+            }
+            else
+            {
+                renderCache.SetRenderState( m_stateMaskClear1 );
+                it->m_geometry->Draw();
+            }
+
+            renderCache.SetRenderState( m_stateMaskBack );
+            it->m_geometry->Draw();
+
+            // Lighting 
+            ProgramCache::UseProgram( it->m_program );
+
+            renderCache.SetRenderState( m_stateLighting );
+            it->m_geometry->Draw();
+        }
+
+        ProgramCache::UseProgram( m_programAmbientMask );
+        renderCache.SetRenderState( m_stateAlbedoMask );
+        QuadGeometry::GetInstance().Draw();
+
+        ProgramCache::UseProgram( m_programAmbientMask );
+        renderCache.SetRenderState( m_stateAmbientMask );
+        QuadGeometry::GetInstance().Draw();
+
+        ProgramCache::UseProgram( m_programAlbedo );
+        renderCache.SetRenderState( m_stateAlbedoLighting );
+        QuadGeometry::GetInstance().Draw();
+    }
+
+    void LightRenderer::DrawEnv( Context * context, RenderCache& renderCache ) const
+    {
+        RenderDevice::BindTexture( context->m_linearDepthTexture    , 0 );
+        RenderDevice::BindTexture( context->m_normalTexture         , 1 );
+        RenderDevice::BindTexture( context->m_colorTexture          , 2 );
+
+        renderCache.SetClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
+        RenderDevice::Clear( RM_COLOR );
+
+        renderCache.SetSRGBWrite( false );
 
         const RenderLight * it = context->m_renderLights;
         const RenderLight * end = it + context->m_renderLightCount;

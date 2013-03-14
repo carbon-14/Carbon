@@ -73,6 +73,16 @@ namespace Graphic
         TF_D24S8
     };
 
+    enum CubeFace
+    {
+        CF_POS_X = 0,
+        CF_NEG_X,
+        CF_POS_Y,
+        CF_NEG_Y,
+        CF_POS_Z,
+        CF_NEG_Z
+    };
+
     enum FramebufferTarget
     {
         FT_READ = 0,

@@ -60,7 +60,7 @@ namespace Graphic
         return context;
     }
 
-    void EnvMapRenderer::Update( Context * context, SizeT size, Camera * camera, Scene * scene )
+    void EnvMapRenderer::UpdateContext( Context * context, SizeT size, Camera * camera, Scene * scene )
     {
         context->m_camera    = camera;
         context->m_scene     = scene;
@@ -80,18 +80,29 @@ namespace Graphic
             context->m_normalTexture        = RenderDevice::CreateRenderTexture( TF_RG16F, size, size );
             context->m_colorTexture         = RenderDevice::CreateRenderTexture( TF_SRGBA8, size, size );
             context->m_linearDepthTexture   = RenderDevice::CreateRenderTexture( TF_R32F, size, size );
-            context->m_lightTexture         = RenderDevice::CreateRenderTexture( TF_RGBA16F, size, size );
+            context->m_lightTexture         = RenderDevice::CreateRenderTextureCube( TF_RGBA16F, size );
         }
+
+        const Vector cube_ori_align[] =
+        {
+            MulQuat( Quaternion(UnitX,Pi), Quaternion(UnitY,-HalfPi) ),
+            MulQuat( Quaternion(UnitX,Pi), Quaternion(UnitY,HalfPi) ),
+            Quaternion(UnitX,HalfPi),
+            Quaternion(UnitX,-HalfPi),
+            MulQuat( Quaternion(UnitZ,Pi), Quaternion(UnitY,Pi) ),
+            MulQuat( Quaternion(UnitZ,Pi), Quaternion(UnitY,0.0f) ),
+        };
 
         const Vector cube_ori[] =
         {
-            Quaternion(UnitX,0.0f),
-            Quaternion(UnitY,Pi),
-            Quaternion(UnitX,-HalfPi),
-            Quaternion(UnitX,HalfPi),
-            Quaternion(UnitY,-HalfPi),
-            Quaternion(UnitY,HalfPi),
+            MulQuat( camera->m_orientation, cube_ori_align[0] ),
+            MulQuat( camera->m_orientation, cube_ori_align[1] ),
+            MulQuat( camera->m_orientation, cube_ori_align[2] ),
+            MulQuat( camera->m_orientation, cube_ori_align[3] ),
+            MulQuat( camera->m_orientation, cube_ori_align[4] ),
+            MulQuat( camera->m_orientation, cube_ori_align[5] ),
         };
+
 
         for ( SizeT i=0; i<6; ++i )
         {
@@ -128,7 +139,7 @@ namespace Graphic
             face.m_opaqueList.Clear();
 
             DebugRenderer::UpdateContext( face.m_debugRendererContext );
-            LightRenderer::UpdateContext( face.m_lightRendererContext, &face_cam, context->m_depthStencilTexture, context->m_normalTexture, context->m_colorTexture );
+            LightRenderer::UpdateContext( face.m_lightRendererContext, &face_cam, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, 0 );
         }        
     }
 
@@ -158,15 +169,13 @@ namespace Graphic
         MemoryManager::Delete( context );
     }
 
-    void EnvMapRenderer::Render( Context * context, RenderCache& renderCache ) const
+    void EnvMapRenderer::Render( Context * context ) const
     {
         const Scene * scene = context->m_scene;
 
         for ( SizeT i=0; i<6; ++i )
         {
             Context::Face& face = context->m_cube[i];
-
-            RenderDevice::BindUniformBuffer( face.m_uniformBuffer, LI_FRAME );
 
             // Render meshes
             {
@@ -194,9 +203,13 @@ namespace Graphic
 
     void EnvMapRenderer::Draw( Context * context, RenderCache& renderCache ) const
     {
+        RenderDevice::SetViewport( 0, 0, context->m_size, context->m_size );
+
         for ( SizeT i=0; i<6; ++i )
         {
             Context::Face& face = context->m_cube[i];
+
+            RenderDevice::BindUniformBuffer( face.m_uniformBuffer, LI_FRAME );
 
             // Draw G-Buffer
             {
@@ -221,9 +234,9 @@ namespace Graphic
             {
                 RenderDevice::BindFramebuffer( context->m_lightFramebuffer, FT_DRAW );
                 RenderDevice::AttachTexture( FT_DRAW, FA_DEPTH_STENCIL, context->m_depthStencilTexture, 0 );
-                RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_lightTexture, 0 );
+                RenderDevice::AttachTextureCube( FT_DRAW, FA_COLOR0, (CubeFace)i, context->m_lightTexture, 0 );
 
-                m_lightRenderer->Draw( face.m_lightRendererContext, renderCache );
+                m_lightRenderer->DrawEnv( face.m_lightRendererContext, renderCache );
             }
         }
     }

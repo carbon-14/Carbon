@@ -33,8 +33,10 @@ namespace Graphic
 
         static Handle           CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
         static Handle           CreateRenderTexture( TextureFormat format, SizeT width, SizeT height );
+        static Handle           CreateRenderTextureCube( TextureFormat format, SizeT size );
         static void             DestroyTexture( Handle texture );
         static void             BindTexture( Handle texture, SizeT unit );
+        static void             BindTextureCube( Handle texture, SizeT unit );
 
         static Handle           CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap );
         static void             DestroySampler( Handle sampler );
@@ -48,6 +50,7 @@ namespace Graphic
         static void             DestroyFramebuffer( Handle framebuffer );
         static void             BindFramebuffer( Handle framebuffer, FramebufferTarget target );
         static void             AttachTexture( FramebufferTarget target, FramebufferAttachment attachment, Handle texture, SizeT level );
+        static void             AttachTextureCube( FramebufferTarget target, FramebufferAttachment attachment, CubeFace face, Handle texture, SizeT level );
         static void             AttachRenderbuffer( FramebufferTarget target, FramebufferAttachment attachment, Handle renderbuffer );
         static void             BlitFramebuffer( SizeT srcX, SizeT srcY, SizeT srcWidth, SizeT srcHeight, SizeT dstX, SizeT dstY, SizeT dstWidth, SizeT dstHeight, U32 mask, FilterType filter );
 
@@ -87,6 +90,7 @@ namespace Graphic
         static void             SetBlendMode( BlendMode mode );
 
         static void             SetSRGBWrite( Bool enable );
+        static void             SetViewport( SizeT x, SizeT y, SizeT width, SizeT height );
 
         static void             CatchError();
 
