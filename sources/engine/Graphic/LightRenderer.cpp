@@ -48,6 +48,9 @@ namespace Graphic
         U32 ambientLightingId       = ProgramCache::CreateId( "lightingAmbient" );
         m_programAmbient            = ProgramCache::GetProgram( ambientLightingId );
 
+        U32 envAmbientLightingId    = ProgramCache::CreateId( "lightingEnvAmbient" );
+        m_programEnvAmbient         = ProgramCache::GetProgram( envAmbientLightingId );
+
         U32 albedoLightingId        = ProgramCache::CreateId( "lightingAlbedo" );
         m_programAlbedo             = ProgramCache::GetProgram( albedoLightingId );
 
@@ -280,6 +283,14 @@ namespace Graphic
         RenderDevice::Clear( RM_COLOR );
 
         renderCache.SetSRGBWrite( false );
+
+        ProgramCache::UseProgram( m_programAmbientMask );
+        renderCache.SetRenderState( m_stateAmbientMask );
+        QuadGeometry::GetInstance().Draw();
+
+        ProgramCache::UseProgram( m_programEnvAmbient );
+        renderCache.SetRenderState( m_stateAmbientLighting );
+        QuadGeometry::GetInstance().Draw();
 
         const RenderLight * it = context->m_renderLights;
         const RenderLight * end = it + context->m_renderLightCount;

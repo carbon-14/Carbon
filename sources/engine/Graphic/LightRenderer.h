@@ -80,6 +80,7 @@ namespace Graphic
         ProgramHandle       m_programMask;
         ProgramHandle       m_programAmbientMask;
         ProgramHandle       m_programAmbient;
+        ProgramHandle       m_programEnvAmbient;
         ProgramHandle       m_programDirectional;
         ProgramHandle       m_programOmni;
         ProgramHandle       m_programSpot;
