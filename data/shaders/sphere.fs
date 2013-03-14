@@ -53,12 +53,12 @@ void main()
                         normalize( DataIn.binormal ),
                         normalize( DataIn.normal ) );
 
-    vec4 color = texture2D( sphereColor, DataIn.uv );
+    vec4 color = texture( sphereColor, DataIn.uv );
 
     vec3 albedo = color.rgb;
     vec3 emissive = color.a * emissiveColor.rgb;
 
-    vec3 n  = texture2D( sphereNormal, DataIn.uv ).rgb;
+    vec3 n  = texture( sphereNormal, DataIn.uv ).rgb;
     n.xy    = 2.0 * n.xy - 1.0;
     n.z     = sqrt( 1.0 - dot( n.xy, n.xy ) );
     n       = tbn * n;

@@ -12,14 +12,19 @@ void main()
 {
     GBuffer gbuffer = ReadGBuffer( GBufferDepth, GBufferNormal, GBufferColor, uv );
 
-    vec4 ambientLight = LightAmbient( gbuffer.normal, ViewMatrix[1], AmbientGroundLight, AmbientSkyLight );
-
     vec4 pos = BuildViewPositionFromDepth( uv, ViewScale, gbuffer.depth );
-    vec3 v = normalize( pos.xyz );
 
-    vec3 r = reflect( v, gbuffer.normal.xyz );
+    vec4 v = normalize( vec4(pos.xyz, 0.0) );
 
-    ambientLight += texture( EnvMap, r );
+    vec4 r = reflect( v, gbuffer.normal );
 
-    outColor = ambientLight;
+    /*const float scale = 1.77777;
+
+    vec2 n = 2.0 * uv - vec2(1.0);
+    vec4 caca = vec4( n, -1.0, 0.0 ) * scale;
+    caca /= dot( caca, caca );
+    caca = 2.0 * caca + vec4(0.0,0.0,1.0,0.0);*/
+
+    outColor = texture( EnvMap, r.xyz );
+    //outColor = vec4(0.0);
 }

@@ -53,11 +53,11 @@ void main()
                         normalize( DataIn.binormal ),
                         normalize( DataIn.normal ) );
 
-    vec4 color = texture2D( colorMap, DataIn.uv );
+    vec4 color = texture( colorMap, DataIn.uv );
 
     vec3 albedo = color.rgb;
 
-    vec3 n  = texture2D( normalMap, DataIn.uv ).rgb;
+    vec3 n  = texture( normalMap, DataIn.uv ).rgb;
     n.xy    = 2.0 * n.xy - 1.0;
     n.z     = sqrt( 1.0 - dot( n.xy, n.xy ) );
     n       = tbn * n;

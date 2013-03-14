@@ -32,14 +32,14 @@ GBuffer ReadGBuffer( in sampler2D depthMap, in sampler2D normalMap, in sampler2D
 {
     GBuffer gbuffer;
 
-    vec2 n          = texture2D( normalMap, uv ).rg;
+    vec2 n          = texture( normalMap, uv ).rg;
     gbuffer.normal  = DecodeNormal( n );
 
-    vec4 color      = texture2D( colorMap, uv );
+    vec4 color      = texture( colorMap, uv );
     gbuffer.albedo  = color.rgb;
     gbuffer.mask    = color.a;
 
-    float d         = texture2D( depthMap, uv ).r;
+    float d         = texture( depthMap, uv ).r;
     gbuffer.depth   = d;
 
     return gbuffer;

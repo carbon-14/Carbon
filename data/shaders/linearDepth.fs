@@ -7,7 +7,7 @@ layout(binding=0) uniform sampler2D depthTexture;
 
 void main()
 {
-    float z = texture2D( depthTexture, uv ).x;
+    float z = texture( depthTexture, uv ).x;
     
     outValue = DepthRange.x / (  DepthRange.y - z * DepthRange.z );
 }

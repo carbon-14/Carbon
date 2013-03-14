@@ -22,12 +22,12 @@ void main()
     vec2 uv = DataIn.uv;
 
     // color
-    vec3 color = texture2D( carbonColor, DataIn.uv ).rgb;
+    vec3 color = texture( carbonColor, DataIn.uv ).rgb;
     
     color = mix( color, bgColor, 0.5 );                             // mix
 
     // normal
-    vec3 normal = texture2D( carbonNormal, DataIn.uv ).rgb;
+    vec3 normal = texture( carbonNormal, DataIn.uv ).rgb;
 
     normal.xy = vec2( 2.0, -2.0 ) * normal.xy + vec2( -1.0, 1.0 );  // decode normal map
     normal.z = sqrt( 1.0 - dot( normal.xy, normal.xy ) );
