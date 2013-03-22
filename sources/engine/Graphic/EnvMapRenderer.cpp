@@ -9,20 +9,51 @@
 
 namespace Graphic
 {
+    const SizeT envBlurRadius   = 32;
+    const SizeT envBlurSize     = 2 * envBlurRadius + 1;
+    const F32 envBlurSigma      = 16.0f;
+
     void EnvMapRenderer::Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer )
     {
         m_debugRenderer = debugRenderer;
         m_meshRenderer = meshRenderer;
         m_lightRenderer = lightRenderer;
 
-        const U32 programLinearDepthId  = ProgramCache::CreateId( "linearDepth" );
-        m_programLinearDepth            = ProgramCache::GetProgram( programLinearDepthId );
+        const U32 programLinearDepthId              = ProgramCache::CreateId( "linearDepth" );
+        m_programLinearDepth                        = ProgramCache::GetProgram( programLinearDepthId );
 
-        m_renderStateLinearDepth.m_depthWriteMask = false;
+        const U32 programBlurZXId                   = ProgramCache::CreateId( "blurRingY" );
+        m_programBlur[0]                            = ProgramCache::GetProgram( programBlurZXId );
+
+        const U32 programBlurXYId                   = ProgramCache::CreateId( "blurRingZ" );
+        m_programBlur[1]                            = ProgramCache::GetProgram( programBlurXYId );
+
+        const U32 programBlurYZId                   = ProgramCache::CreateId( "blurRingX" );
+        m_programBlur[2]                            = ProgramCache::GetProgram( programBlurYZId );
+
+        m_renderStateLinearDepth.m_depthWriteMask   = false;
+
+        F32 blurWeights[ envBlurSize ];
+
+        for ( SizeT i=0; i<envBlurSize; ++i )
+        {
+            F32 x = (F32)i;
+            x -= (F32)envBlurRadius;
+            F32 g = Exp( -(x*x)/(2.0f*envBlurSigma*envBlurSigma) );
+
+            blurWeights[i] = g;
+        }
+        for ( SizeT i=0; i<envBlurSize; ++i )
+        {
+            blurWeights[i] /=  Sqrt( TwoPi*envBlurSigma*envBlurSigma );
+        }
+
+        m_blurUniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(blurWeights), blurWeights, BU_STATIC );
     }
 
     void EnvMapRenderer::Destroy()
     {
+        RenderDevice::DestroyBuffer( m_blurUniformBuffer );
     }
 
     EnvMapRenderer::Context * EnvMapRenderer::CreateContext()
@@ -237,6 +268,18 @@ namespace Graphic
                 RenderDevice::AttachTextureCube( FT_DRAW, FA_COLOR0, (CubeFace)i, context->m_lightTexture, 0 );
 
                 m_lightRenderer->DrawEnv( face.m_lightRendererContext, renderCache );
+            }
+        }
+
+        // Blur
+        {
+            RenderDevice::BindUniformBuffer( m_blurUniformBuffer, 0 );
+
+            for ( SizeT i=0; i<3; ++i )
+            {
+                ProgramCache::UseProgram( m_programBlur[i] );
+                RenderDevice::BindImageTextureCube( context->m_lightTexture, 0, 0, BA_READ_WRITE, TF_RGBA16F );
+                RenderDevice::DispatchCompute( 1, context->m_size, 1 );
             }
         }
     }

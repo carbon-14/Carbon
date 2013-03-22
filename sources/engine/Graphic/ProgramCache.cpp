@@ -12,17 +12,18 @@ namespace Graphic
 {
     enum ShaderTypeBits
     {
-        STB_VERTEX_SHADER    = 1 << ST_VERTEX_SHADER,
-        STB_FRAGMENT_SHADER  = 1 << ST_FRAGMENT_SHADER,
-        STB_GEOMETRY_SHADER  = 1 << ST_GEOMETRY_SHADER
+        STB_VERTEX_SHADER   = 1 << ST_VERTEX_SHADER,
+        STB_FRAGMENT_SHADER = 1 << ST_FRAGMENT_SHADER,
+        STB_GEOMETRY_SHADER = 1 << ST_GEOMETRY_SHADER,
+        STB_COMPUTE_SHADER  = 1 << ST_COMPUTE_SHADER
     };
 
-    const Char Extensions[ ST_COUNT ][ 4 ] = { ".vs", ".fs", ".gs" };
+    const Char Extensions[ ST_COUNT ][ 4 ] = { ".vs", ".fs", ".gs", ".cs" };
 
     const char samplersFileName[] = "samplers.bin";
     const char materialDir[] = "materials";
     const char headersDir[] = "inc";
-    const char glslVersion[] = "#version 420";
+    const char glslVersion[] = "#version 430 core";
     U64 headersLastWriteTime = 0;
 
     struct SamplerDesc
@@ -204,6 +205,10 @@ namespace Graphic
             else if ( StringUtils::StrCmp( ext, ".gs" ) == 0 )
             {
                 typeMask |= STB_GEOMETRY_SHADER;
+            }
+            else if ( StringUtils::StrCmp( ext, ".cs" ) == 0 )
+            {
+                typeMask |= STB_COMPUTE_SHADER;
             }
             else
             {

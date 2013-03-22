@@ -63,7 +63,11 @@ namespace Graphic
         LightRenderer * m_lightRenderer;
 
         ProgramHandle   m_programLinearDepth;
+        ProgramHandle   m_programBlur[3];
+
         RenderState     m_renderStateLinearDepth;
+
+        Handle          m_blurUniformBuffer;
     };
 }
 

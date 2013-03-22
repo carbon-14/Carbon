@@ -11,6 +11,7 @@ namespace Graphic
         ST_VERTEX_SHADER = 0,
         ST_FRAGMENT_SHADER,
         ST_GEOMETRY_SHADER,
+        ST_COMPUTE_SHADER,
         ST_COUNT
     };
 

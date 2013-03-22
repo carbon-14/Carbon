@@ -221,13 +221,21 @@ extern "C"
     Func ( PFNGLPROGRAMBINARYPROC                       , glProgramBinary                       );  \
     Func ( PFNGLPROGRAMPARAMETERIPROC                   , glProgramParameteri                   );  \
                                                                                                     \
+    /* GL_ARB_shader_image_load_store */                                                            \
+    Func ( PFNGLBINDIMAGETEXTUREPROC                    , glBindImageTexture                    );  \
+    Func ( PFNGLMEMORYBARRIERPROC                       , glMemoryBarrier                       );  \
+                                                                                                    \
     /* GL_ARB_texture_storage */                                                                    \
     Func ( PFNGLTEXSTORAGE1DPROC                        , glTexStorage1D                        );  \
     Func ( PFNGLTEXSTORAGE2DPROC                        , glTexStorage2D                        );  \
     Func ( PFNGLTEXSTORAGE3DPROC                        , glTexStorage3D                        );  \
     Func ( PFNGLTEXTURESTORAGE1DEXTPROC                 , glTextureStorage1DEXT                 );  \
     Func ( PFNGLTEXTURESTORAGE2DEXTPROC                 , glTextureStorage2DEXT                 );  \
-    Func ( PFNGLTEXTURESTORAGE3DEXTPROC                 , glTextureStorage3DEXT                 )
+    Func ( PFNGLTEXTURESTORAGE3DEXTPROC                 , glTextureStorage3DEXT                 );  \
+                                                                                                    \
+    /* GL_ARB_compute_shader */                                                                     \
+    Func ( PFNGLDISPATCHCOMPUTEPROC                     , glDispatchCompute                     );  \
+    Func ( PFNGLDISPATCHCOMPUTEINDIRECTPROC             , glDispatchComputeIndirect             )
 
 #define DECLARE_GL_FUNCTION( PFunc, Name )     extern PFunc Name
 #define DEFINE_GL_FUNCTION( PFunc, Name )      PFunc Name = 0

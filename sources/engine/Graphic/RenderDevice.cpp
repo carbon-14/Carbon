@@ -11,7 +11,8 @@ namespace Graphic
     {
         GL_VERTEX_SHADER,   // ST_VERTEX_SHADER
         GL_FRAGMENT_SHADER, // ST_FRAGMENT_SHADER
-        GL_GEOMETRY_SHADER  // ST_GEOMETRY_SHADER
+        GL_GEOMETRY_SHADER, // ST_GEOMETRY_SHADER
+        GL_COMPUTE_SHADER   // ST_COMPUTE_SHADER
     };
 
     const GLenum ToGLBufferUsage[] =
@@ -361,6 +362,30 @@ namespace Graphic
         }
     }
 
+    Handle IRenderDevice::CreateShaderStorageBuffer( SizeT size, const void * data, BufferUsage usage )
+    {
+        return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_SHADER_STORAGE_BUFFER );
+    }
+
+    void * IRenderDevice::MapShaderStorageBuffer( Handle buffer, BufferAccess access )
+    {
+        return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_SHADER_STORAGE_BUFFER );
+    }
+
+    void IRenderDevice::UnmapShaderStorageBuffer( )
+    {
+        glUnmapBuffer( GL_SHADER_STORAGE_BUFFER );
+    }
+
+    void IRenderDevice::BindShaderStorageBuffer( Handle ubuffer, SizeT location )
+    {
+        if ( ubuffer != s_uniformCache[location] )
+        {
+            glBindBufferBase( GL_SHADER_STORAGE_BUFFER, location, ubuffer );
+            s_uniformCache[location] = ubuffer;
+        }
+    }
+
     void IRenderDevice::DestroyBuffer( Handle buffer )
     {
         glDeleteBuffers( 1, (GLuint*)&buffer );
@@ -489,6 +514,11 @@ namespace Graphic
         }
     }
 
+    void IRenderDevice::DispatchCompute( SizeT groupX, SizeT groupY, SizeT groupZ )
+    {
+        glDispatchCompute( groupX, groupY, groupZ );
+    }
+
     Handle IRenderDevice::CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
     {
         GLuint texture;
@@ -567,6 +597,21 @@ namespace Graphic
             glBindTexture( GL_TEXTURE_CUBE_MAP, texture );
             s_textureCache[unit] = texture;
         }
+    }
+
+    void IRenderDevice::BindImageTexture( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format )
+    {
+        glBindImageTexture( unit, texture, level, GL_FALSE, 0, ToGLBufferAccess[ access ], ToGLTextureFormat[ format ] );
+    }
+
+    void IRenderDevice::BindImageTextureCube( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format )
+    {
+        glBindImageTexture( unit, texture, level, GL_TRUE, 0, ToGLBufferAccess[ access ], ToGLTextureFormat[ format ] );
+    }
+
+    void IRenderDevice::BindImageTextureCubeFace( Handle texture, SizeT unit, SizeT level, CubeFace face, BufferAccess access, TextureFormat format )
+    {
+        glBindImageTexture( unit, texture, level, GL_FALSE, face, ToGLBufferAccess[ access ], ToGLTextureFormat[ format ] );
     }
 
     Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )

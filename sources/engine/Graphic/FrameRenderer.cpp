@@ -5,6 +5,8 @@
 #include "Graphic/Camera.h"
 #include "Graphic/QuadGeometry.h"
 
+#include "Core/Math.h"
+
 namespace Graphic
 {
     FrameRenderer::FrameRenderer()
@@ -29,9 +31,6 @@ namespace Graphic
 
         const U32 programToneMappingId              = ProgramCache::CreateId( "toneMapping" );
         m_programToneMapping                        = ProgramCache::GetProgram( programToneMappingId );
-
-        m_renderStateLinearDepth.m_depthWriteMask   = false;
-        m_renderStateToneMapping.m_depthWriteMask   = false;
     }
 
     void FrameRenderer::Destroy()

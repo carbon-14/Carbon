@@ -20,6 +20,10 @@ namespace Graphic
         static void *           MapUniformBuffer( Handle buffer, BufferAccess access );
         static void             UnmapUniformBuffer( );
         static void             BindUniformBuffer( Handle ubuffer, SizeT location );
+        static Handle           CreateShaderStorageBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void *           MapShaderStorageBuffer( Handle buffer, BufferAccess access );
+        static void             UnmapShaderStorageBuffer( );
+        static void             BindShaderStorageBuffer( Handle ubuffer, SizeT location );
         static void             DestroyBuffer( Handle buffer );
 
         static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer = 0 );
@@ -30,6 +34,7 @@ namespace Graphic
         static void             GetProgramBinary( Handle program, void *& binary, SizeT& size );
         static Handle           CreateProgramBinary( const void * binary, SizeT size );
         static void             UseProgram( Handle program );
+        static void             DispatchCompute( SizeT groupX, SizeT groupY, SizeT groupZ );
 
         static Handle           CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
         static Handle           CreateRenderTexture( TextureFormat format, SizeT width, SizeT height );
@@ -37,6 +42,9 @@ namespace Graphic
         static void             DestroyTexture( Handle texture );
         static void             BindTexture( Handle texture, SizeT unit );
         static void             BindTextureCube( Handle texture, SizeT unit );
+        static void             BindImageTexture( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format );
+        static void             BindImageTextureCube( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format );
+        static void             BindImageTextureCubeFace( Handle texture, SizeT unit, SizeT level, CubeFace face, BufferAccess access, TextureFormat format );
 
         static Handle           CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap );
         static void             DestroySampler( Handle sampler );
