@@ -106,6 +106,8 @@ void Level7::ProcessInputs( RAWINPUT * raw )
 
 void Level7::PreExecute()
 {
+    glEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
+
     QuadGeometry::GetInstance().Initialize();
 
     m_debugRenderer.Initialize();
