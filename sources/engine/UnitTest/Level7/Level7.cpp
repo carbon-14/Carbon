@@ -117,7 +117,7 @@ void Level7::PreExecute()
     m_frameRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer, &m_envMapRenderer );
 
     m_scene = MemoryManager::New< Scene >();
-    m_scene->SetAmbientSkyLight( Vector4( 0.00185f, 0.003325f, 0.00625f ) );
+    m_scene->SetAmbientSkyLight( Vector4( 0.0185f, 0.03325f, 0.0625f ) );
     m_scene->SetAmbientGroundLight( Vector4( 0.0025f, 0.0025f, 0.0025f ) );
 
     {
@@ -163,7 +163,7 @@ void Level7::PreExecute()
                     F32 z = (F32)k;
 
                     F32 lightRatio = ((F32)rand())/RAND_MAX;
-                    const Vector color = Vector4( 1.0f, 0.6881f, 0.5317f );
+                    const Vector color = Vector4( 5.0f, 5.0f, 5.0f ) * Vector4( 1.0f, 0.6881f, 0.5317f );
 
                     Vector lightColor = Lerp( color, Swizzle< 2, 1, 0, 3 >( color ), Splat(lightRatio) );
 
@@ -261,19 +261,41 @@ void Level7::Execute()
         F32 time = static_cast< F32 >( m_clockTicks * TimeUtils::ClockPeriod() );
         F32 elapsedTime = static_cast< F32 >( m_frameTicks * TimeUtils::ClockPeriod() );
 
-        Vector rotateY = Quaternion( UnitY, -mousedX * elapsedTime * turnSpeed );
-        mousedX = 0.0f;
+        {
+            Vector rotateY = Quaternion( UnitY, -mousedX * elapsedTime * turnSpeed );
+            mousedX = 0.0f;
 
-        Vector rotateX = Quaternion( UnitX, -mousedY * elapsedTime * turnSpeed );
-        mousedY = 0.0f;
+            Vector rotateX = Quaternion( UnitX, -mousedY * elapsedTime * turnSpeed );
+            mousedY = 0.0f;
 
-        m_camera->m_orientation = MulQuat( m_camera->m_orientation, rotateX );
-        m_camera->m_orientation = MulQuat( rotateY, m_camera->m_orientation );
+            m_camera->m_orientation = MulQuat( m_camera->m_orientation, rotateX );
+            m_camera->m_orientation = MulQuat( rotateY, m_camera->m_orientation );
 
-        Matrix ori = RMatrix( m_camera->m_orientation );
+            Matrix ori = RMatrix( m_camera->m_orientation );
 
-        m_camera->m_position = m_camera->m_position - Splat(moveY * elapsedTime * moveSpeed) * ori.m_column[2];
-        m_camera->m_position = m_camera->m_position + Splat(moveX * elapsedTime * moveSpeed) * ori.m_column[0];
+            m_camera->m_position = m_camera->m_position - Splat(moveY * elapsedTime * moveSpeed) * ori.m_column[2];
+            m_camera->m_position = m_camera->m_position + Splat(moveX * elapsedTime * moveSpeed) * ori.m_column[0];
+        }
+        /*{
+            m_camera->m_position    = Vector4( -15.0f * Cos( time * 0.1f ), -11.5f, 1.0f );
+            Vector cam_at           = Vector4( 5.0f, -10.0f, 0.0f );
+
+            Vector cam_dir          = Normalize( cam_at - m_camera->m_position );
+            F128 dir;
+            Store( dir, cam_dir );
+
+            F32 angleX = ASin( dir[1] );
+
+            Vector cam_proj     = Normalize( Select( cam_dir, Zero4, Mask< 0, 1, 0, 1 >() ) );
+            F128 proj;
+            Store( proj, cam_proj );
+
+            F32 angleY = ACos( proj[0] );
+            if ( proj[2] > 0.0f )
+                angleY = -angleY;
+
+            m_camera->m_orientation = MulQuat( Quaternion( UnitY, angleY - HalfPi ), Quaternion( UnitX, angleX ) );
+        }*/
 
         m_camera->Update();
 
