@@ -7,6 +7,7 @@
 #include "Graphic/Light.h"
 #include "Graphic/LightGeometry.h"
 #include "Graphic/DebugRenderer.h"
+#include "Graphic/FrustumQuadTree.h"
 
 #include "Core/Matrix.h"
 
@@ -45,6 +46,8 @@ namespace Graphic
             Handle                      m_colorTexture;
             Handle                      m_envTexture;
 
+            FrustumQuadTree             m_quadTree;
+
             DebugRenderer::Context *    m_debugContext;
             Bool                        m_debugDraw;
         };
@@ -54,7 +57,7 @@ namespace Graphic
         void Destroy();
 
         static Context * CreateContext( DebugRenderer::Context * context );
-        static void UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture );
+        static void UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture );
         static void DestroyContext( Context * context );
 
         void Render( const Light * lights, Context * context ) const;
@@ -85,6 +88,7 @@ namespace Graphic
         ProgramHandle       m_programOmni;
         ProgramHandle       m_programSpot;
         ProgramHandle       m_programAlbedo;
+        ProgramHandle       m_programMaterial;
 
         RenderState         m_stateMaskClear0;
         RenderState         m_stateMaskClear1;
@@ -95,6 +99,7 @@ namespace Graphic
         RenderState         m_stateAmbientLighting;
         RenderState         m_stateAlbedoMask;
         RenderState         m_stateAlbedoLighting;
+        RenderState         m_stateMaterialLighting;
 
         DebugRenderer *     m_debugRenderer;
     };

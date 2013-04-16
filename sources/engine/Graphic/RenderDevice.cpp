@@ -614,6 +614,16 @@ namespace Graphic
         glBindImageTexture( unit, texture, level, GL_FALSE, face, ToGLBufferAccess[ access ], ToGLTextureFormat[ format ] );
     }
 
+    void IRenderDevice::CopyImage( Handle src, SizeT srcLevel, SizeT srcX, SizeT srcY, SizeT srcZ, Handle dst, SizeT dstLevel, SizeT dstX, SizeT dstY, SizeT dstZ , SizeT srcWidth, SizeT srcHeight, SizeT srcDepth )
+    {
+        glCopyImageSubData( src, GL_TEXTURE_2D, srcLevel, srcX, srcY, srcZ, dst, GL_TEXTURE_2D, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth );
+    }
+
+    void IRenderDevice::CopyImageCube( Handle src, SizeT srcLevel, SizeT srcX, SizeT srcY, SizeT srcZ, Handle dst, SizeT dstLevel, SizeT dstX, SizeT dstY, SizeT dstZ , SizeT srcWidth, SizeT srcHeight, SizeT srcDepth )
+    {
+        glCopyImageSubData( src, GL_TEXTURE_CUBE_MAP, srcLevel, srcX, srcY, srcZ, dst, GL_TEXTURE_CUBE_MAP, dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, srcDepth );
+    }
+
     Handle IRenderDevice::CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap )
     {
         GLuint sampler;

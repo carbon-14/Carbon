@@ -54,6 +54,9 @@ namespace Graphic
         U32 albedoLightingId        = ProgramCache::CreateId( "lightingAlbedo" );
         m_programAlbedo             = ProgramCache::GetProgram( albedoLightingId );
 
+        U32 materialLightingId      = ProgramCache::CreateId( "lightingMaterial" );
+        m_programMaterial           = ProgramCache::GetProgram( materialLightingId );
+
         m_stateMaskClear0.m_colorWriteMask          = 0;
         m_stateMaskClear0.m_enableCullFace          = true;
         m_stateMaskClear0.m_cullFace                = CF_FRONT;
@@ -127,6 +130,15 @@ namespace Graphic
         m_stateAlbedoLighting.m_dstBlendFunc        = BF_SRC_COLOR;
         m_stateAlbedoLighting.m_blendMode           = BM_ADD;
 
+        m_stateMaterialLighting.m_depthWriteMask      = false;
+        m_stateMaterialLighting.m_enableStencilTest   = true;
+        m_stateMaterialLighting.m_stencilRef          = 0;
+        m_stateMaterialLighting.m_stencilFunc         = F_EQUAL;
+        m_stateMaterialLighting.m_enableBlend         = true;
+        m_stateMaterialLighting.m_srcBlendFunc        = BF_ONE;
+        m_stateMaterialLighting.m_dstBlendFunc        = BF_ONE;
+        m_stateMaterialLighting.m_blendMode           = BM_ADD;
+
         m_debugRenderer = debugRenderer;
     }
 
@@ -165,8 +177,15 @@ namespace Graphic
         return context;
     }
 
-    void LightRenderer::UpdateContext( Context * context, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture )
+    void LightRenderer::UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture )
     {
+        FrustumQuadTree& quadTree = context->m_quadTree;
+        if ( quadTree.GetWidth() != width || quadTree.GetHeight() != height || quadTree.GetCamera() != camera )
+        {
+            quadTree.Clear();
+            quadTree.Build( 16, width, height, camera );
+        }
+
         const Matrix tr =
         {
             camera->GetFrustum().GetCorners()[FC_LEFT_BOTTOM_NEAR],
@@ -198,6 +217,8 @@ namespace Graphic
             RenderDevice::DestroyBuffer( it->m_uniformBuffer );
         }
         MemoryManager::Free( context->m_renderLights );
+
+        context->m_quadTree.Clear();
 
         MemoryManager::Delete( context );
     }
@@ -271,6 +292,10 @@ namespace Graphic
         ProgramCache::UseProgram( m_programAlbedo );
         renderCache.SetRenderState( m_stateAlbedoLighting );
         QuadGeometry::GetInstance().Draw();
+
+        /*ProgramCache::UseProgram( m_programMaterial );
+        renderCache.SetRenderState( m_stateMaterialLighting );
+        QuadGeometry::GetInstance().Draw();*/
     }
 
     void LightRenderer::DrawEnv( Context * context, RenderCache& renderCache ) const

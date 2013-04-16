@@ -20,6 +20,7 @@ namespace Graphic
         Vector  m_viewScale;
         Vector  m_ambientSkyLight;
         Vector  m_ambientGroundLight;
+        Vector  m_cameraPosition;
         Matrix  m_viewMatrix;
         Matrix  m_projMatrix;
         Matrix  m_viewProjMatrix;
@@ -73,6 +74,7 @@ namespace Graphic
     private:
         void LinearizeDepth( Context * context, RenderCache& renderCache ) const;
         void ApplyToneMapping( Context * context, RenderCache& renderCache ) const;
+        void DrawOverlay( Context * context, RenderCache& renderCache ) const;
 
         DebugRenderer *     m_debugRenderer;
         MeshRenderer *      m_meshRenderer;
@@ -81,9 +83,11 @@ namespace Graphic
 
         ProgramHandle       m_programLinearDepth;
         ProgramHandle       m_programToneMapping;
+        ProgramHandle       m_programOverlay;
 
         RenderState         m_renderStateLinearDepth;
         RenderState         m_renderStateToneMapping;
+        RenderState         m_renderStateOverlay;
     };
 }
 

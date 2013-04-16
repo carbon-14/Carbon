@@ -31,6 +31,9 @@ namespace Graphic
 
         const U32 programToneMappingId              = ProgramCache::CreateId( "toneMapping" );
         m_programToneMapping                        = ProgramCache::GetProgram( programToneMappingId );
+
+        const U32 programOverlayId                  = ProgramCache::CreateId( "overlay" );
+        m_programOverlay                            = ProgramCache::GetProgram( programOverlayId );
     }
 
     void FrameRenderer::Destroy()
@@ -108,6 +111,7 @@ namespace Graphic
             params.m_viewScale          = camera->GetViewScaleFar();
             params.m_ambientSkyLight    = context->m_scene->GetAmbientSkyLight();
             params.m_ambientGroundLight = context->m_scene->GetAmbientGroundLight();
+            params.m_cameraPosition     = camera->m_position;
             params.m_viewMatrix         = camera->GetViewMatrix();
             params.m_projMatrix         = camera->GetProjMatrix();
             params.m_viewProjMatrix     = camera->GetViewProjMatrix();
@@ -121,7 +125,7 @@ namespace Graphic
 
         DebugRenderer::UpdateContext( context->m_debugRendererContext );
         EnvMapRenderer::UpdateContext( context->m_envMapRendererContext, envMapSize, camera, scene );
-        LightRenderer::UpdateContext( context->m_lightRendererContext, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightTexture );
+        LightRenderer::UpdateContext( context->m_lightRendererContext, width, height, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightBlurTexture );
     }
 
     void FrameRenderer::DestroyContext( Context * context )
@@ -174,6 +178,46 @@ namespace Graphic
             {
                 m_lightRenderer->Render( *it, context->m_lightRendererContext );
             }
+
+            /*{
+                Vector colors[] =
+                {
+                    Vector4( 0.0f, 0.0f, 0.0f ),
+                    Vector4( 1.0f, 0.0f, 0.0f ),
+                    Vector4( 0.0f, 1.0f, 0.0f ),
+                    Vector4( 1.0f, 1.0f, 0.0f ),
+                    Vector4( 0.0f, 0.0f, 1.0f ),
+                    Vector4( 1.0f, 0.0f, 1.0f ),
+                    Vector4( 0.0f, 1.0f, 1.0f ),
+                    Vector4( 1.0f, 1.0f, 1.0f )
+                };
+                const FrustumQuadTree& quadTree = context->m_lightRendererContext->m_quadTree;
+                const FrustumQuadTree::Cell * ptr = quadTree.GetCells();
+                for ( SizeT k=0; k<quadTree.GetLevelCount(); ++k )
+                {
+                    Vector color = colors[k];
+
+                    SizeT size = 1 << k;
+                    for ( SizeT i=0; i<size; ++i )
+                    {
+                        for ( SizeT j=0; j<size; ++j )
+                        {
+                            const FrustumQuadTree::Cell * cell = ptr++;
+                            
+                            Vector dirX = ( Cross( UnitY, cell->vPlane ) );
+                            Vector dirY = ( Cross( cell->hPlane, UnitX ) );
+                            Vector dir = dirX + dirY;
+
+                            const F32 debug_scale = 0.2f;
+                            Vector dirA = Splat( debug_scale * k ) * dir;
+                            Vector dirB = Splat( debug_scale * ( k + 1 ) ) * dir;
+
+                            DebugLine line = { Select( dirA, UnitW, Mask<0,0,0,1>() ), Select( dirB, UnitW, Mask<0,0,0,1>() ), color };
+                            m_debugRenderer->Render( line, context->m_debugRendererContext );
+                        }
+                    }
+                }
+            }*/
         }
     }
 
@@ -221,6 +265,9 @@ namespace Graphic
             // Tone mapping
             ApplyToneMapping( context, renderCache );
 
+            // Overlay
+            //DrawOverlay( context, renderCache );
+
             // Debug
             m_debugRenderer->Draw( context->m_debugRendererContext, renderCache );
 
@@ -252,6 +299,23 @@ namespace Graphic
         ProgramCache::UseProgram( m_programToneMapping );
 
         RenderDevice::BindTexture( context->m_lightTexture, 0 );
+
+        QuadGeometry::GetInstance().Draw();
+    }
+
+    void FrameRenderer::DrawOverlay( Context * context, RenderCache& renderCache ) const
+    {
+        renderCache.SetSRGBWrite( true );
+        renderCache.SetRenderState( m_renderStateOverlay );
+
+        ProgramCache::UseProgram( m_programOverlay );
+
+        RenderDevice::BindTexture( context->m_lightRendererContext->m_linearDepthTexture, 0 );
+        RenderDevice::BindTexture( context->m_lightRendererContext->m_normalTexture, 1 );
+        RenderDevice::BindTexture( context->m_lightRendererContext->m_colorTexture, 2 );
+        RenderDevice::BindTextureCube( context->m_envMapRendererContext->m_lightTexture, 3 );
+        RenderDevice::BindTextureCube( context->m_envMapRendererContext->m_lightBlurTexture, 4 );
+        RenderDevice::BindTexture( context->m_lightTexture, 5 );
 
         QuadGeometry::GetInstance().Draw();
     }

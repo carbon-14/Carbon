@@ -11,7 +11,7 @@ namespace Graphic
 {
     const SizeT envBlurRadius   = 32;
     const SizeT envBlurSize     = 2 * envBlurRadius + 1;
-    const F32 envBlurSigma      = 16.0f;
+    const F32 envBlurSigma      = 12.0f;
 
     void EnvMapRenderer::Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer )
     {
@@ -22,19 +22,19 @@ namespace Graphic
         const U32 programLinearDepthId              = ProgramCache::CreateId( "linearDepth" );
         m_programLinearDepth                        = ProgramCache::GetProgram( programLinearDepthId );
 
-        const U32 programBlurZXId                   = ProgramCache::CreateId( "blurRingY" );
-        m_programBlur[0]                            = ProgramCache::GetProgram( programBlurZXId );
+        const U32 programBlurYId                    = ProgramCache::CreateId( "blurRingY" );
+        m_programBlur[0]                            = ProgramCache::GetProgram( programBlurYId );
 
-        const U32 programBlurXYId                   = ProgramCache::CreateId( "blurRingZ" );
-        m_programBlur[1]                            = ProgramCache::GetProgram( programBlurXYId );
+        const U32 programBlurZId                    = ProgramCache::CreateId( "blurRingZ" );
+        m_programBlur[1]                            = ProgramCache::GetProgram( programBlurZId );
 
-        const U32 programBlurYZId                   = ProgramCache::CreateId( "blurRingX" );
-        m_programBlur[2]                            = ProgramCache::GetProgram( programBlurYZId );
+        const U32 programBlurXId                    = ProgramCache::CreateId( "blurRingX" );
+        m_programBlur[2]                            = ProgramCache::GetProgram( programBlurXId );
 
         m_renderStateLinearDepth.m_depthWriteMask   = false;
 
+        F32 sum = 0.0f;
         F32 blurWeights[ envBlurSize ];
-
         for ( SizeT i=0; i<envBlurSize; ++i )
         {
             F32 x = (F32)i;
@@ -42,10 +42,11 @@ namespace Graphic
             F32 g = Exp( -(x*x)/(2.0f*envBlurSigma*envBlurSigma) );
 
             blurWeights[i] = g;
+            sum += g;
         }
         for ( SizeT i=0; i<envBlurSize; ++i )
         {
-            blurWeights[i] /=  Sqrt( TwoPi*envBlurSigma*envBlurSigma );
+            blurWeights[i] /= sum;
         }
 
         m_blurUniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(blurWeights), blurWeights, BU_STATIC );
@@ -68,6 +69,7 @@ namespace Graphic
         context->m_colorTexture                 = 0;
         context->m_linearDepthTexture           = 0;
         context->m_lightTexture                 = 0;
+        context->m_lightBlurTexture             = 0;
         context->m_geomFramebuffer              = RenderDevice::CreateFramebuffer();
         context->m_linearizeDepthFramebuffer    = RenderDevice::CreateFramebuffer();
         context->m_lightFramebuffer             = RenderDevice::CreateFramebuffer();
@@ -100,6 +102,7 @@ namespace Graphic
 
         if ( size != context->m_size )
         {
+            RenderDevice::DestroyTexture( context->m_lightBlurTexture );
             RenderDevice::DestroyTexture( context->m_lightTexture );
             RenderDevice::DestroyTexture( context->m_linearDepthTexture );
             RenderDevice::DestroyTexture( context->m_colorTexture );
@@ -112,6 +115,7 @@ namespace Graphic
             context->m_colorTexture         = RenderDevice::CreateRenderTexture( TF_SRGBA8, size, size );
             context->m_linearDepthTexture   = RenderDevice::CreateRenderTexture( TF_R32F, size, size );
             context->m_lightTexture         = RenderDevice::CreateRenderTextureCube( TF_RGBA16F, size );
+            context->m_lightBlurTexture     = RenderDevice::CreateRenderTextureCube( TF_RGBA16F, size );
         }
 
         const Vector cube_ori_align[] =
@@ -170,7 +174,7 @@ namespace Graphic
             face.m_opaqueList.Clear();
 
             DebugRenderer::UpdateContext( face.m_debugRendererContext );
-            LightRenderer::UpdateContext( face.m_lightRendererContext, &face_cam, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, 0 );
+            LightRenderer::UpdateContext( face.m_lightRendererContext, size, size, &face_cam, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, 0 );
         }        
     }
 
@@ -191,6 +195,7 @@ namespace Graphic
         RenderDevice::DestroyFramebuffer( context->m_linearizeDepthFramebuffer );
         RenderDevice::DestroyFramebuffer( context->m_geomFramebuffer );
 
+        RenderDevice::DestroyTexture( context->m_lightBlurTexture );
         RenderDevice::DestroyTexture( context->m_lightTexture );
         RenderDevice::DestroyTexture( context->m_linearDepthTexture );
         RenderDevice::DestroyTexture( context->m_colorTexture );
@@ -273,12 +278,14 @@ namespace Graphic
 
         // Blur
         {
+            RenderDevice::CopyImageCube( context->m_lightTexture, 0, 0, 0, 0, context->m_lightBlurTexture, 0, 0, 0, 0, context->m_size, context->m_size, 6 );
+
             RenderDevice::BindUniformBuffer( m_blurUniformBuffer, 0 );
 
             for ( SizeT i=0; i<3; ++i )
             {
                 ProgramCache::UseProgram( m_programBlur[i] );
-                RenderDevice::BindImageTextureCube( context->m_lightTexture, 0, 0, BA_READ_WRITE, TF_RGBA16F );
+                RenderDevice::BindImageTextureCube( context->m_lightBlurTexture, 0, 0, BA_READ_WRITE, TF_RGBA16F );
                 RenderDevice::DispatchCompute( 1, context->m_size, 1 );
             }
         }

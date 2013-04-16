@@ -27,6 +27,7 @@ namespace Graphic
             Handle                      m_linearDepthTexture;
 
             Handle                      m_lightTexture;
+            Handle                      m_lightBlurTexture;
 
             Handle                      m_geomFramebuffer;
             Handle                      m_linearizeDepthFramebuffer;

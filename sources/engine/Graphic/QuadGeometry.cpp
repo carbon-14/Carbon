@@ -37,7 +37,7 @@ namespace Graphic
         vdecl.m_count                       = 1;
 
         m_vertexBuffer  = RenderDevice::CreateVertexBuffer( sizeof(vb), vb, BU_STATIC );
-        m_vertexArray   = RenderDevice::CreateVertexArray( vdecl, m_vertexBuffer, 0 );
+        m_vertexArray   = RenderDevice::CreateVertexArray( vdecl, m_vertexBuffer );
     }
 
     void QuadGeometry::Destroy()

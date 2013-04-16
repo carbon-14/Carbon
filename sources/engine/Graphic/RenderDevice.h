@@ -45,6 +45,8 @@ namespace Graphic
         static void             BindImageTexture( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format );
         static void             BindImageTextureCube( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format );
         static void             BindImageTextureCubeFace( Handle texture, SizeT unit, SizeT level, CubeFace face, BufferAccess access, TextureFormat format );
+        static void             CopyImage( Handle src, SizeT srcLevel, SizeT srcX, SizeT srcY, SizeT srcZ, Handle dst, SizeT dstLevel, SizeT dstX, SizeT dstY, SizeT dstZ , SizeT srcWidth, SizeT srcHeight, SizeT srcDepth );
+        static void             CopyImageCube( Handle src, SizeT srcLevel, SizeT srcX, SizeT srcY, SizeT srcZ, Handle dst, SizeT dstLevel, SizeT dstX, SizeT dstY, SizeT dstZ , SizeT srcWidth, SizeT srcHeight, SizeT srcDepth );
 
         static Handle           CreateSampler( FilterType min, FilterType mag, MipType mip, WrapType wrap );
         static void             DestroySampler( Handle sampler );

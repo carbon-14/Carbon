@@ -235,7 +235,10 @@ extern "C"
                                                                                                     \
     /* GL_ARB_compute_shader */                                                                     \
     Func ( PFNGLDISPATCHCOMPUTEPROC                     , glDispatchCompute                     );  \
-    Func ( PFNGLDISPATCHCOMPUTEINDIRECTPROC             , glDispatchComputeIndirect             )
+    Func ( PFNGLDISPATCHCOMPUTEINDIRECTPROC             , glDispatchComputeIndirect             );  \
+                                                                                                    \
+    /* GL_ARB_copy_image */                                                                         \
+    Func ( PFNGLCOPYIMAGESUBDATAPROC                    , glCopyImageSubData                    )
 
 #define DECLARE_GL_FUNCTION( PFunc, Name )     extern PFunc Name
 #define DEFINE_GL_FUNCTION( PFunc, Name )      PFunc Name = 0
