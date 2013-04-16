@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<program xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=". program.xsd">
+    <description>
+        <textures>
+            <texture id="GBufferDepth" sampler="LinearSampler" layout="0" default="default_c.png"/>
+            <texture id="GBufferNormal" sampler="LinearSampler" layout="1" default="default_n.png"/>
+            <texture id="GBufferColor" sampler="LinearSampler" layout="2" default="default_c.png"/>
+            <texture id="EnvMap" sampler="LinearSampler" layout="3" default="default_c.png"/>
+            <texture id="EnvMapBlur" sampler="LinearSampler" layout="4" default="default_c.png"/>
+            <texture id="LightTexture" sampler="LinearSampler" layout="5" default="default_c.png"/>
+        </textures>
+        <parameters/>
+    </description>
+    <sets/>
+</program>

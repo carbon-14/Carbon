@@ -41,7 +41,7 @@ float LightSpotIntensity( in float squaredDistance, in float invSquaredRadius, i
 vec4 LightAmbient( in vec4 normal, in vec4 viewY, in vec4 groundLight, in vec4 skyLight )
 {
     float ratio = dot( normal, viewY );
-    return mix( groundLight, skyLight, 0.5 * ratio + 0.5 );
+    return mix( skyLight, groundLight, 0.5 * ratio + 0.5 );
 }
 
 float DiffuseTerm( in vec4 normal, in vec4 toLight )

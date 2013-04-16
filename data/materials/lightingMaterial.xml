@@ -5,6 +5,7 @@
             <texture id="GBufferDepth" sampler="PointSampler" layout="0" default="default_c.png"/>
             <texture id="GBufferNormal" sampler="PointSampler" layout="1" default="default_n.png"/>
             <texture id="GBufferColor" sampler="PointSampler" layout="2" default="default_c.png"/>
+            <texture id="EnvMap" sampler="LinearSampler" layout="3" default="default_c.png"/>
         </textures>
         <parameters/>
     </description>
