@@ -7,7 +7,6 @@
 #include "Graphic/Light.h"
 #include "Graphic/LightGeometry.h"
 #include "Graphic/DebugRenderer.h"
-#include "Graphic/FrustumQuadTree.h"
 
 #include "Core/Matrix.h"
 
@@ -46,8 +45,6 @@ namespace Graphic
             Handle                      m_colorTexture;
             Handle                      m_envTexture;
 
-            FrustumQuadTree             m_quadTree;
-
             DebugRenderer::Context *    m_debugContext;
             Bool                        m_debugDraw;
         };
@@ -60,9 +57,9 @@ namespace Graphic
         static void UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture );
         static void DestroyContext( Context * context );
 
-        void Render( const Light * lights, Context * context ) const;
-        void Draw( Context * context, RenderCache& renderCache ) const;
-        void DrawEnv( Context * context, RenderCache& renderCache ) const;
+        void Render( const Light * const * lights, SizeT lightCount, Context * context ) const;
+        void Draw( const Context * context, RenderCache& renderCache ) const;
+        void DrawEnv( const Context * context, RenderCache& renderCache ) const;
 
     private:
         void RenderDirectional( const Light * lights, Context * context ) const;

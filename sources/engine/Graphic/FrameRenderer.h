@@ -69,12 +69,12 @@ namespace Graphic
         static void DestroyContext( Context * context );
 
         void Render( Context * context ) const;
-        void Draw( Context * context, RenderCache& renderCache ) const;
+        void Draw( const Context * context, RenderCache& renderCache ) const;
 
     private:
-        void LinearizeDepth( Context * context, RenderCache& renderCache ) const;
-        void ApplyToneMapping( Context * context, RenderCache& renderCache ) const;
-        void DrawOverlay( Context * context, RenderCache& renderCache ) const;
+        void LinearizeDepth( const Context * context, RenderCache& renderCache ) const;
+        void ApplyToneMapping( const Context * context, RenderCache& renderCache ) const;
+        void DrawOverlay( const Context * context, RenderCache& renderCache ) const;
 
         DebugRenderer *     m_debugRenderer;
         MeshRenderer *      m_meshRenderer;

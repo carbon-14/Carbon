@@ -31,31 +31,38 @@ namespace Graphic
         MemoryManager::Delete( context );
     }
 
-    void MeshRenderer::Render( const Mesh * mesh, Context * context ) const
+    void MeshRenderer::Render( const Mesh * const * meshes, SizeT meshCount, Context * context ) const
     {
         RenderElement e;
 
-        LayoutHandle instanceParams = { mesh->GetUniformBuffer(), LI_INSTANCE };
-        e.m_uniformBuffers[0]       = instanceParams;
+		const Mesh * const * it = meshes;
+		const Mesh * const * end = meshes + meshCount;
+		for ( ; it != end; ++it )
+		{
+			const Mesh * mesh = *it;
 
-        e.m_uniformBufferCount=1;
+			LayoutHandle instanceParams = { mesh->GetUniformBuffer(), LI_INSTANCE };
+			e.m_uniformBuffers[0]       = instanceParams;
 
-        const MeshResource * rsc = mesh->GetResource();
-        for ( SizeT i=0; i<rsc->GetSubMeshCount(); ++i )
-        {
-            e.m_geometry = mesh->GetGeom(i);
+			e.m_uniformBufferCount=1;
 
-            const MaterialResource * material = rsc->GetSubMeshes()[ i ].m_material.ConstPtr();
-            e.m_program = material->GetProgram();
+			const MeshResource * rsc = mesh->GetResource();
+			for ( SizeT i=0; i<rsc->GetSubMeshCount(); ++i )
+			{
+				e.m_geometry = mesh->GetGeom(i);
+
+				const MaterialResource * material = rsc->GetSubMeshes()[ i ].m_material.ConstPtr();
+				e.m_program = material->GetProgram();
             
-            for ( e.m_textureCount=0; e.m_textureCount<material->GetTextureCount(); ++e.m_textureCount )
-            {
-                const MaterialResource::Texture& texture    = material->GetTexture( e.m_textureCount );
-                e.m_textures[ e.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
-                e.m_textures[ e.m_textureCount ].m_index    = texture.m_index;
-            }
+				for ( e.m_textureCount=0; e.m_textureCount<material->GetTextureCount(); ++e.m_textureCount )
+				{
+					const MaterialResource::Texture& texture    = material->GetTexture( e.m_textureCount );
+					e.m_textures[ e.m_textureCount ].m_handle   = texture.m_resource->GetTexture();
+					e.m_textures[ e.m_textureCount ].m_index    = texture.m_index;
+				}
 
-            context->m_opaqueList->Push( e );
-        }
+				context->m_opaqueList->Push( e );
+			}
+		}
     }
 }

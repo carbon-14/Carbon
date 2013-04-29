@@ -105,19 +105,18 @@ namespace Graphic
             F32 fWidth                  = (F32)width;
             F32 fHeight                 = (F32)height;
 
-            FrameParameters params;
-            params.m_viewportSize       = Vector4( fWidth, fHeight, 1.0f/fWidth, 1.0f/fHeight );
-            params.m_depthRange         = Vector4( camera->m_near, camera->m_far, camera->m_far-camera->m_near, 1.0f/(camera->m_far-camera->m_near) );
-            params.m_viewScale          = camera->GetViewScaleFar();
-            params.m_ambientSkyLight    = context->m_scene->GetAmbientSkyLight();
-            params.m_ambientGroundLight = context->m_scene->GetAmbientGroundLight();
-            params.m_cameraPosition     = camera->m_position;
-            params.m_viewMatrix         = camera->GetViewMatrix();
-            params.m_projMatrix         = camera->GetProjMatrix();
-            params.m_viewProjMatrix     = camera->GetViewProjMatrix();
+            FrameParameters * params	= reinterpret_cast< FrameParameters * >( RenderDevice::MapUniformBuffer( context->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-            void * data = RenderDevice::MapUniformBuffer( context->m_uniformBuffer, BA_WRITE_ONLY );
-            MemoryUtils::MemCpy( data, &params, sizeof(FrameParameters) );
+            params->m_viewportSize      = Vector4( fWidth, fHeight, 1.0f/fWidth, 1.0f/fHeight );
+            params->m_depthRange        = Vector4( camera->m_near, camera->m_far, camera->m_far-camera->m_near, 1.0f/(camera->m_far-camera->m_near) );
+            params->m_viewScale         = camera->GetViewScaleFar();
+            params->m_ambientSkyLight   = context->m_scene->GetAmbientSkyLight();
+            params->m_ambientGroundLight= context->m_scene->GetAmbientGroundLight();
+            params->m_cameraPosition    = camera->m_position;
+            params->m_viewMatrix        = camera->GetViewMatrix();
+            params->m_projMatrix        = camera->GetProjMatrix();
+            params->m_viewProjMatrix    = camera->GetViewProjMatrix();
+
             RenderDevice::UnmapUniformBuffer();
         }
 
@@ -130,6 +129,8 @@ namespace Graphic
 
     void FrameRenderer::DestroyContext( Context * context )
     {
+		context->m_opaqueList.Clear();
+
         EnvMapRenderer::DestroyContext( context->m_envMapRendererContext );
         LightRenderer::DestroyContext( context->m_lightRendererContext );
         MeshRenderer::DestroyContext( context->m_meshRendererContext );
@@ -158,70 +159,20 @@ namespace Graphic
 
         m_envMapRenderer->Render( context->m_envMapRendererContext );
 
-        // Render meshes
+		// Render meshes
         {
-            const Scene::MeshArray& meshes = scene->GetMeshes();
-            Scene::MeshArray::ConstIterator it  = meshes.Begin();
-            Scene::MeshArray::ConstIterator end = meshes.End();
-            for ( ; it!=end; ++it )
-            {
-                m_meshRenderer->Render( *it, context->m_meshRendererContext );
-            }
+			const Scene::MeshArray& meshes = scene->GetMeshes();
+			m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), context->m_meshRendererContext );
         }
 
         // Render lights
         {
             const Scene::LightArray& lights = scene->GetLights();
-            Scene::LightArray::ConstIterator it  = lights.Begin();
-            Scene::LightArray::ConstIterator end = lights.End();
-            for ( ; it!=end; ++it )
-            {
-                m_lightRenderer->Render( *it, context->m_lightRendererContext );
-            }
-
-            /*{
-                Vector colors[] =
-                {
-                    Vector4( 0.0f, 0.0f, 0.0f ),
-                    Vector4( 1.0f, 0.0f, 0.0f ),
-                    Vector4( 0.0f, 1.0f, 0.0f ),
-                    Vector4( 1.0f, 1.0f, 0.0f ),
-                    Vector4( 0.0f, 0.0f, 1.0f ),
-                    Vector4( 1.0f, 0.0f, 1.0f ),
-                    Vector4( 0.0f, 1.0f, 1.0f ),
-                    Vector4( 1.0f, 1.0f, 1.0f )
-                };
-                const FrustumQuadTree& quadTree = context->m_lightRendererContext->m_quadTree;
-                const FrustumQuadTree::Cell * ptr = quadTree.GetCells();
-                for ( SizeT k=0; k<quadTree.GetLevelCount(); ++k )
-                {
-                    Vector color = colors[k];
-
-                    SizeT size = 1 << k;
-                    for ( SizeT i=0; i<size; ++i )
-                    {
-                        for ( SizeT j=0; j<size; ++j )
-                        {
-                            const FrustumQuadTree::Cell * cell = ptr++;
-                            
-                            Vector dirX = ( Cross( UnitY, cell->vPlane ) );
-                            Vector dirY = ( Cross( cell->hPlane, UnitX ) );
-                            Vector dir = dirX + dirY;
-
-                            const F32 debug_scale = 0.2f;
-                            Vector dirA = Splat( debug_scale * k ) * dir;
-                            Vector dirB = Splat( debug_scale * ( k + 1 ) ) * dir;
-
-                            DebugLine line = { Select( dirA, UnitW, Mask<0,0,0,1>() ), Select( dirB, UnitW, Mask<0,0,0,1>() ), color };
-                            m_debugRenderer->Render( line, context->m_debugRendererContext );
-                        }
-                    }
-                }
-            }*/
+            m_lightRenderer->Render( lights.ConstPtr(), lights.Size(), context->m_lightRendererContext );
         }
     }
 
-    void FrameRenderer::Draw( Context * context, RenderCache& renderCache ) const
+    void FrameRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
         m_envMapRenderer->Draw( context->m_envMapRendererContext, renderCache );
 
@@ -279,7 +230,7 @@ namespace Graphic
         }
     }
 
-    void FrameRenderer::LinearizeDepth( Context * context, RenderCache& renderCache ) const
+    void FrameRenderer::LinearizeDepth( const Context * context, RenderCache& renderCache ) const
     {
         renderCache.SetSRGBWrite( false );
         renderCache.SetRenderState( m_renderStateLinearDepth );
@@ -291,7 +242,7 @@ namespace Graphic
         QuadGeometry::GetInstance().Draw();
     }
 
-    void FrameRenderer::ApplyToneMapping( Context * context, RenderCache& renderCache ) const
+    void FrameRenderer::ApplyToneMapping( const Context * context, RenderCache& renderCache ) const
     {
         renderCache.SetSRGBWrite( true );
         renderCache.SetRenderState( m_renderStateToneMapping );
@@ -303,7 +254,7 @@ namespace Graphic
         QuadGeometry::GetInstance().Draw();
     }
 
-    void FrameRenderer::DrawOverlay( Context * context, RenderCache& renderCache ) const
+    void FrameRenderer::DrawOverlay( const Context * context, RenderCache& renderCache ) const
     {
         renderCache.SetSRGBWrite( true );
         renderCache.SetRenderState( m_renderStateOverlay );

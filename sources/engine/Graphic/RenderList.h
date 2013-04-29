@@ -37,7 +37,7 @@ namespace Graphic
 
         template < typename Pred >
         void Sort();
-        void Draw( RenderCache& renderCache );
+        void Draw( RenderCache& renderCache ) const;
         void Clear();
 
     private:

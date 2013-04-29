@@ -30,13 +30,12 @@ namespace Graphic
 
     void Mesh::Update()
     {
-        MeshParameters params;
-        params.m_transform = RMatrix( m_orientation );
-        Scale( params.m_transform, m_scale );
-        params.m_transform.m_column[3] = m_position;
+		MeshParameters * params	= reinterpret_cast< MeshParameters * >( RenderDevice::MapUniformBuffer( m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        void * data = RenderDevice::MapUniformBuffer( m_uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &params, sizeof(MeshParameters) );
+        params->m_transform = RMatrix( m_orientation );
+        Scale( params->m_transform, m_scale );
+        params->m_transform.m_column[3] = m_position;
+
         RenderDevice::UnmapUniformBuffer();
     }
 

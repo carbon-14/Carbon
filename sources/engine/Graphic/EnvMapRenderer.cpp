@@ -157,18 +157,17 @@ namespace Graphic
             face_cam.m_projectionType   = PT_PERSPECTIVE;
             face_cam.Update();
 
-            FrameParameters params;
-            params.m_viewportSize       = Vector4( fSize, fSize, 1.0f/fSize, 1.0f/fSize );
-            params.m_depthRange         = Vector4( face_cam.m_near, face_cam.m_far, face_cam.m_far-face_cam.m_near, 1.0f/(face_cam.m_far-face_cam.m_near) );
-            params.m_viewScale          = face_cam.GetViewScaleFar();
-            params.m_ambientSkyLight    = context->m_scene->GetAmbientSkyLight();
-            params.m_ambientGroundLight = context->m_scene->GetAmbientGroundLight();
-            params.m_viewMatrix         = face_cam.GetViewMatrix();
-            params.m_projMatrix         = face_cam.GetProjMatrix();
-            params.m_viewProjMatrix     = face_cam.GetViewProjMatrix();
+			FrameParameters * params	= reinterpret_cast< FrameParameters * >( RenderDevice::MapUniformBuffer( face.m_uniformBuffer, BA_WRITE_ONLY ) );
 
-            void * data = RenderDevice::MapUniformBuffer( face.m_uniformBuffer, BA_WRITE_ONLY );
-            MemoryUtils::MemCpy( data, &params, sizeof(FrameParameters) );
+            params->m_viewportSize      = Vector4( fSize, fSize, 1.0f/fSize, 1.0f/fSize );
+            params->m_depthRange        = Vector4( face_cam.m_near, face_cam.m_far, face_cam.m_far-face_cam.m_near, 1.0f/(face_cam.m_far-face_cam.m_near) );
+            params->m_viewScale         = face_cam.GetViewScaleFar();
+            params->m_ambientSkyLight   = context->m_scene->GetAmbientSkyLight();
+            params->m_ambientGroundLight= context->m_scene->GetAmbientGroundLight();
+            params->m_viewMatrix        = face_cam.GetViewMatrix();
+            params->m_projMatrix        = face_cam.GetProjMatrix();
+            params->m_viewProjMatrix    = face_cam.GetViewProjMatrix();
+
             RenderDevice::UnmapUniformBuffer();
 
             face.m_opaqueList.Clear();
@@ -183,6 +182,8 @@ namespace Graphic
         for ( SizeT i=0; i<6; ++i )
         {
             Context::Face& face = context->m_cube[i];
+
+			face.m_opaqueList.Clear();
 
             LightRenderer::DestroyContext( face.m_lightRendererContext );
             MeshRenderer::DestroyContext( face.m_meshRendererContext );
@@ -215,35 +216,25 @@ namespace Graphic
 
             // Render meshes
             {
-                const Scene::MeshArray& meshes = scene->GetMeshes();
-                Scene::MeshArray::ConstIterator it  = meshes.Begin();
-                Scene::MeshArray::ConstIterator end = meshes.End();
-                for ( ; it!=end; ++it )
-                {
-                    m_meshRenderer->Render( *it, face.m_meshRendererContext );
-                }
+				const Scene::MeshArray& meshes = scene->GetMeshes();
+				m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), face.m_meshRendererContext );
             }
 
             // Render lights
             {
                 const Scene::LightArray& lights = scene->GetLights();
-                Scene::LightArray::ConstIterator it  = lights.Begin();
-                Scene::LightArray::ConstIterator end = lights.End();
-                for ( ; it!=end; ++it )
-                {
-                    m_lightRenderer->Render( *it, face.m_lightRendererContext );
-                }
+                m_lightRenderer->Render( lights.ConstPtr(), lights.Size(), face.m_lightRendererContext );
             }
         }
     }
 
-    void EnvMapRenderer::Draw( Context * context, RenderCache& renderCache ) const
+    void EnvMapRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
         RenderDevice::SetViewport( 0, 0, context->m_size, context->m_size );
 
         for ( SizeT i=0; i<6; ++i )
         {
-            Context::Face& face = context->m_cube[i];
+            const Context::Face& face = context->m_cube[i];
 
             RenderDevice::BindUniformBuffer( face.m_uniformBuffer, LI_FRAME );
 
@@ -291,7 +282,7 @@ namespace Graphic
         }
     }
 
-    void EnvMapRenderer::LinearizeDepth( Context * context, RenderCache& renderCache ) const
+    void EnvMapRenderer::LinearizeDepth( const Context * context, RenderCache& renderCache ) const
     {
         renderCache.SetSRGBWrite( false );
         renderCache.SetRenderState( m_renderStateLinearDepth );

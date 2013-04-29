@@ -45,7 +45,7 @@ namespace Graphic
         static void DestroyContext( Context * context );
 
         void Render( const DebugLine& line, Context * context ) const;
-        void Draw( Context * context, RenderCache& renderCache ) const;
+        void Draw( const Context * context, RenderCache& renderCache ) const;
 
     private:
         static VertexDeclaration CreateVertexDeclaration();

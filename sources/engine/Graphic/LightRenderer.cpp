@@ -179,13 +179,6 @@ namespace Graphic
 
     void LightRenderer::UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture )
     {
-        FrustumQuadTree& quadTree = context->m_quadTree;
-        if ( quadTree.GetWidth() != width || quadTree.GetHeight() != height || quadTree.GetCamera() != camera )
-        {
-            quadTree.Clear();
-            quadTree.Build( 16, width, height, camera );
-        }
-
         const Matrix tr =
         {
             camera->GetFrustum().GetCorners()[FC_LEFT_BOTTOM_NEAR],
@@ -218,17 +211,21 @@ namespace Graphic
         }
         MemoryManager::Free( context->m_renderLights );
 
-        context->m_quadTree.Clear();
-
         MemoryManager::Delete( context );
     }
 
-    void LightRenderer::Render( const Light * light, Context * context ) const
+    void LightRenderer::Render( const Light * const * lights, SizeT lightCount, Context * context ) const
     {
-        (this->*(m_renderFunc[light->m_type]))( light, context );
+		const Light * const * it = lights;
+		const Light * const * end = lights + lightCount;
+		for ( ; it != end; ++it )
+		{
+			const Light * light = *it;
+			(this->*(m_renderFunc[light->m_type]))( light, context );
+		}
     }
 
-    void LightRenderer::Draw( Context * context, RenderCache& renderCache ) const
+    void LightRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
         RenderDevice::BindTexture( context->m_linearDepthTexture    , 0 );
         RenderDevice::BindTexture( context->m_normalTexture         , 1 );
@@ -298,7 +295,7 @@ namespace Graphic
         QuadGeometry::GetInstance().Draw();*/
     }
 
-    void LightRenderer::DrawEnv( Context * context, RenderCache& renderCache ) const
+    void LightRenderer::DrawEnv( const Context * context, RenderCache& renderCache ) const
     {
         RenderDevice::BindTexture( context->m_linearDepthTexture    , 0 );
         RenderDevice::BindTexture( context->m_normalTexture         , 1 );
@@ -375,15 +372,14 @@ namespace Graphic
         Scale( m, Vector4( 0.5f*light->m_directionalWidth, 0.5f*light->m_directionalHeight, light->m_radius ) );
         m.m_column[3] = light->m_position;
 
-        LightParameters params;
-        params.m_lightMatrix        = Mul( context->m_viewProjMatrix, m );
-        params.m_valueInvSqrRadius  = Select( light->m_value, Zero4, Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( context->m_viewMatrix, light->m_position );
-        params.m_direction          = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
-        params.m_spotParameters     = Zero4;
+        LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        void * data = RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
+        params->m_lightMatrix		= Mul( context->m_viewProjMatrix, m );
+        params->m_valueInvSqrRadius	= Select( light->m_value, Zero4, Mask<0,0,0,1>() );
+        params->m_position          = TransformVertex( context->m_viewMatrix, light->m_position );
+        params->m_direction         = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
+        params->m_spotParameters    = Zero4;
+
         RenderDevice::UnmapUniformBuffer();
 
         // Check if camera position and frustum near corners are outside the light volume
@@ -438,15 +434,14 @@ namespace Graphic
         CARBON_ASSERT( light->m_radius > 0 );
         F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
 
-        LightParameters params;
-        params.m_lightMatrix        = Mul( context->m_viewProjMatrix, m );
-        params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( context->m_viewMatrix, light->m_position );
-        params.m_direction          = Zero4;
-        params.m_spotParameters     = Zero4;
+        LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        void * data = RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
+        params->m_lightMatrix       = Mul( context->m_viewProjMatrix, m );
+        params->m_valueInvSqrRadius = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
+        params->m_position          = TransformVertex( context->m_viewMatrix, light->m_position );
+        params->m_direction         = Zero4;
+        params->m_spotParameters    = Zero4;
+
         RenderDevice::UnmapUniformBuffer();
 
         // Check if camera position and frustum near corners are outside the light volume
@@ -564,15 +559,14 @@ namespace Graphic
 
         render_light->m_useFrontFace = c[0] != 0.0f;
 
-        LightParameters params;
-        params.m_lightMatrix        = Mul( context->m_viewProjMatrix, m );
-        params.m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params.m_position           = TransformVertex( context->m_viewMatrix, light->m_position );
-        params.m_direction          = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
-        params.m_spotParameters     = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
+        LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        void * data = RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY );
-        MemoryUtils::MemCpy( data, &params, sizeof(LightParameters) );
+        params->m_lightMatrix       = Mul( context->m_viewProjMatrix, m );
+        params->m_valueInvSqrRadius = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
+        params->m_position          = TransformVertex( context->m_viewMatrix, light->m_position );
+        params->m_direction         = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
+        params->m_spotParameters    = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
+
         RenderDevice::UnmapUniformBuffer();
 
         if ( context->m_debugDraw )

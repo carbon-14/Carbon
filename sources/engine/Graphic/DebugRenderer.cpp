@@ -80,24 +80,24 @@ namespace Graphic
         Store( tmp, line.m_position1 );
         MemoryUtils::MemCpy( p.m_pos, tmp, 12 );
         context->m_vertices.PushBack( p );
+
+		if ( context->m_vertexBufferSize < context->m_vertices.Capacity() )
+        {
+            RenderDevice::DestroyVertexArray( context->m_vertexArray );
+            RenderDevice::DestroyBuffer( context->m_vertexBuffer );
+            context->m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(Vertex) * context->m_vertices.Capacity(), 0, BU_DYNAMIC );
+            context->m_vertexBufferSize = context->m_vertices.Capacity();
+            context->m_vertexArray = RenderDevice::CreateVertexArray( m_vdecl, context->m_vertexBuffer );
+        }
     }
 
-    void DebugRenderer::Draw( Context * context, RenderCache& renderCache ) const
+    void DebugRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
         if ( ! context->m_vertices.Empty() )
         {
-            if ( context->m_vertexBufferSize < context->m_vertices.Capacity() )
-            {
-                RenderDevice::DestroyVertexArray( context->m_vertexArray );
-                RenderDevice::DestroyBuffer( context->m_vertexBuffer );
-                context->m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(Vertex) * context->m_vertices.Capacity(), 0, BU_DYNAMIC );
-                context->m_vertexBufferSize = context->m_vertices.Capacity();
-                context->m_vertexArray = RenderDevice::CreateVertexArray( m_vdecl, context->m_vertexBuffer );
-            }
-
-            void * data = RenderDevice::MapVertexBuffer( context->m_vertexBuffer, BA_WRITE_ONLY );
-            MemoryUtils::MemCpy( data, context->m_vertices.ConstPtr(), sizeof(Vertex) * context->m_vertices.Size() );
-            RenderDevice::UnmapVertexBuffer();
+			void * data = RenderDevice::MapVertexBuffer( context->m_vertexBuffer, BA_WRITE_ONLY );
+			MemoryUtils::MemCpy( data, context->m_vertices.ConstPtr(), sizeof(Vertex) * context->m_vertices.Size() );
+			RenderDevice::UnmapVertexBuffer();
 
             ProgramCache::UseProgram( m_program );
             renderCache.SetSRGBWrite( false );

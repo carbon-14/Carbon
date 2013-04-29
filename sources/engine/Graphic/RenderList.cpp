@@ -60,7 +60,7 @@ namespace Graphic
         m_sRGBWrite = enable;
     }
 
-    void RenderList::Draw( RenderCache& renderCache )
+    void RenderList::Draw( RenderCache& renderCache ) const
     {
         // BEGIN
         renderCache.SetSRGBWrite( m_sRGBWrite );
@@ -78,8 +78,8 @@ namespace Graphic
         }
 
         // DRAW
-        Array< RenderElement >::Iterator it = m_list.Begin();
-        Array< RenderElement >::Iterator end = m_list.End();
+        Array< RenderElement >::ConstIterator it = m_list.Begin();
+        Array< RenderElement >::ConstIterator end = m_list.End();
         for ( ; it != end; ++it )
         {
             const RenderElement& e = *it;
@@ -100,7 +100,6 @@ namespace Graphic
         }
 
         // END
-        Clear();
     }
 
     void RenderList::Clear()

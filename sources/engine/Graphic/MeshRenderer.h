@@ -26,7 +26,7 @@ namespace Graphic
         static Context * CreateContext( RenderList * opaqueList );
         static void DestroyContext( Context * context );
 
-        void Render( const Mesh * mesh, Context * context ) const;
+        void Render( const Mesh * const * meshes, SizeT meshCount, Context * context ) const;
 
     private:
         DebugRenderer * m_debugRenderer;
