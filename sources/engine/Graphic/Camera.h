@@ -29,6 +29,8 @@ namespace Graphic
         const Vector& GetViewScaleNear() const;
         const Frustum& GetFrustum() const;
 
+        static void ApplyFrustumCulling( const Camera * camera, const Vector * const * inData, SizeT inCount, const Vector ** outData, SizeT& outCount );
+
     public:
         Vector          m_position;
         Vector          m_orientation;
@@ -41,12 +43,14 @@ namespace Graphic
         ProjectionType  m_projectionType;
 
     private:
+        static Vector Cull4( const Matrix& m, const Matrix& clip, const Vector& zPlane, const Vector& zAxis, const Vector& near, const Vector& far );
+
         Matrix          m_viewMatrix;
         Matrix          m_invViewMatrix;
         Matrix          m_projMatrix;
         Matrix          m_viewProjMatrix;
-        Vector          m_viewScaleFar;
         Vector          m_viewScaleNear;
+        Vector          m_viewScaleFar;
         Frustum         m_frustum;
     };
 }

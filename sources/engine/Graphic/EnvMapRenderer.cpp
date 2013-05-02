@@ -210,22 +210,54 @@ namespace Graphic
     {
         const Scene * scene = context->m_scene;
 
+        SizeT inCount = scene->GetLights().Size();
+        Vector * sphereBuffer = reinterpret_cast< Vector * >( MemoryManager::Malloc( sizeof(Vector) * inCount, MemoryUtils::AlignOf< Vector >() ) );
+        const Vector ** inData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
+        const Vector ** outData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
+
+        for ( SizeT i=0; i<inCount; ++i )
+        {
+            const Light * light = scene->GetLights()[i];
+
+            inData[i] = sphereBuffer + i;
+            Vector& sphere = sphereBuffer[i];
+
+            sphere = Select( light->m_position, Splat(light->m_radius), Mask<0,0,0,1>() );
+        }
+
+        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * inCount ) );
+
         for ( SizeT i=0; i<6; ++i )
         {
             Context::Face& face = context->m_cube[i];
 
+            SizeT lightCount = 0;
+            {
+                SizeT outCount;
+                Camera::ApplyFrustumCulling( &face.m_camera, inData, inCount, outData, outCount );
+
+                for ( ; lightCount<outCount; ++lightCount )
+                {
+                    lights[ lightCount ] = scene->GetLights()[ outData[ lightCount ] - sphereBuffer ];
+                }
+            }
+
             // Render meshes
             {
-				const Scene::MeshArray& meshes = scene->GetMeshes();
-				m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), face.m_meshRendererContext );
+                const Scene::MeshArray& meshes = scene->GetMeshes();
+                m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), face.m_meshRendererContext );
             }
 
             // Render lights
             {
-                const Scene::LightArray& lights = scene->GetLights();
-                m_lightRenderer->Render( lights.ConstPtr(), lights.Size(), face.m_lightRendererContext );
+                m_lightRenderer->Render( lights, lightCount, face.m_lightRendererContext );
             }
         }
+
+        MemoryManager::Free( lights );
+        MemoryManager::Free( outData );
+        MemoryManager::Free( inData );
+        MemoryManager::Free( sphereBuffer );
     }
 
     void EnvMapRenderer::Draw( const Context * context, RenderCache& renderCache ) const

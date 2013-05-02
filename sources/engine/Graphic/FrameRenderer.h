@@ -4,6 +4,7 @@
 
 #include "Graphic/RenderList.h"
 #include "Graphic/DebugRenderer.h"
+#include "Graphic/Rasterizer.h"
 #include "Graphic/MeshRenderer.h"
 #include "Graphic/LightRenderer.h"
 #include "Graphic/EnvMapRenderer.h"
@@ -52,6 +53,7 @@ namespace Graphic
             RenderList                  m_opaqueList;
 
             DebugRenderer::Context *    m_debugRendererContext;
+            Rasterizer::Context *		m_rasterizerContext;
             MeshRenderer::Context *     m_meshRendererContext;
             LightRenderer::Context *    m_lightRendererContext;
             EnvMapRenderer::Context *   m_envMapRendererContext;
@@ -61,7 +63,7 @@ namespace Graphic
         FrameRenderer();
         ~FrameRenderer();
 
-        void Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer );
+        void Initialize( DebugRenderer * debugRenderer, Rasterizer * rasterizer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer );
         void Destroy();
 
         static Context * CreateContext();
@@ -77,6 +79,7 @@ namespace Graphic
         void DrawOverlay( const Context * context, RenderCache& renderCache ) const;
 
         DebugRenderer *     m_debugRenderer;
+        Rasterizer *		m_rasterizer;
         MeshRenderer *      m_meshRenderer;
         LightRenderer *     m_lightRenderer;
         EnvMapRenderer *    m_envMapRenderer;

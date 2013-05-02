@@ -14,21 +14,21 @@ namespace Graphic
         FP_RIGHT,
         FP_BOTTOM,
         FP_TOP,
-        FP_FAR,
         FP_NEAR,
+        FP_FAR,
         FP_COUNT
     };
 
     enum FrustumCorners
     {
-        FC_LEFT_BOTTOM_FAR = 0,
-        FC_RIGHT_BOTTOM_FAR,
-        FC_LEFT_TOP_FAR,
-        FC_RIGHT_TOP_FAR,
-        FC_LEFT_BOTTOM_NEAR,
+        FC_LEFT_BOTTOM_NEAR = 0,
         FC_RIGHT_BOTTOM_NEAR,
         FC_LEFT_TOP_NEAR,
         FC_RIGHT_TOP_NEAR,
+        FC_LEFT_BOTTOM_FAR,
+        FC_RIGHT_BOTTOM_FAR,
+        FC_LEFT_TOP_FAR,
+        FC_RIGHT_TOP_FAR,
         FC_COUNT
     };
 

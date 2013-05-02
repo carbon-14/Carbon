@@ -111,10 +111,11 @@ void Level7::PreExecute()
     QuadGeometry::GetInstance().Initialize();
 
     m_debugRenderer.Initialize();
+    m_rasterizer.Initialize();
     m_meshRenderer.Initialize( &m_debugRenderer );
     m_lightRenderer.Initialize( &m_debugRenderer );
     m_envMapRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer );
-    m_frameRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer, &m_envMapRenderer );
+    m_frameRenderer.Initialize( &m_debugRenderer, &m_rasterizer, &m_meshRenderer, &m_lightRenderer, &m_envMapRenderer );
 
     m_scene = MemoryManager::New< Scene >();
     m_scene->SetAmbientSkyLight( Vector4( 0.00185f, 0.003325f, 0.00625f ) );
@@ -247,6 +248,7 @@ void Level7::PostExecute()
     m_envMapRenderer.Destroy();
     m_lightRenderer.Destroy();
     m_meshRenderer.Destroy();
+    m_rasterizer.Destroy();
     m_debugRenderer.Destroy();
 
     QuadGeometry::GetInstance().Destroy();

@@ -6,6 +6,8 @@
 #include "Graphic/QuadGeometry.h"
 
 #include "Core/Math.h"
+#include "Core/Trace.h"
+#include "Core/StringUtils.h"
 
 namespace Graphic
 {
@@ -19,9 +21,10 @@ namespace Graphic
 
     }
 
-    void FrameRenderer::Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer )
+    void FrameRenderer::Initialize( DebugRenderer * debugRenderer, Rasterizer * rasterizer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer )
     {
         m_debugRenderer                             = debugRenderer;
+        m_rasterizer								= rasterizer;
         m_meshRenderer                              = meshRenderer;
         m_lightRenderer                             = lightRenderer;
         m_envMapRenderer                            = envMapRenderer;
@@ -60,6 +63,7 @@ namespace Graphic
         context->m_finalFramebuffer             = RenderDevice::CreateFramebuffer();
         context->m_uniformBuffer                = RenderDevice::CreateUniformBuffer( sizeof(FrameParameters), 0, BU_DYNAMIC );
         context->m_debugRendererContext         = DebugRenderer::CreateContext();
+        context->m_rasterizerContext			= Rasterizer::CreateContext();
         context->m_meshRendererContext          = MeshRenderer::CreateContext( &context->m_opaqueList );
         context->m_lightRendererContext         = LightRenderer::CreateContext( context->m_debugRendererContext );
         context->m_envMapRendererContext        = EnvMapRenderer::CreateContext();
@@ -123,6 +127,7 @@ namespace Graphic
         context->m_opaqueList.Clear();
 
         DebugRenderer::UpdateContext( context->m_debugRendererContext );
+        Rasterizer::UpdateContext( context->m_rasterizerContext, width, height, camera );
         EnvMapRenderer::UpdateContext( context->m_envMapRendererContext, envMapSize, camera, scene );
         LightRenderer::UpdateContext( context->m_lightRendererContext, width, height, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightBlurTexture );
     }
@@ -134,6 +139,7 @@ namespace Graphic
         EnvMapRenderer::DestroyContext( context->m_envMapRendererContext );
         LightRenderer::DestroyContext( context->m_lightRendererContext );
         MeshRenderer::DestroyContext( context->m_meshRendererContext );
+        Rasterizer::DestroyContext( context->m_rasterizerContext );
         DebugRenderer::DestroyContext( context->m_debugRendererContext );
 
         RenderDevice::DestroyBuffer( context->m_uniformBuffer );
@@ -159,17 +165,51 @@ namespace Graphic
 
         m_envMapRenderer->Render( context->m_envMapRendererContext );
 
-		// Render meshes
+        const Light ** lights = 0;
+        SizeT lightCount = 0;
         {
-			const Scene::MeshArray& meshes = scene->GetMeshes();
-			m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), context->m_meshRendererContext );
+            SizeT inCount = scene->GetLights().Size();
+            Vector * sphereBuffer = reinterpret_cast< Vector * >( MemoryManager::Malloc( sizeof(Vector) * inCount, MemoryUtils::AlignOf< Vector >() ) );
+            const Vector ** inData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
+            const Vector ** outData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
+
+            for ( SizeT i=0; i<inCount; ++i )
+            {
+                const Light * light = scene->GetLights()[i];
+
+                inData[i] = sphereBuffer + i;
+                Vector& sphere = sphereBuffer[i];
+
+                sphere = Select( light->m_position, Splat(light->m_radius), Mask<0,0,0,1>() );
+            }
+
+            SizeT outCount;
+            Camera::ApplyFrustumCulling( context->m_camera, inData, inCount, outData, outCount );
+
+            lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * outCount ) );
+
+            for ( ; lightCount<outCount; ++lightCount )
+            {
+                lights[ lightCount ] = scene->GetLights()[ outData[ lightCount ] - sphereBuffer ];
+            }
+
+            MemoryManager::Free( outData );
+            MemoryManager::Free( inData );
+            MemoryManager::Free( sphereBuffer );
+        }
+
+        // Render meshes
+        {
+            const Scene::MeshArray& meshes = scene->GetMeshes();
+            m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), context->m_meshRendererContext );
         }
 
         // Render lights
         {
-            const Scene::LightArray& lights = scene->GetLights();
-            m_lightRenderer->Render( lights.ConstPtr(), lights.Size(), context->m_lightRendererContext );
+            m_lightRenderer->Render( lights, lightCount, context->m_lightRendererContext );
         }
+
+        MemoryManager::Free( lights );
     }
 
     void FrameRenderer::Draw( const Context * context, RenderCache& renderCache ) const

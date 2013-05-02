@@ -25,18 +25,18 @@ namespace Graphic
             m_projMatrix.m_column[2] = Vector4( 0.0f    , 0.0f                  , ( m_far + m_near ) / range    , -1.0f );
             m_projMatrix.m_column[3] = Vector4( 0.0f    , 0.0f                  , 2.0f * m_near * m_far / range , 0.0f  );
 
-            Vector f = Vector4( m_far, m_far, m_far );
             Vector n = Vector4( m_near, m_near, m_near );
+            Vector f = Vector4( m_far, m_far, m_far );
             Vector s = Vector4( tan, tan / m_aspectRatio, 1.0f );
 
-            viewCorners[FC_LEFT_BOTTOM_FAR]     = f * s * Vector4( -1.0f, -1.0f, -1.0f );
-            viewCorners[FC_RIGHT_BOTTOM_FAR]    = f * s * Vector4( +1.0f, -1.0f, -1.0f );
-            viewCorners[FC_LEFT_TOP_FAR]        = f * s * Vector4( -1.0f, +1.0f, -1.0f );
-            viewCorners[FC_RIGHT_TOP_FAR]       = f * s * Vector4( +1.0f, +1.0f, -1.0f );
             viewCorners[FC_LEFT_BOTTOM_NEAR]    = n * s * Vector4( -1.0f, -1.0f, -1.0f );
             viewCorners[FC_RIGHT_BOTTOM_NEAR]   = n * s * Vector4( +1.0f, -1.0f, -1.0f );
             viewCorners[FC_LEFT_TOP_NEAR]       = n * s * Vector4( -1.0f, +1.0f, -1.0f );
             viewCorners[FC_RIGHT_TOP_NEAR]      = n * s * Vector4( +1.0f, +1.0f, -1.0f );
+            viewCorners[FC_LEFT_BOTTOM_FAR]     = f * s * Vector4( -1.0f, -1.0f, -1.0f );
+            viewCorners[FC_RIGHT_BOTTOM_FAR]    = f * s * Vector4( +1.0f, -1.0f, -1.0f );
+            viewCorners[FC_LEFT_TOP_FAR]        = f * s * Vector4( -1.0f, +1.0f, -1.0f );
+            viewCorners[FC_RIGHT_TOP_FAR]       = f * s * Vector4( +1.0f, +1.0f, -1.0f );
         }
         else
         {
@@ -45,22 +45,22 @@ namespace Graphic
             m_projMatrix.m_column[2] = Vector4( 0.0f            , 0.0f              , 2.0f / range                  , 0.0f  );
             m_projMatrix.m_column[3] = Vector4( 0.0f            , 0.0f              , ( m_near + m_far ) / range    , 1.0f  );
 
-            Vector f = Vector4( m_width/2.0f, m_height/2.0f, m_far );
             Vector n = Vector4( m_width/2.0f, m_height/2.0f, m_near );
+            Vector f = Vector4( m_width/2.0f, m_height/2.0f, m_far );
 
-            viewCorners[FC_LEFT_BOTTOM_FAR]     = f * Vector4( -1.0f, -1.0f, -1.0f );
-            viewCorners[FC_RIGHT_BOTTOM_FAR]    = f * Vector4( +1.0f, -1.0f, -1.0f );
-            viewCorners[FC_LEFT_TOP_FAR]        = f * Vector4( -1.0f, +1.0f, -1.0f );
-            viewCorners[FC_RIGHT_TOP_FAR]       = f * Vector4( +1.0f, +1.0f, -1.0f );
             viewCorners[FC_LEFT_BOTTOM_NEAR]    = n * Vector4( -1.0f, -1.0f, -1.0f );
             viewCorners[FC_RIGHT_BOTTOM_NEAR]   = n * Vector4( +1.0f, -1.0f, -1.0f );
             viewCorners[FC_LEFT_TOP_NEAR]       = n * Vector4( -1.0f, +1.0f, -1.0f );
             viewCorners[FC_RIGHT_TOP_NEAR]      = n * Vector4( +1.0f, +1.0f, -1.0f );
+            viewCorners[FC_LEFT_BOTTOM_FAR]     = f * Vector4( -1.0f, -1.0f, -1.0f );
+            viewCorners[FC_RIGHT_BOTTOM_FAR]    = f * Vector4( +1.0f, -1.0f, -1.0f );
+            viewCorners[FC_LEFT_TOP_FAR]        = f * Vector4( -1.0f, +1.0f, -1.0f );
+            viewCorners[FC_RIGHT_TOP_FAR]       = f * Vector4( +1.0f, +1.0f, -1.0f );
         }
 
-        m_viewScaleFar = viewCorners[FC_RIGHT_TOP_FAR];
         m_viewScaleNear = viewCorners[FC_RIGHT_TOP_NEAR];
-
+        m_viewScaleFar = viewCorners[FC_RIGHT_TOP_FAR];
+        
         m_viewProjMatrix = Mul( m_projMatrix, m_viewMatrix );
 
         m_frustum.Update( m_invViewMatrix, viewCorners, m_viewProjMatrix );
@@ -99,5 +99,94 @@ namespace Graphic
     const Frustum& Camera::GetFrustum() const
     {
         return m_frustum;
+    }
+
+    void Camera::ApplyFrustumCulling( const Camera * camera, const Vector * const * inData, SizeT inCount, const Vector ** outData, SizeT& outCount )
+    {
+        const Frustum& frustum = camera->GetFrustum();
+        const Vector * planes = frustum.GetPlanes();
+
+        Matrix clip =
+        {
+            -planes[ FP_LEFT ],
+            -planes[ FP_RIGHT ],
+            -planes[ FP_BOTTOM ],
+            -planes[ FP_TOP ]
+        };
+
+        Vector zPlane = -planes[ FP_NEAR ];
+        Vector zAxis = Select( zPlane, One4, Mask<0,0,0,1>() );
+        Vector near = Swizzle<3,3,3,3>( zPlane );
+        Vector far = Swizzle<3,3,3,3>( planes[ FP_FAR ] );
+
+        const Vector ** out = outData;
+
+        SizeT r = inCount % 4;
+        SizeT q = inCount - r;
+
+        const Vector * const * it = inData;
+        const Vector * const * end = inData + q;
+        for ( ; it != end; it += 4 )
+        {
+            const Vector * p0 = it[0];
+            const Vector * p1 = it[1];
+            const Vector * p2 = it[2];
+            const Vector * p3 = it[3];
+
+            const Matrix m = { *p0, *p1, *p2, *p3 };	
+
+            F128 results;
+            Store( results, Cull4( m, clip, zPlane, zAxis, near, far ) );
+
+            if ( results[0] ) { *(out++) = p0; }
+            if ( results[1] ) { *(out++) = p1; }
+            if ( results[2] ) {	*(out++) = p2; }
+            if ( results[3] ) { *(out++) = p3; }
+        }
+
+        if ( r )
+        {
+            Matrix m;
+            m.m_column[0] = *(end[0]);
+            m.m_column[1] = ( r > 1 ) ? *(end[1]) : Zero4;
+            m.m_column[2] = ( r > 2 ) ? *(end[2]) : Zero4;
+            m.m_column[3] = Zero4;
+
+            F128 results;
+            Store( results, Cull4( m, clip, zPlane, zAxis, near, far ) );
+
+            if ( results[0] )			{ *(out++) = end[0]; }
+            if ( results[1] && r > 1 )	{ *(out++) = end[1]; }
+            if ( results[2] && r > 2 )	{ *(out++) = end[2]; }
+        }
+
+        outCount = out - outData;
+    }
+
+    Vector Camera::Cull4( const Matrix& m, const Matrix& clip, const Vector& zPlane, const Vector& zAxis, const Vector& near, const Vector& far )
+    {
+        Vector c0 = Select( m.m_column[0], One4, Mask<0,0,0,1>() );
+        Vector c1 = Select( m.m_column[1], One4, Mask<0,0,0,1>() );
+        Vector c2 = Select( m.m_column[2], One4, Mask<0,0,0,1>() );
+        Vector c3 = Select( m.m_column[3], One4, Mask<0,0,0,1>() );
+        Vector r = Shuffle<0,2,0,2>( Shuffle<3,3,3,3>( m.m_column[0], m.m_column[1] ), Shuffle<3,3,3,3>( m.m_column[2], m.m_column[3] ) );
+
+        Matrix c = { c0, c1, c2, c3 };
+        c = Transpose( c );
+
+        Matrix clipProj	= Mul( c, clip );
+        Vector zProj	= Mul( c, zAxis );
+
+        Vector test;
+        test = GreaterThan( clipProj.m_column[0], r );
+        test = Or( test, GreaterThan( clipProj.m_column[1], r ) );
+        test = Or( test, GreaterThan( clipProj.m_column[2], r ) );
+        test = Or( test, GreaterThan( clipProj.m_column[3], r ) );
+
+        test = Or( test, GreaterThan( zProj + near, r ) );
+        test = Or( test, LessThan( zProj + far, r ) );
+        test = AndNot( test, Splat( F32( 0xffffffff ) ) );
+
+        return test;
     }
 }

@@ -18,6 +18,7 @@ protected:
     void Execute();
 
     Graphic::DebugRenderer              m_debugRenderer;
+    Graphic::Rasterizer                 m_rasterizer;
     Graphic::MeshRenderer               m_meshRenderer;
     Graphic::LightRenderer              m_lightRenderer;
     Graphic::EnvMapRenderer             m_envMapRenderer;
