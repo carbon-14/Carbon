@@ -16,16 +16,15 @@ namespace Graphic
     public:
         struct Context
         {
-            Vector *    m_vPlanes;
-            Vector *    m_hPlanes;
-            F32         m_near;
-            F32         m_far;
-            SizeT       m_vCount;
-            SizeT       m_vSize;
-            SizeT       m_hCount;
-            SizeT       m_hSize;
+            const Camera *  m_camera;
+            Vector *        m_vPlanes;
+            Vector *        m_hPlanes;
+            SizeT           m_vCount;
+            SizeT           m_vSize;
+            SizeT           m_hCount;
+            SizeT           m_hSize;
 
-            Handle      m_depthMinMaxTexture;
+            Handle          m_depthMinMaxTexture;
         };
 
     public:
