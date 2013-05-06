@@ -17,14 +17,11 @@ namespace Graphic
 
     void QuadGeometry::Initialize()
     {
-        const F32 vb[6][4] =
+        const F32 vb[3][4] =
         {
             { -1.0f, -1.0f, 0.0f, 0.0f },
-            { +1.0f, -1.0f, 1.0f, 0.0f },
-            { -1.0f, +1.0f, 0.0f, 1.0f },
-            { -1.0f, +1.0f, 0.0f, 1.0f },
-            { +1.0f, -1.0f, 1.0f, 0.0f },
-            { +1.0f, +1.0f, 1.0f, 1.0f }
+            { +3.0f, -1.0f, 2.0f, 0.0f },
+            { -1.0f, +3.0f, 0.0f, 2.0f }
         };
 
         VertexDeclaration vdecl;
@@ -49,7 +46,7 @@ namespace Graphic
     void QuadGeometry::Draw() const
     {
         RenderDevice::BeginGeometry( m_vertexArray );
-        RenderDevice::Draw( PT_TRIANGLES, 6 );
+        RenderDevice::Draw( PT_TRIANGLES, 3 );
         RenderDevice::EndGeometry();
     }
 }

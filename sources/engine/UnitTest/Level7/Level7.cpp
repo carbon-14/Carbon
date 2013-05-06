@@ -144,12 +144,12 @@ void Level7::PreExecute()
     }
 
     {
-        SizeT X = 5;
-        SizeT Y = 2;
-        SizeT Z = 2;
+        SizeT X = 1;
+        SizeT Y = 1;
+        SizeT Z = 1;
 
         const Vector light_spacing = Splat( 6.0f );
-        const Vector light_offset  = Vector4( -3.0f, -6.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
+        const Vector light_offset  = Vector4( 10.0f, -0.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
 
         m_lights.Reserve( X * Y * Z );
 
@@ -175,12 +175,12 @@ void Level7::PreExecute()
                     light->m_value              = lightColor;
                     light->m_position           = Vector4( x, y, z ) * light_spacing + light_offset;
                     light->m_orientation        = MulQuat( Quaternion( UnitY, angleY ), Quaternion( UnitX, angleX ) );
-                    light->m_radius             = 12.0f;
+                    light->m_radius             = 2.0f;
                     light->m_directionalWidth   = 10.0f;
                     light->m_directionalHeight  = 5.0f;
                     light->m_spotInAngle        = 0.0f;
                     light->m_spotOutAngle       = 0.75f*Pi;
-                    light->m_type               = LT_SPOT;
+                    light->m_type               = LT_OMNI;
 
                     m_lights.PushBack( light );
                     m_scene->AddLight( light );
@@ -192,7 +192,7 @@ void Level7::PreExecute()
     {
         m_camera = MemoryManager::New< Camera >();
 
-        m_camera->m_position        = Vector4( -15.0f, -11.5f, 1.0f );
+        m_camera->m_position        = UnitW;//Vector4( -15.0f, -11.5f, 1.0f );
         m_camera->m_orientation     = Quaternion( UnitY, -HalfPi );
 
         m_camera->m_near            = 0.25f;
@@ -215,7 +215,7 @@ void Level7::PreExecute()
         m_flash->m_spotOutAngle     = 0.85f;
         m_flash->m_type             = LT_SPOT;
 
-        m_scene->AddLight( m_flash );
+        //m_scene->AddLight( m_flash );
     }
 
     m_frameContext = FrameRenderer::CreateContext();

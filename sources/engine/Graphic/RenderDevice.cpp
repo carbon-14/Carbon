@@ -251,6 +251,7 @@ namespace Graphic
     static GLuint   s_activeTexture;
     static GLuint   s_textureCache[ s_maxTextureUnitCount ];
     static GLuint   s_uniformCache[ s_maxUniformBufferCount ];
+    static GLuint   s_shaderStorageCache[ s_maxShaderStorageBufferCount ];
     static GLuint   s_framebufferCache;
     static GLuint   s_programCache;
 
@@ -379,10 +380,10 @@ namespace Graphic
 
     void IRenderDevice::BindShaderStorageBuffer( Handle ubuffer, SizeT location )
     {
-        if ( ubuffer != s_uniformCache[location] )
+        if ( ubuffer != s_shaderStorageCache[location] )
         {
             glBindBufferBase( GL_SHADER_STORAGE_BUFFER, location, ubuffer );
-            s_uniformCache[location] = ubuffer;
+            s_shaderStorageCache[location] = ubuffer;
         }
     }
 
@@ -895,6 +896,12 @@ namespace Graphic
         {
             glBindBufferBase( GL_UNIFORM_BUFFER, i, 0 );
             s_uniformCache[i] = 0;
+        }
+
+        for ( SizeT i=0; i<s_maxShaderStorageBufferCount; ++i )
+        {
+            glBindBufferBase( GL_SHADER_STORAGE_BUFFER, i, 0 );
+            s_shaderStorageCache[i] = 0;
         }
 
         glBindFramebuffer( GL_FRAMEBUFFER, 0 );

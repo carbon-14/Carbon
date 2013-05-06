@@ -2,8 +2,7 @@
 #ifndef _GRAPHIC_RASTERIZER_H
 #define _GRAPHIC_RASTERIZER_H
 
-#include "Graphic/DLL.h"
-#include "Graphic/Types.h"
+#include "Graphic/ProgramCache.h"
 
 #include "Core/Vector.h"
 
@@ -16,15 +15,20 @@ namespace Graphic
     public:
         struct Context
         {
-            const Camera *  m_camera;
-            Vector *        m_vPlanes;
-            Vector *        m_hPlanes;
-            SizeT           m_vCount;
-            SizeT           m_vSize;
-            SizeT           m_hCount;
-            SizeT           m_hSize;
+            const Camera *          m_camera;
+            Handle                  m_linearDepthTexture;
+            SizeT                   m_width;
+            SizeT                   m_height;
+            SizeT                   m_size;
 
-            Handle          m_depthMinMaxTexture;
+            Array< Vector >         m_vPlanes;
+            Array< Vector >         m_hPlanes;
+
+            Handle                  m_depthBuffer;
+            Array< U8 >             m_mapCount;
+            Array< const Vector * > m_map;
+
+            Array< Vector >         m_spheres;
         };
 
     public:
@@ -35,14 +39,19 @@ namespace Graphic
         void Destroy();
 
         static Context * CreateContext();
-        static void UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera );
+        static void UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture );
         static void DestroyContext( Context * context );
 
         void Render( const Vector * const * spheres, SizeT sphereCount, Context * context ) const;
-        void Draw( const Context ) const;
+        void Draw( const Context * context ) const;
 
     private:
-        static const SizeT ms_tileSize = 16;
+        static const SizeT  ms_tileSize = 16;
+        static const SizeT  ms_maxCount = 64;
+
+        void FillQuad( const Vector * quad[4], const Vector * sphere, Context * context ) const;
+
+        ProgramHandle       m_programTileDepth;
 };
 }
 

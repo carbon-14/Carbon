@@ -259,8 +259,9 @@ namespace Graphic
         SizeT               m_count;
     };
 
-    const SizeT s_maxTextureUnitCount       = 8;
-    const SizeT s_maxUniformBufferCount     = 8;
+    const SizeT s_maxTextureUnitCount           = 8;
+    const SizeT s_maxUniformBufferCount         = 8;
+    const SizeT s_maxShaderStorageBufferCount   = 8;
 }
 
 #endif // _GRAPHIC_RENDERTYPES_H

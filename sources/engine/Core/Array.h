@@ -314,13 +314,11 @@ template< typename T, typename Alloc >
 void Array< T, Alloc >::Resize( SizeType size, ConstReference value )
 {
     Iterator end = m_begin + size;
-    if ( size < Size() )
+    if ( size < Capacity() )
     {
-        if ( IsPOD< T >::value )
-        {
-            m_end = end;
-        }
-        else
+        m_end = end;
+
+        if ( ! IsPOD< T >::value )
         {
             while ( m_begin != m_end )
             {

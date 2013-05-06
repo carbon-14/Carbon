@@ -127,7 +127,7 @@ namespace Graphic
         context->m_opaqueList.Clear();
 
         DebugRenderer::UpdateContext( context->m_debugRendererContext );
-        Rasterizer::UpdateContext( context->m_rasterizerContext, width, height, camera );
+        Rasterizer::UpdateContext( context->m_rasterizerContext, width, height, camera, context->m_linearDepthTexture );
         EnvMapRenderer::UpdateContext( context->m_envMapRendererContext, envMapSize, camera, scene );
         LightRenderer::UpdateContext( context->m_lightRendererContext, width, height, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightBlurTexture );
     }
@@ -163,7 +163,7 @@ namespace Graphic
     {
         const Scene * scene = context->m_scene;
 
-        m_envMapRenderer->Render( context->m_envMapRendererContext );
+        //m_envMapRenderer->Render( context->m_envMapRendererContext );
 
         const Light ** lights = 0;
         SizeT lightCount = 0;
@@ -185,6 +185,8 @@ namespace Graphic
 
             SizeT outCount;
             Camera::ApplyFrustumCulling( context->m_camera, inData, inCount, outData, outCount );
+
+            m_rasterizer->Render( outData, outCount, context->m_rasterizerContext );
 
             lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * outCount ) );
 
@@ -214,7 +216,7 @@ namespace Graphic
 
     void FrameRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
-        m_envMapRenderer->Draw( context->m_envMapRendererContext, renderCache );
+        //m_envMapRenderer->Draw( context->m_envMapRendererContext, renderCache );
 
         RenderDevice::SetViewport( 0, 0, context->m_width, context->m_height );
 
@@ -238,6 +240,8 @@ namespace Graphic
 
             LinearizeDepth( context, renderCache );
         }
+
+        m_rasterizer->Draw( context->m_rasterizerContext );
 
         // Draw Lights
         {

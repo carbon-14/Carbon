@@ -233,6 +233,12 @@ extern "C"
     Func ( PFNGLTEXTURESTORAGE2DEXTPROC                 , glTextureStorage2DEXT                 );  \
     Func ( PFNGLTEXTURESTORAGE3DEXTPROC                 , glTextureStorage3DEXT                 );  \
                                                                                                     \
+    /* GL_ARB_clear_buffer_object */                                                                \
+    Func ( PFNGLCLEARBUFFERDATAPROC                     , glClearBufferData                     );  \
+    Func ( PFNGLCLEARBUFFERSUBDATAPROC                  , glClearBufferSubData                  );  \
+    Func ( PFNGLCLEARNAMEDBUFFERDATAEXTPROC             , glClearNamedBufferDataEXT             );  \
+    Func ( PFNGLCLEARNAMEDBUFFERSUBDATAEXTPROC          , glClearNamedBufferSubDataEXT          );  \
+                                                                                                    \
     /* GL_ARB_compute_shader */                                                                     \
     Func ( PFNGLDISPATCHCOMPUTEPROC                     , glDispatchCompute                     );  \
     Func ( PFNGLDISPATCHCOMPUTEINDIRECTPROC             , glDispatchComputeIndirect             );  \

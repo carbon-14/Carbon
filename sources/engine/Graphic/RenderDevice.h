@@ -26,6 +26,8 @@ namespace Graphic
         static void             BindShaderStorageBuffer( Handle ubuffer, SizeT location );
         static void             DestroyBuffer( Handle buffer );
 
+        static void             MemoryBarrier( );
+
         static Handle           CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer = 0 );
         static void             DestroyVertexArray( Handle varray );
 
