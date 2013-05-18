@@ -165,39 +165,12 @@ namespace Graphic
 
         //m_envMapRenderer->Render( context->m_envMapRendererContext );
 
-        const Light ** lights = 0;
+        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(Light*) * scene->GetLights().Size() ) );
         SizeT lightCount = 0;
         {
-            SizeT inCount = scene->GetLights().Size();
-            Vector * sphereBuffer = reinterpret_cast< Vector * >( MemoryManager::Malloc( sizeof(Vector) * inCount, MemoryUtils::AlignOf< Vector >() ) );
-            const Vector ** inData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
-            const Vector ** outData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
+            Camera::ApplyFrustumCulling( context->m_camera, scene->GetLights().ConstPtr(), scene->GetLights().Size(), lights, lightCount );
 
-            for ( SizeT i=0; i<inCount; ++i )
-            {
-                const Light * light = scene->GetLights()[i];
-
-                inData[i] = sphereBuffer + i;
-                Vector& sphere = sphereBuffer[i];
-
-                sphere = Select( light->m_position, Splat(light->m_radius), Mask<0,0,0,1>() );
-            }
-
-            SizeT outCount;
-            Camera::ApplyFrustumCulling( context->m_camera, inData, inCount, outData, outCount );
-
-            m_rasterizer->Render( outData, outCount, context->m_rasterizerContext );
-
-            lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * outCount ) );
-
-            for ( ; lightCount<outCount; ++lightCount )
-            {
-                lights[ lightCount ] = scene->GetLights()[ outData[ lightCount ] - sphereBuffer ];
-            }
-
-            MemoryManager::Free( outData );
-            MemoryManager::Free( inData );
-            MemoryManager::Free( sphereBuffer );
+            m_rasterizer->Render( lights, lightCount, context->m_rasterizerContext );
         }
 
         // Render meshes

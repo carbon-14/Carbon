@@ -101,68 +101,6 @@ namespace Graphic
         return m_frustum;
     }
 
-    void Camera::ApplyFrustumCulling( const Camera * camera, const Vector * const * inData, SizeT inCount, const Vector ** outData, SizeT& outCount )
-    {
-        const Frustum& frustum = camera->GetFrustum();
-        const Vector * planes = frustum.GetPlanes();
-
-        Matrix clip =
-        {
-            -planes[ FP_LEFT ],
-            -planes[ FP_RIGHT ],
-            -planes[ FP_BOTTOM ],
-            -planes[ FP_TOP ]
-        };
-
-        Vector zPlane = -planes[ FP_NEAR ];
-        Vector zAxis = Select( zPlane, One4, Mask<0,0,0,1>() );
-        Vector near = Swizzle<3,3,3,3>( zPlane );
-        Vector far = Swizzle<3,3,3,3>( planes[ FP_FAR ] );
-
-        const Vector ** out = outData;
-
-        SizeT r = inCount % 4;
-        SizeT q = inCount - r;
-
-        const Vector * const * it = inData;
-        const Vector * const * end = inData + q;
-        for ( ; it != end; it += 4 )
-        {
-            const Vector * p0 = it[0];
-            const Vector * p1 = it[1];
-            const Vector * p2 = it[2];
-            const Vector * p3 = it[3];
-
-            const Matrix m = { *p0, *p1, *p2, *p3 };	
-
-            F128 results;
-            Store( results, Cull4( m, clip, zPlane, zAxis, near, far ) );
-
-            if ( results[0] ) { *(out++) = p0; }
-            if ( results[1] ) { *(out++) = p1; }
-            if ( results[2] ) {	*(out++) = p2; }
-            if ( results[3] ) { *(out++) = p3; }
-        }
-
-        if ( r )
-        {
-            Matrix m;
-            m.m_column[0] = *(end[0]);
-            m.m_column[1] = ( r > 1 ) ? *(end[1]) : Zero4;
-            m.m_column[2] = ( r > 2 ) ? *(end[2]) : Zero4;
-            m.m_column[3] = Zero4;
-
-            F128 results;
-            Store( results, Cull4( m, clip, zPlane, zAxis, near, far ) );
-
-            if ( results[0] )			{ *(out++) = end[0]; }
-            if ( results[1] && r > 1 )	{ *(out++) = end[1]; }
-            if ( results[2] && r > 2 )	{ *(out++) = end[2]; }
-        }
-
-        outCount = out - outData;
-    }
-
     Vector Camera::Cull4( const Matrix& m, const Matrix& clip, const Vector& zPlane, const Vector& zAxis, const Vector& near, const Vector& far )
     {
         Vector c0 = Select( m.m_column[0], One4, Mask<0,0,0,1>() );

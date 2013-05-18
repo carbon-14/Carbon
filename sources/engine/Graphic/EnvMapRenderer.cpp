@@ -210,22 +210,7 @@ namespace Graphic
     {
         const Scene * scene = context->m_scene;
 
-        SizeT inCount = scene->GetLights().Size();
-        Vector * sphereBuffer = reinterpret_cast< Vector * >( MemoryManager::Malloc( sizeof(Vector) * inCount, MemoryUtils::AlignOf< Vector >() ) );
-        const Vector ** inData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
-        const Vector ** outData = reinterpret_cast< const Vector ** >( MemoryManager::Malloc( sizeof(Vector**) * inCount ) );
-
-        for ( SizeT i=0; i<inCount; ++i )
-        {
-            const Light * light = scene->GetLights()[i];
-
-            inData[i] = sphereBuffer + i;
-            Vector& sphere = sphereBuffer[i];
-
-            sphere = Select( light->m_position, Splat(light->m_radius), Mask<0,0,0,1>() );
-        }
-
-        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * inCount ) );
+        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * scene->GetLights().Size() ) );
 
         for ( SizeT i=0; i<6; ++i )
         {
@@ -233,13 +218,7 @@ namespace Graphic
 
             SizeT lightCount = 0;
             {
-                SizeT outCount;
-                Camera::ApplyFrustumCulling( &face.m_camera, inData, inCount, outData, outCount );
-
-                for ( ; lightCount<outCount; ++lightCount )
-                {
-                    lights[ lightCount ] = scene->GetLights()[ outData[ lightCount ] - sphereBuffer ];
-                }
+                Camera::ApplyFrustumCulling( &face.m_camera, scene->GetLights().ConstPtr(), scene->GetLights().Size(), lights, lightCount );
             }
 
             // Render meshes
@@ -255,9 +234,6 @@ namespace Graphic
         }
 
         MemoryManager::Free( lights );
-        MemoryManager::Free( outData );
-        MemoryManager::Free( inData );
-        MemoryManager::Free( sphereBuffer );
     }
 
     void EnvMapRenderer::Draw( const Context * context, RenderCache& renderCache ) const

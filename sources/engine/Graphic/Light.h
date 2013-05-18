@@ -22,6 +22,7 @@ namespace Graphic
         Vector      m_value;
         Vector      m_position;
         Vector      m_orientation;
+        Vector      m_sphere;
         F32         m_radius;
         F32         m_directionalWidth;
         F32         m_directionalHeight;

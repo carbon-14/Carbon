@@ -175,12 +175,14 @@ void Level7::PreExecute()
                     light->m_value              = lightColor;
                     light->m_position           = Vector4( x, y, z ) * light_spacing + light_offset;
                     light->m_orientation        = MulQuat( Quaternion( UnitY, angleY ), Quaternion( UnitX, angleX ) );
-                    light->m_radius             = 2.0f;
+                    light->m_radius             = 12.0f;
                     light->m_directionalWidth   = 10.0f;
                     light->m_directionalHeight  = 5.0f;
                     light->m_spotInAngle        = 0.0f;
                     light->m_spotOutAngle       = 0.75f*Pi;
                     light->m_type               = LT_OMNI;
+
+                    light->m_sphere             = Select( light->m_position, Splat( light->m_radius ), Mask<0,0,0,1>() );
 
                     m_lights.PushBack( light );
                     m_scene->AddLight( light );
@@ -214,6 +216,8 @@ void Level7::PreExecute()
         m_flash->m_spotInAngle      = 0.0f;
         m_flash->m_spotOutAngle     = 0.85f;
         m_flash->m_type             = LT_SPOT;
+
+        m_flash->m_sphere       = Select( m_flash->m_position, Splat( m_flash->m_radius ), Mask<0,0,0,1>() );
 
         //m_scene->AddLight( m_flash );
     }
