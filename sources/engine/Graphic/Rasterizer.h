@@ -4,7 +4,7 @@
 
 #include "Graphic/ProgramCache.h"
 
-#include "Core/Vector.h"
+#include "Core/Matrix.h"
 
 namespace Graphic
 {
@@ -25,8 +25,10 @@ namespace Graphic
             Array< Vector >         m_hPlanes;
 
             Handle                  m_depthBuffer;
+            Handle                  m_mapBuffer;
+            Handle                  m_mapInfos;
             Array< U8 >             m_mapCount;
-            Array< const Vector * > m_map;
+            Array< const Vector * > m_mapData;
 
             Array< Vector >         m_spheres;
         };
@@ -51,6 +53,7 @@ namespace Graphic
         static const SizeT  ms_maxCount = 64;
 
         void FillQuad( const Vector * quad[4], const Vector * sphere, Context * context ) const;
+        Vector Cull4( const Matrix& m, const Vector& nearPlane, const Vector& minDepth, const Vector& maxDepth ) const;
 
         ProgramHandle       m_programTileDepth;
     };

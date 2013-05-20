@@ -103,26 +103,21 @@ namespace Graphic
 
     Vector Camera::Cull4( const Matrix& m, const Matrix& clip, const Vector& zPlane, const Vector& zAxis, const Vector& near, const Vector& far )
     {
-        Vector c0 = Select( m.m_column[0], One4, Mask<0,0,0,1>() );
-        Vector c1 = Select( m.m_column[1], One4, Mask<0,0,0,1>() );
-        Vector c2 = Select( m.m_column[2], One4, Mask<0,0,0,1>() );
-        Vector c3 = Select( m.m_column[3], One4, Mask<0,0,0,1>() );
-        Vector r = Shuffle<0,2,0,2>( Shuffle<3,3,3,3>( m.m_column[0], m.m_column[1] ), Shuffle<3,3,3,3>( m.m_column[2], m.m_column[3] ) );
-
-        Matrix c = { c0, c1, c2, c3 };
-        c = Transpose( c );
+        Matrix c = Transpose( m );
+        Vector r = c.m_column[3];
+        c.m_column[3] = One4;
 
         Matrix clipProj	= Mul( c, clip );
         Vector zProj	= Mul( c, zAxis );
 
         Vector test;
-        test = GreaterThan( clipProj.m_column[0], r );
-        test = Or( test, GreaterThan( clipProj.m_column[1], r ) );
-        test = Or( test, GreaterThan( clipProj.m_column[2], r ) );
-        test = Or( test, GreaterThan( clipProj.m_column[3], r ) );
+        test = clipProj.m_column[0] > r;
+        test = Or( test, clipProj.m_column[1] > r );
+        test = Or( test, clipProj.m_column[2] > r );
+        test = Or( test, clipProj.m_column[3] > r );
 
-        test = Or( test, GreaterThan( zProj + near, r ) );
-        test = Or( test, LessThan( zProj + far, r ) );
+        test = Or( test, ( zProj + near ) > r );
+        test = Or( test, ( zProj + far ) < r );
         test = AndNot( test, Splat( F32( 0xffffffff ) ) );
 
         return test;
