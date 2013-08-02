@@ -3,6 +3,8 @@
 #include "Graphic/FrameRenderer.h"
 #include "Graphic/RenderDevice.h"
 #include "Graphic/Scene.h"
+#include "Graphic/Mesh.h"
+#include "Graphic/Light.h"
 #include "Graphic/QuadGeometry.h"
 
 #include "Core/Quaternion.h"
@@ -13,25 +15,32 @@ namespace Graphic
     const SizeT envBlurSize     = 2 * envBlurRadius + 1;
     const F32 envBlurSigma      = 12.0f;
 
-    void EnvMapRenderer::Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer )
+    void EnvMapRenderer::Initialize( DebugRenderer * debugRenderer, Rasterizer * rasterizer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer )
     {
         m_debugRenderer = debugRenderer;
-        m_meshRenderer = meshRenderer;
+        m_rasterizer    = rasterizer;
+        m_meshRenderer  = meshRenderer;
         m_lightRenderer = lightRenderer;
 
-        const U32 programLinearDepthId              = ProgramCache::CreateId( "linearDepth" );
-        m_programLinearDepth                        = ProgramCache::GetProgram( programLinearDepthId );
+        const U32 programResolveDepthId                     = ProgramCache::CreateId( "resolveDepth" );
+        m_programResolveDepth                               = ProgramCache::GetProgram( programResolveDepthId );
 
-        const U32 programBlurYId                    = ProgramCache::CreateId( "blurRingY" );
-        m_programBlur[0]                            = ProgramCache::GetProgram( programBlurYId );
+        const U32 programResolveStencilId                   = ProgramCache::CreateId( "resolveStencil" );
+        m_programResolveStencil                             = ProgramCache::GetProgram( programResolveStencilId );
 
-        const U32 programBlurZId                    = ProgramCache::CreateId( "blurRingZ" );
-        m_programBlur[1]                            = ProgramCache::GetProgram( programBlurZId );
+        const U32 programTileDepthId                        = ProgramCache::CreateId( "tileDepth" );
+        m_programTileDepth                                  = ProgramCache::GetProgram( programTileDepthId );
 
-        const U32 programBlurXId                    = ProgramCache::CreateId( "blurRingX" );
-        m_programBlur[2]                            = ProgramCache::GetProgram( programBlurXId );
+        const U32 programBlurYId                            = ProgramCache::CreateId( "blurRingY" );
+        m_programBlur[0]                                    = ProgramCache::GetProgram( programBlurYId );
 
-        m_renderStateLinearDepth.m_depthWriteMask   = false;
+        const U32 programBlurZId                            = ProgramCache::CreateId( "blurRingZ" );
+        m_programBlur[1]                                    = ProgramCache::GetProgram( programBlurZId );
+
+        const U32 programBlurXId                            = ProgramCache::CreateId( "blurRingX" );
+        m_programBlur[2]                                    = ProgramCache::GetProgram( programBlurXId );
+
+        m_renderStateResolveDepthStencil.m_depthWriteMask   = false;
 
         F32 sum = 0.0f;
         F32 blurWeights[ envBlurSize ];
@@ -54,7 +63,7 @@ namespace Graphic
 
     void EnvMapRenderer::Destroy()
     {
-        RenderDevice::DestroyBuffer( m_blurUniformBuffer );
+        RenderDevice::DestroyUniformBuffer( m_blurUniformBuffer );
     }
 
     EnvMapRenderer::Context * EnvMapRenderer::CreateContext()
@@ -67,11 +76,14 @@ namespace Graphic
         context->m_depthStencilTexture          = 0;
         context->m_normalTexture                = 0;
         context->m_colorTexture                 = 0;
-        context->m_linearDepthTexture           = 0;
+        context->m_depthTexture                 = 0;
+        context->m_stencilTexture               = 0;
+        context->m_tiledDepthBuffer             = 0;
         context->m_lightTexture                 = 0;
         context->m_lightBlurTexture             = 0;
         context->m_geomFramebuffer              = RenderDevice::CreateFramebuffer();
-        context->m_linearizeDepthFramebuffer    = RenderDevice::CreateFramebuffer();
+        context->m_resolveDepthFramebuffer      = RenderDevice::CreateFramebuffer();
+        context->m_resolveStencilFramebuffer    = RenderDevice::CreateFramebuffer();
         context->m_lightFramebuffer             = RenderDevice::CreateFramebuffer();
 
         RenderState opaque;
@@ -83,10 +95,12 @@ namespace Graphic
             Context::Face& face                 = context->m_cube[i];
             face.m_uniformBuffer                = RenderDevice::CreateUniformBuffer( sizeof(FrameParameters), 0, BU_DYNAMIC );
             face.m_debugRendererContext         = DebugRenderer::CreateContext();
+            face.m_rasterizerContext            = Rasterizer::CreateContext();
             face.m_meshRendererContext          = MeshRenderer::CreateContext( &face.m_opaqueList );
-            face.m_lightRendererContext         = LightRenderer::CreateContext( face.m_debugRendererContext );
+            face.m_lightRendererContext         = LightRenderer::CreateContext( face.m_rasterizerContext, face.m_debugRendererContext );
 
             face.m_opaqueList.SetRenderState( opaque );
+            face.m_opaqueList.SetSRGBWrite( true );
             face.m_opaqueList.SetClearMask( RM_ALL );
         }
 
@@ -99,21 +113,28 @@ namespace Graphic
         context->m_scene     = scene;
 
         CARBON_ASSERT( size );
+        CARBON_ASSERT( size % ProgramCache::ms_tileSize == 0 );
 
         if ( size != context->m_size )
         {
             RenderDevice::DestroyTexture( context->m_lightBlurTexture );
             RenderDevice::DestroyTexture( context->m_lightTexture );
-            RenderDevice::DestroyTexture( context->m_linearDepthTexture );
+            RenderDevice::DestroyShaderStorageBuffer( context->m_tiledDepthBuffer );
+            RenderDevice::DestroyTexture( context->m_stencilTexture );
+            RenderDevice::DestroyTexture( context->m_depthTexture );
             RenderDevice::DestroyTexture( context->m_colorTexture );
             RenderDevice::DestroyTexture( context->m_normalTexture );
             RenderDevice::DestroyTexture( context->m_depthStencilTexture );
 
             context->m_size                 = size;
+            context->m_tileSize             = size / ProgramCache::ms_tileSize;
+
             context->m_depthStencilTexture  = RenderDevice::CreateRenderTexture( TF_D24S8, size, size );
             context->m_normalTexture        = RenderDevice::CreateRenderTexture( TF_RG16F, size, size );
             context->m_colorTexture         = RenderDevice::CreateRenderTexture( TF_SRGBA8, size, size );
-            context->m_linearDepthTexture   = RenderDevice::CreateRenderTexture( TF_R32F, size, size );
+            context->m_depthTexture         = RenderDevice::CreateRenderTexture( TF_R32F, size, size );
+            context->m_stencilTexture       = RenderDevice::CreateRenderTexture( TF_R8UI, size, size );
+            context->m_tiledDepthBuffer     = RenderDevice::CreateShaderStorageBuffer( context->m_tileSize * context->m_tileSize * sizeof(U32), 0, BU_DYNAMIC );
             context->m_lightTexture         = RenderDevice::CreateRenderTextureCube( TF_RGBA16F, size );
             context->m_lightBlurTexture     = RenderDevice::CreateRenderTextureCube( TF_RGBA16F, size );
         }
@@ -173,7 +194,8 @@ namespace Graphic
             face.m_opaqueList.Clear();
 
             DebugRenderer::UpdateContext( face.m_debugRendererContext );
-            LightRenderer::UpdateContext( face.m_lightRendererContext, size, size, &face_cam, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, 0 );
+            Rasterizer::UpdateContext( face.m_rasterizerContext, size, size, &face_cam );
+            LightRenderer::UpdateContext( face.m_lightRendererContext, size, size, &face_cam, context->m_tileSize, context->m_tileSize, context->m_tiledDepthBuffer, context->m_depthTexture, context->m_normalTexture, context->m_colorTexture, 0, 0, context->m_lightTexture );
         }        
     }
 
@@ -187,18 +209,22 @@ namespace Graphic
 
             LightRenderer::DestroyContext( face.m_lightRendererContext );
             MeshRenderer::DestroyContext( face.m_meshRendererContext );
+            Rasterizer::DestroyContext( face.m_rasterizerContext );
             DebugRenderer::DestroyContext( face.m_debugRendererContext );
 
-            RenderDevice::DestroyBuffer( face.m_uniformBuffer );
+            RenderDevice::DestroyUniformBuffer( face.m_uniformBuffer );
         }
 
         RenderDevice::DestroyFramebuffer( context->m_lightFramebuffer );
-        RenderDevice::DestroyFramebuffer( context->m_linearizeDepthFramebuffer );
+        RenderDevice::DestroyFramebuffer( context->m_resolveStencilFramebuffer );
+        RenderDevice::DestroyFramebuffer( context->m_resolveDepthFramebuffer );
         RenderDevice::DestroyFramebuffer( context->m_geomFramebuffer );
 
         RenderDevice::DestroyTexture( context->m_lightBlurTexture );
         RenderDevice::DestroyTexture( context->m_lightTexture );
-        RenderDevice::DestroyTexture( context->m_linearDepthTexture );
+        RenderDevice::DestroyShaderStorageBuffer( context->m_tiledDepthBuffer );
+        RenderDevice::DestroyTexture( context->m_stencilTexture );
+        RenderDevice::DestroyTexture( context->m_depthTexture );
         RenderDevice::DestroyTexture( context->m_colorTexture );
         RenderDevice::DestroyTexture( context->m_normalTexture );
         RenderDevice::DestroyTexture( context->m_depthStencilTexture );
@@ -210,21 +236,24 @@ namespace Graphic
     {
         const Scene * scene = context->m_scene;
 
-        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(const Light **) * scene->GetLights().Size() ) );
+        const Mesh ** meshes = reinterpret_cast< const Mesh ** >( MemoryManager::FrameAlloc( sizeof(Mesh*) * scene->GetMeshes().Size() ) );
+        SizeT meshCount = 0;
+
+        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::FrameAlloc( sizeof(Light*) * scene->GetLights().Size() ) );
+        SizeT lightCount = 0;
 
         for ( SizeT i=0; i<6; ++i )
         {
             Context::Face& face = context->m_cube[i];
 
-            SizeT lightCount = 0;
             {
+                Camera::ApplyFrustumCulling( &face.m_camera, scene->GetMeshes().ConstPtr(), scene->GetMeshes().Size(), meshes, meshCount );
                 Camera::ApplyFrustumCulling( &face.m_camera, scene->GetLights().ConstPtr(), scene->GetLights().Size(), lights, lightCount );
             }
 
             // Render meshes
             {
-                const Scene::MeshArray& meshes = scene->GetMeshes();
-                m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), face.m_meshRendererContext );
+                m_meshRenderer->Render( meshes, meshCount, face.m_meshRendererContext );
             }
 
             // Render lights
@@ -232,8 +261,6 @@ namespace Graphic
                 m_lightRenderer->Render( lights, lightCount, face.m_lightRendererContext );
             }
         }
-
-        MemoryManager::Free( lights );
     }
 
     void EnvMapRenderer::Draw( const Context * context, RenderCache& renderCache ) const
@@ -254,24 +281,31 @@ namespace Graphic
                 RenderDevice::AttachTexture( FT_DRAW, FA_COLOR1, context->m_colorTexture, 0 );
                 RenderDevice::DrawBuffer( CBB_COLOR0 | CBB_COLOR1 );
 
+
                 face.m_opaqueList.Draw( renderCache );
             }
 
-            // Linearize depth
+            // Resolve depth stencil texture
             {
-                RenderDevice::BindFramebuffer( context->m_linearizeDepthFramebuffer, FT_DRAW );
-                RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_linearDepthTexture, 0 );
+                RenderDevice::BindFramebuffer( context->m_resolveDepthFramebuffer, FT_DRAW );
+                RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_depthTexture, 0 );
 
-                LinearizeDepth( context, renderCache );
+                ResolveDepth( context, renderCache );
+                TileDepth( context, renderCache );
+
+                RenderDevice::BindFramebuffer( context->m_resolveStencilFramebuffer, FT_DRAW );
+                RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_stencilTexture, 0 );
+
+                ResolveStencil( context, renderCache );
             }
 
             // Draw Lights
             {
-                RenderDevice::BindFramebuffer( context->m_lightFramebuffer, FT_DRAW );
+                /*RenderDevice::BindFramebuffer( context->m_lightFramebuffer, FT_DRAW );
                 RenderDevice::AttachTexture( FT_DRAW, FA_DEPTH_STENCIL, context->m_depthStencilTexture, 0 );
-                RenderDevice::AttachTextureCube( FT_DRAW, FA_COLOR0, (CubeFace)i, context->m_lightTexture, 0 );
+                RenderDevice::AttachTextureCube( FT_DRAW, FA_COLOR0, (CubeFace)i, context->m_lightTexture, 0 );*/
 
-                m_lightRenderer->DrawEnv( face.m_lightRendererContext, renderCache );
+                m_lightRenderer->DrawEnv( face.m_lightRendererContext, (CubeFace)i, renderCache );
             }
         }
 
@@ -290,15 +324,31 @@ namespace Graphic
         }
     }
 
-    void EnvMapRenderer::LinearizeDepth( const Context * context, RenderCache& renderCache ) const
+    void EnvMapRenderer::ResolveDepth( const Context * context, RenderCache& renderCache ) const
     {
         renderCache.SetSRGBWrite( false );
-        renderCache.SetRenderState( m_renderStateLinearDepth );
+        renderCache.SetRenderState( m_renderStateResolveDepthStencil );
 
-        ProgramCache::UseProgram( m_programLinearDepth );
-
-        RenderDevice::BindTexture( context->m_depthStencilTexture, 0 );
-
+        ProgramCache::UseProgram( m_programResolveDepth );
+        RenderDevice::BindDepthStencilTexture( context->m_depthStencilTexture, 0, DSM_DEPTH );
         QuadGeometry::GetInstance().Draw();
+    }
+
+    void EnvMapRenderer::ResolveStencil( const Context * context, RenderCache& renderCache ) const
+    {
+        renderCache.SetSRGBWrite( false );
+        renderCache.SetRenderState( m_renderStateResolveDepthStencil );
+
+        ProgramCache::UseProgram( m_programResolveStencil );
+        RenderDevice::BindDepthStencilTexture( context->m_depthStencilTexture, 0, DSM_STENCIL );
+        QuadGeometry::GetInstance().Draw();
+    }
+
+    void EnvMapRenderer::TileDepth( const Context * context, RenderCache& renderCache ) const
+    {
+        RenderDevice::BindImageTexture( context->m_depthTexture, 0, 0, BA_READ_ONLY, TF_R32F );
+        RenderDevice::BindShaderStorageBuffer( context->m_tiledDepthBuffer, 0 );
+        ProgramCache::UseProgram( m_programTileDepth );
+        RenderDevice::DispatchCompute( context->m_tileSize, context->m_tileSize, 1 );
     }
 }

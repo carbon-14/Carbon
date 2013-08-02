@@ -7,6 +7,8 @@
 #include "Core/Resource.h"
 #include "Graphic/MaterialResource.h"
 
+#include "Core/Vector.h"
+
 namespace Graphic
 {
     class MaterialResource;
@@ -35,6 +37,7 @@ namespace Graphic
         DataType                    GetIndexType() const;
         const SubMesh *             GetSubMeshes() const;
         SizeT                       GetSubMeshCount() const;
+        Vector                      GetBoundingSphere() const;
 
     protected:
         Bool Load( const void * data );
@@ -46,6 +49,7 @@ namespace Graphic
         VertexDeclaration   m_vertexDecl;
         SizeT               m_vertexCount;
         DataType            m_indexType;
+        Vector              m_boundingSphere;
         SubMesh             m_subMeshes[ ms_maxSubMeshCount ];
         SizeT               m_subMeshCount;
     };

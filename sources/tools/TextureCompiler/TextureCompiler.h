@@ -40,9 +40,6 @@ extern PFNGLGETCOMPRESSEDTEXIMAGEPROC       glGetCompressedTexImage;
 extern PFNGLTEXSTORAGE1DPROC                glTexStorage1D;
 extern PFNGLTEXSTORAGE2DPROC                glTexStorage2D;
 extern PFNGLTEXSTORAGE3DPROC                glTexStorage3D;
-extern PFNGLTEXTURESTORAGE1DEXTPROC         glTextureStorage1DEXT;
-extern PFNGLTEXTURESTORAGE2DEXTPROC         glTextureStorage2DEXT;
-extern PFNGLTEXTURESTORAGE3DEXTPROC         glTextureStorage3DEXT;
 
 #endif
 

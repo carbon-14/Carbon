@@ -26,9 +26,6 @@ PFNGLGETCOMPRESSEDTEXIMAGEPROC       glGetCompressedTexImage    = 0;
 PFNGLTEXSTORAGE1DPROC                glTexStorage1D             = 0;
 PFNGLTEXSTORAGE2DPROC                glTexStorage2D             = 0;
 PFNGLTEXSTORAGE3DPROC                glTexStorage3D             = 0;
-PFNGLTEXTURESTORAGE1DEXTPROC         glTextureStorage1DEXT      = 0;
-PFNGLTEXTURESTORAGE2DEXTPROC         glTextureStorage2DEXT      = 0;
-PFNGLTEXTURESTORAGE3DEXTPROC         glTextureStorage3DEXT      = 0;
 
 LRESULT CALLBACK WndProc(HWND p_hWnd, UINT p_uiMessage, WPARAM p_wParam, LPARAM p_lParam)
 {
@@ -204,9 +201,6 @@ bool InitializeOpenGL()
     glTexStorage1D              = (PFNGLTEXSTORAGE1DPROC)wglGetProcAddress("glTexStorage1D");
     glTexStorage2D              = (PFNGLTEXSTORAGE2DPROC)wglGetProcAddress("glTexStorage2D");
     glTexStorage3D              = (PFNGLTEXSTORAGE3DPROC)wglGetProcAddress("glTexStorage3D");
-    glTextureStorage1DEXT       = (PFNGLTEXTURESTORAGE1DEXTPROC)wglGetProcAddress("glTextureStorage1DEXT");
-    glTextureStorage2DEXT       = (PFNGLTEXTURESTORAGE2DEXTPROC)wglGetProcAddress("glTextureStorage2DEXT");
-    glTextureStorage3DEXT       = (PFNGLTEXTURESTORAGE3DEXTPROC)wglGetProcAddress("glTextureStorage3DEXT");
 
 #endif
     return true;

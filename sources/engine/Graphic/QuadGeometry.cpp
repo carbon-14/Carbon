@@ -40,7 +40,7 @@ namespace Graphic
     void QuadGeometry::Destroy()
     {
         RenderDevice::DestroyVertexArray( m_vertexArray );
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
+        RenderDevice::DestroyVertexBuffer( m_vertexBuffer );
     }
 
     void QuadGeometry::Draw() const

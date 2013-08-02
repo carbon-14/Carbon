@@ -20,7 +20,7 @@ struct RenderWindow
     WNDCLASS    wc;
 };
 
-BOOL CreateRenderWindow( HINSTANCE hInstance, RenderWindow& window );
+BOOL CreateRenderWindow( HINSTANCE hInstance, RenderWindow& window, SizeT width, SizeT height, bool fullscreen );
 void DestroyRenderWindow( const RenderWindow& window );
 
 class Application

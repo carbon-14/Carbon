@@ -989,10 +989,11 @@ enum IType
 
 struct MeshHeader
 {
-    IType        indexType;
-    unsigned int subMeshCount;
-    unsigned int inputCount;
-    unsigned int vertexDataSize;
+    IType           indexType;
+    unsigned int    subMeshCount;
+    unsigned int    inputCount;
+    unsigned int    vertexDataSize;
+    float           boundingSphere[4];
 };
 
 struct MeshInput
@@ -1281,6 +1282,42 @@ bool BuildMesh(  const char * outFilename , int options )
 
     if ( v_source == -1 )
         return false;
+
+    // Bounding sphere
+    {
+        memset(&header.boundingSphere,0,4*sizeof(float));
+
+        const ColladaSource& pos_data = sources[ v_source ];
+
+        std::vector< float >::const_iterator it = pos_data.array.begin();
+        std::vector< float >::const_iterator end = pos_data.array.end();
+        for ( size_t i=0; it != end; ++it, i = (i+1)%pos_data.stride )
+        {
+            header.boundingSphere[ i ] += *it;
+        }
+
+        size_t count = pos_data.array.size() / pos_data.stride;
+
+        for ( size_t i=0; i<3; ++i )
+        {
+            header.boundingSphere[ i ] /= count;
+        }
+
+        header.boundingSphere[3] = 0.0f;
+
+        it = pos_data.array.begin();
+        for ( ; it != end; it += pos_data.stride )
+        {
+            float dir[3];
+            dir[0] = it[0] - header.boundingSphere[0];
+            dir[1] = it[1] - header.boundingSphere[1];
+            dir[2] = it[2] - header.boundingSphere[2];
+
+            float radius = sqrt( dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2] );
+
+            header.boundingSphere[3] = max( radius, header.boundingSphere[3] );
+        }
+    }
 
     // build vertex layout
     std::vector< Semantic > semantic_layout;

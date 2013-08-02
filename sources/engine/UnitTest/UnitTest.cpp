@@ -20,7 +20,7 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
     //return Level5( hInstance, nCmdShow );
 
     RenderWindow window;
-    if ( ! CreateRenderWindow( hInstance, window ) )
+    if ( ! CreateRenderWindow( hInstance, window, 1920, 1200, true ) )
     {
         return FALSE;
     }

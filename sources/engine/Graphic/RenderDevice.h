@@ -11,20 +11,23 @@ namespace Graphic
     {
     public:
         static Handle           CreateVertexBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void             DestroyVertexBuffer( Handle buffer );
         static void *           MapVertexBuffer( Handle buffer, BufferAccess access );
         static void             UnmapVertexBuffer( );
         static Handle           CreateIndexBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void             DestroyIndexBuffer( Handle buffer );
         static void *           MapIndexBuffer( Handle buffer, BufferAccess access );
         static void             UnmapIndexBuffer( );
         static Handle           CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void             DestroyUniformBuffer( Handle buffer );
         static void *           MapUniformBuffer( Handle buffer, BufferAccess access );
         static void             UnmapUniformBuffer( );
         static void             BindUniformBuffer( Handle ubuffer, SizeT location );
         static Handle           CreateShaderStorageBuffer( SizeT size, const void * data, BufferUsage usage );
+        static void             DestroyShaderStorageBuffer( Handle buffer );
         static void *           MapShaderStorageBuffer( Handle buffer, BufferAccess access );
         static void             UnmapShaderStorageBuffer( );
-        static void             BindShaderStorageBuffer( Handle ubuffer, SizeT location );
-        static void             DestroyBuffer( Handle buffer );
+        static void             BindShaderStorageBuffer( Handle ssbuffer, SizeT location );
 
         static void             MemoryBarrier( );
 
@@ -37,6 +40,7 @@ namespace Graphic
         static Handle           CreateProgramBinary( const void * binary, SizeT size );
         static void             UseProgram( Handle program );
         static void             DispatchCompute( SizeT groupX, SizeT groupY, SizeT groupZ );
+        static void             MemoryBarrier( U32 barriers );
 
         static Handle           CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data );
         static Handle           CreateRenderTexture( TextureFormat format, SizeT width, SizeT height );
@@ -44,6 +48,7 @@ namespace Graphic
         static void             DestroyTexture( Handle texture );
         static void             BindTexture( Handle texture, SizeT unit );
         static void             BindTextureCube( Handle texture, SizeT unit );
+        static void             BindDepthStencilTexture( Handle texture, SizeT unit, DepthStencilTextureMode mode );
         static void             BindImageTexture( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format );
         static void             BindImageTextureCube( Handle texture, SizeT unit, SizeT level, BufferAccess access, TextureFormat format );
         static void             BindImageTextureCubeFace( Handle texture, SizeT unit, SizeT level, CubeFace face, BufferAccess access, TextureFormat format );

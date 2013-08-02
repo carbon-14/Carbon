@@ -57,7 +57,7 @@ namespace Graphic
     void DebugRenderer::DestroyContext( Context * context )
     {
         RenderDevice::DestroyVertexArray( context->m_vertexArray );
-        RenderDevice::DestroyBuffer( context->m_vertexBuffer );
+        RenderDevice::DestroyVertexBuffer( context->m_vertexBuffer );
 
         MemoryManager::Delete( context );
     }
@@ -84,7 +84,7 @@ namespace Graphic
 		if ( context->m_vertexBufferSize < context->m_vertices.Capacity() )
         {
             RenderDevice::DestroyVertexArray( context->m_vertexArray );
-            RenderDevice::DestroyBuffer( context->m_vertexBuffer );
+            RenderDevice::DestroyVertexBuffer( context->m_vertexBuffer );
             context->m_vertexBuffer = RenderDevice::CreateVertexBuffer( sizeof(Vertex) * context->m_vertices.Capacity(), 0, BU_DYNAMIC );
             context->m_vertexBufferSize = context->m_vertices.Capacity();
             context->m_vertexArray = RenderDevice::CreateVertexArray( m_vdecl, context->m_vertexBuffer );

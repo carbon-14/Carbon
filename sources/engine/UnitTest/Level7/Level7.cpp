@@ -38,6 +38,7 @@ namespace Level7_NS
     F32 mousedY = 0.0f;
 
     Bool useFlashLight = false;
+    Bool lockCam = false;
 }
 
 using namespace Level7_NS;
@@ -76,6 +77,9 @@ void Level7::ProcessInputs( RAWINPUT * raw )
             case 'F' :
                 useFlashLight = ! useFlashLight;
                 break;
+            case 'G' :
+                lockCam = ! lockCam;
+                break;
             }
         }
         else if ( raw->data.keyboard.Message == WM_KEYUP )
@@ -106,20 +110,18 @@ void Level7::ProcessInputs( RAWINPUT * raw )
 
 void Level7::PreExecute()
 {
-    glEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
-
     QuadGeometry::GetInstance().Initialize();
 
     m_debugRenderer.Initialize();
     m_rasterizer.Initialize();
     m_meshRenderer.Initialize( &m_debugRenderer );
-    m_lightRenderer.Initialize( &m_debugRenderer );
-    m_envMapRenderer.Initialize( &m_debugRenderer, &m_meshRenderer, &m_lightRenderer );
+    m_lightRenderer.Initialize( &m_rasterizer, &m_debugRenderer );
+    m_envMapRenderer.Initialize( &m_debugRenderer, &m_rasterizer, &m_meshRenderer, &m_lightRenderer );
     m_frameRenderer.Initialize( &m_debugRenderer, &m_rasterizer, &m_meshRenderer, &m_lightRenderer, &m_envMapRenderer );
 
     m_scene = MemoryManager::New< Scene >();
-    m_scene->SetAmbientSkyLight( Vector4( 0.00185f, 0.003325f, 0.00625f ) );
-    m_scene->SetAmbientGroundLight( Vector4( 0.0025f, 0.0025f, 0.0025f ) );
+    m_scene->SetAmbientSkyLight( Vector4( 0.0185f, 0.03325f, 0.0625f ) );
+    m_scene->SetAmbientGroundLight( Vector4( 0.025f, 0.025f, 0.025f ) );
 
     {
         m_mesh = MemoryManager::New< Mesh >();
@@ -144,12 +146,12 @@ void Level7::PreExecute()
     }
 
     {
-        SizeT X = 1;
-        SizeT Y = 1;
-        SizeT Z = 1;
+        SizeT X = 9;
+        SizeT Y = 5;
+        SizeT Z = 3;
 
         const Vector light_spacing = Splat( 6.0f );
-        const Vector light_offset  = Vector4( 10.0f, -0.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
+        const Vector light_offset  = Vector4( 0.0f, 0.0f, 0.0f ) - light_spacing * Vector4( 0.5f * (X-1), 0.5f * (Y-1), 0.5f * (Z-1) );
 
         m_lights.Reserve( X * Y * Z );
 
@@ -175,14 +177,13 @@ void Level7::PreExecute()
                     light->m_value              = lightColor;
                     light->m_position           = Vector4( x, y, z ) * light_spacing + light_offset;
                     light->m_orientation        = MulQuat( Quaternion( UnitY, angleY ), Quaternion( UnitX, angleX ) );
-                    light->m_radius             = 12.0f;
+                    light->m_radius             = 6.0f;
                     light->m_directionalWidth   = 10.0f;
                     light->m_directionalHeight  = 5.0f;
                     light->m_spotInAngle        = 0.0f;
                     light->m_spotOutAngle       = 0.75f*Pi;
                     light->m_type               = LT_OMNI;
-
-                    light->m_sphere             = Select( light->m_position, Splat( light->m_radius ), Mask<0,0,0,1>() );
+                    light->Update();
 
                     m_lights.PushBack( light );
                     m_scene->AddLight( light );
@@ -194,7 +195,7 @@ void Level7::PreExecute()
     {
         m_camera = MemoryManager::New< Camera >();
 
-        m_camera->m_position        = UnitW;//Vector4( -15.0f, -11.5f, 1.0f );
+        m_camera->m_position        = Vector4( -15.0f, -11.5f, 1.0f );
         m_camera->m_orientation     = Quaternion( UnitY, -HalfPi );
 
         m_camera->m_near            = 0.25f;
@@ -212,14 +213,13 @@ void Level7::PreExecute()
         m_flash->m_value            = Vector4( 0.0f, 0.0f, 0.0f );
         m_flash->m_orientation      = m_camera->m_orientation;
         m_flash->m_position         = m_camera->m_position;
-        m_flash->m_radius           = 10.0f;
+        m_flash->m_radius           = 15.0f;
         m_flash->m_spotInAngle      = 0.0f;
         m_flash->m_spotOutAngle     = 0.85f;
         m_flash->m_type             = LT_SPOT;
+        m_flash->Update();
 
-        m_flash->m_sphere       = Select( m_flash->m_position, Splat( m_flash->m_radius ), Mask<0,0,0,1>() );
-
-        //m_scene->AddLight( m_flash );
+        m_scene->AddLight( m_flash );
     }
 
     m_frameContext = FrameRenderer::CreateContext();
@@ -273,15 +273,18 @@ void Level7::Execute()
         Vector rotateX = Quaternion( UnitX, -mousedY * elapsedTime * turnSpeed );
         mousedY = 0.0f;
 
-        m_camera->m_orientation = MulQuat( m_camera->m_orientation, rotateX );
-        m_camera->m_orientation = MulQuat( rotateY, m_camera->m_orientation );
+        if ( ! lockCam )
+        {
+            m_camera->m_orientation = MulQuat( m_camera->m_orientation, rotateX );
+            m_camera->m_orientation = MulQuat( rotateY, m_camera->m_orientation );
 
-        Matrix ori = RMatrix( m_camera->m_orientation );
+            Matrix ori = RMatrix( m_camera->m_orientation );
 
-        m_camera->m_position = m_camera->m_position - Splat(moveY * elapsedTime * moveSpeed) * ori.m_column[2];
-        m_camera->m_position = m_camera->m_position + Splat(moveX * elapsedTime * moveSpeed) * ori.m_column[0];
+            m_camera->m_position = m_camera->m_position - Splat(moveY * elapsedTime * moveSpeed) * ori.m_column[2];
+            m_camera->m_position = m_camera->m_position + Splat(moveX * elapsedTime * moveSpeed) * ori.m_column[0];
 
-        m_camera->Update();
+            m_camera->Update();
+        }
 
         m_sphere->m_orientation = Quaternion( Normalize( Vector3( 1.0f, 1.0f, -1.0f ) ), 0.1f * time );
         m_sphere->Update();
@@ -289,6 +292,7 @@ void Level7::Execute()
         m_flash->m_value        = useFlashLight ? Vector4( 5.0f, 5.0f, 5.0f ) : Vector4( 0.0f, 0.0f, 0.0f );
         m_flash->m_orientation  = m_camera->m_orientation;
         m_flash->m_position     = m_camera->m_position;
+        m_flash->Update();
 
         FrameRenderer::UpdateContext( m_frameContext, m_window.width, m_window.height, m_camera, m_scene, 256 );
 

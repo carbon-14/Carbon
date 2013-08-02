@@ -15,22 +15,15 @@ namespace Graphic
     public:
         struct Context
         {
-            const Camera *          m_camera;
-            Handle                  m_linearDepthTexture;
-            SizeT                   m_width;
-            SizeT                   m_height;
-            SizeT                   m_size;
+            const Camera *  m_camera;
+            SizeT           m_width;
+            SizeT           m_height;
 
-            Array< Vector >         m_vPlanes;
-            Array< Vector >         m_hPlanes;
+            Array< Vector > m_vPlanes;
+            Array< Vector > m_hPlanes;
 
-            Handle                  m_depthBuffer;
-            Handle                  m_mapBuffer;
-            Handle                  m_mapInfos;
-            Array< U8 >             m_mapCount;
-            Array< const Vector * > m_mapData;
-
-            Array< Vector >         m_spheres;
+            Handle          m_quadBuffer;
+            SizeT           m_quadBufferSize;
         };
 
     public:
@@ -41,38 +34,20 @@ namespace Graphic
         void Destroy();
 
         static Context * CreateContext();
-        static void UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture );
+        static void UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera );
         static void DestroyContext( Context * context );
 
-        template< typename T >
-        void Render( const T * const * objs, SizeT objCount, Context * context ) const;
-        void Draw( const Context * context ) const;
-
-    private:
-        static const SizeT  ms_tileSize = 16;
-        static const SizeT  ms_maxCount = 64;
-
-        void FillQuad( const Vector * quad[4], const Vector * sphere, Context * context ) const;
-        Vector Cull4( const Matrix& m, const Vector& nearPlane, const Vector& minDepth, const Vector& maxDepth ) const;
-
-        ProgramHandle       m_programTileDepth;
+        template < typename I, typename O >
+        void Render( const I * const * input, O * output, SizeT count, Context * context ) const;
     };
 
-    template < typename T >
-    void Rasterizer::Render( const T * const * objs, SizeT objCount, Context * context ) const
+    template < typename I, typename O >
+    void Rasterizer::Render( const I * const * input, O * output, SizeT count, Context * context ) const
     {
-        context->m_spheres.Resize( objCount );
-
-        for ( SizeT i=0; i<objCount; ++i )
+        const I * const * end = input + count;
+        for ( ; input!=end; ++input, ++output )
         {
-            context->m_spheres[ i ] = objs[ i ]->m_sphere;
-        }
-
-        Array< Vector >::ConstIterator it = context->m_spheres.Begin();
-        Array< Vector >::ConstIterator end = context->m_spheres.End();
-        for ( ; it!=end; ++it )
-        {
-            Vector v = *it;
+            Vector v = (*input)->GetBoundingSphere();
             Vector c = Select( v, One4, Mask<0,0,0,1>() );
             Vector r = Swizzle<3,3,3,3>( v );
 
@@ -94,91 +69,38 @@ namespace Graphic
 
             r = r * Vector4( 1.0f, -1.0f, 1.0f, -1.0f );
 
-            if ( inside[0] )
+            for ( SizeT i=0; i<4; ++i )
             {
-                const Vector * minPlane = quad[0];
-                const Vector * maxPlane = quad[1];
-                SizeT dist = maxPlane - minPlane;
-                while ( dist > 1 )
+                if ( inside[i] )
                 {
-                    quad[0] = minPlane + dist / 2;
+                    const Vector * planes[2];
+                    planes[0] = quad[2*(i/2)];
+                    planes[1] = quad[2*(i/2)+1];
 
-                    test = Dot( c, *quad[0] ) < r;
+                    SizeT dist = planes[1] - planes[0];
+                    while ( dist > 1 )
+                    {
+                        const Vector * m = planes[0] + dist / 2;
 
-                    F128 result;
-                    Store( result, test );
+                        test = Dot( c, *m ) > r;
 
-                    if ( result[0] )    { maxPlane = quad[0]; }
-                    else                { minPlane = quad[0]; }
+                        F128 result;
+                        Store( result, test );
 
-                    dist = maxPlane - minPlane;
+                        if ( result[i] )    { planes[0] = m; }
+                        else                { planes[1] = m; }
+
+                        dist = planes[1] - planes[0];
+                    }
+
+                    quad[i] = planes[i%2];
                 }
             }
 
-            if ( inside[1] )
-            {
-                const Vector * minPlane = quad[0];
-                const Vector * maxPlane = quad[1];
-                SizeT dist = maxPlane - minPlane;
-                while ( dist > 1 )
-                {
-                    quad[1] = minPlane + dist / 2;
-
-                    test = Dot( c, *quad[1] ) < r;
-                    
-                    F128 result;
-                    Store( result, test );
-
-                    if ( result[1] )    { maxPlane = quad[1]; }
-                    else                { minPlane = quad[1]; }
-
-                    dist = maxPlane - minPlane;
-                }
-            }
-
-            if ( inside[2] )
-            {
-                const Vector * minPlane = quad[2];
-                const Vector * maxPlane = quad[3];
-                SizeT dist = maxPlane - minPlane;
-                while ( dist > 1 )
-                {
-                    quad[2] = minPlane + dist / 2;
-
-                    test = Dot( c, *quad[2] ) < r;
-                    
-                    F128 result;
-                    Store( result, test );
-
-                    if ( result[2] )    { maxPlane = quad[2]; }
-                    else                { minPlane = quad[2]; }
-
-                    dist = maxPlane - minPlane;
-                }
-            }
-
-            if ( inside[3] )
-            {
-                const Vector * minPlane = quad[2];
-                const Vector * maxPlane = quad[3];
-                SizeT dist = maxPlane - minPlane;
-                while ( dist > 1 )
-                {
-                    quad[3] = minPlane + dist / 2;
-
-                    test = Dot( c, *quad[3] ) < r;
-                    
-                    F128 result;
-                    Store( result, test );
-
-                    if ( result[3] )    { maxPlane = quad[3]; }
-                    else                { minPlane = quad[3]; }
-
-                    dist = maxPlane - minPlane;
-                }
-            }
-
-            FillQuad( quad, it, context );
+            output->m_quad[0] = quad[0] - context->m_vPlanes.Begin();
+            output->m_quad[1] = quad[1] - context->m_vPlanes.Begin();
+            output->m_quad[2] = quad[2] - context->m_hPlanes.Begin();
+            output->m_quad[3] = quad[3] - context->m_hPlanes.Begin();
         }
     }
 }

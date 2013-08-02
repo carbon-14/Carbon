@@ -68,6 +68,7 @@ namespace Graphic
         U32     subMeshCount;
         U32     inputCount;
         U32     vertexDataSize;
+        F32     boundingSphere[4];
     };
 
     struct MeshInput
@@ -123,6 +124,11 @@ namespace Graphic
         return m_subMeshCount;
     }
 
+    Vector MeshResource::GetBoundingSphere() const
+    {
+        return m_boundingSphere;
+    }
+
     Bool MeshResource::Load( const void * data )
     {
         m_primitive = PT_TRIANGLES;
@@ -133,6 +139,8 @@ namespace Graphic
         ptr += sizeof(MeshHeader);
 
         m_indexType = toIndexType[ header->indexType ];
+
+        m_boundingSphere = Vector4( header->boundingSphere[0], header->boundingSphere[1], header->boundingSphere[2], header->boundingSphere[3] );
 
         VertexDeclaration& vDecl = m_vertexDecl;
         vDecl.m_count = header->inputCount;
@@ -193,10 +201,10 @@ namespace Graphic
         for ( ; it != end; ++it )
         {
             RenderDevice::DestroyVertexArray( it->m_vertexArray );
-            RenderDevice::DestroyBuffer( it->m_indexBuffer );
+            RenderDevice::DestroyIndexBuffer( it->m_indexBuffer );
             it->m_material = 0;
         }
 
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
+        RenderDevice::DestroyVertexBuffer( m_vertexBuffer );
     }
 }

@@ -2,6 +2,8 @@
 
 #include "Graphic/RenderDevice.h"
 #include "Graphic/Scene.h"
+#include "Graphic/Mesh.h"
+#include "Graphic/Light.h"
 #include "Graphic/Camera.h"
 #include "Graphic/QuadGeometry.h"
 
@@ -23,20 +25,28 @@ namespace Graphic
 
     void FrameRenderer::Initialize( DebugRenderer * debugRenderer, Rasterizer * rasterizer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer, EnvMapRenderer * envMapRenderer )
     {
-        m_debugRenderer                             = debugRenderer;
-        m_rasterizer								= rasterizer;
-        m_meshRenderer                              = meshRenderer;
-        m_lightRenderer                             = lightRenderer;
-        m_envMapRenderer                            = envMapRenderer;
+        m_debugRenderer                                     = debugRenderer;
+        m_rasterizer								        = rasterizer;
+        m_meshRenderer                                      = meshRenderer;
+        m_lightRenderer                                     = lightRenderer;
+        m_envMapRenderer                                    = envMapRenderer;
 
-        const U32 programLinearDepthId              = ProgramCache::CreateId( "linearDepth" );
-        m_programLinearDepth                        = ProgramCache::GetProgram( programLinearDepthId );
+        const U32 programResolveDepthId                     = ProgramCache::CreateId( "resolveDepth" );
+        m_programResolveDepth                               = ProgramCache::GetProgram( programResolveDepthId );
 
-        const U32 programToneMappingId              = ProgramCache::CreateId( "toneMapping" );
-        m_programToneMapping                        = ProgramCache::GetProgram( programToneMappingId );
+        const U32 programResolveStencilId                   = ProgramCache::CreateId( "resolveStencil" );
+        m_programResolveStencil                             = ProgramCache::GetProgram( programResolveStencilId );
 
-        const U32 programOverlayId                  = ProgramCache::CreateId( "overlay" );
-        m_programOverlay                            = ProgramCache::GetProgram( programOverlayId );
+        const U32 programTileDepthId                        = ProgramCache::CreateId( "tileDepth" );
+        m_programTileDepth                                  = ProgramCache::GetProgram( programTileDepthId );
+
+        const U32 programToneMappingId                      = ProgramCache::CreateId( "toneMapping" );
+        m_programToneMapping                                = ProgramCache::GetProgram( programToneMappingId );
+
+        const U32 programOverlayId                          = ProgramCache::CreateId( "overlay" );
+        m_programOverlay                                    = ProgramCache::GetProgram( programOverlayId );
+
+        m_renderStateResolveDepthStencil.m_depthWriteMask   = false;
     }
 
     void FrameRenderer::Destroy()
@@ -49,23 +59,28 @@ namespace Graphic
         
         context->m_width                        = 0;
         context->m_height                       = 0;
+        context->m_tileWidth                    = 0;
+        context->m_tileHeight                   = 0;
         context->m_camera                       = 0;
         context->m_scene                        = 0;
         context->m_depthStencilTexture          = 0;
         context->m_normalTexture                = 0;
         context->m_colorTexture                 = 0;
-        context->m_linearDepthTexture           = 0;
+        context->m_depthTexture                 = 0;
+        context->m_stencilTexture               = 0;
+        context->m_tiledDepthBuffer             = 0;
         context->m_lightTexture                 = 0;
         context->m_finalColorBuffer             = 0;
         context->m_geomFramebuffer              = RenderDevice::CreateFramebuffer();
-        context->m_linearizeDepthFramebuffer    = RenderDevice::CreateFramebuffer();
+        context->m_resolveDepthFramebuffer      = RenderDevice::CreateFramebuffer();
+        context->m_resolveStencilFramebuffer    = RenderDevice::CreateFramebuffer();
         context->m_lightFramebuffer             = RenderDevice::CreateFramebuffer();
         context->m_finalFramebuffer             = RenderDevice::CreateFramebuffer();
         context->m_uniformBuffer                = RenderDevice::CreateUniformBuffer( sizeof(FrameParameters), 0, BU_DYNAMIC );
         context->m_debugRendererContext         = DebugRenderer::CreateContext();
         context->m_rasterizerContext			= Rasterizer::CreateContext();
         context->m_meshRendererContext          = MeshRenderer::CreateContext( &context->m_opaqueList );
-        context->m_lightRendererContext         = LightRenderer::CreateContext( context->m_debugRendererContext );
+        context->m_lightRendererContext         = LightRenderer::CreateContext( context->m_rasterizerContext, context->m_debugRendererContext );
         context->m_envMapRendererContext        = EnvMapRenderer::CreateContext();
 
         RenderState opaque;
@@ -73,6 +88,7 @@ namespace Graphic
         opaque.m_enableCullFace     = true;
 
         context->m_opaqueList.SetRenderState( opaque );
+        context->m_opaqueList.SetSRGBWrite( true );
         context->m_opaqueList.SetClearMask( RM_ALL );
 
         return context;
@@ -85,41 +101,49 @@ namespace Graphic
 
         CARBON_ASSERT( width );
         CARBON_ASSERT( height );
+        CARBON_ASSERT( width % ProgramCache::ms_tileSize == 0 && height % ProgramCache::ms_tileSize == 0 );
 
         if ( width != context->m_width || height != context->m_height )
         {
             RenderDevice::DestroyRenderbuffer( context->m_finalColorBuffer );
             RenderDevice::DestroyTexture( context->m_lightTexture );
-            RenderDevice::DestroyTexture( context->m_linearDepthTexture );
+            RenderDevice::DestroyShaderStorageBuffer( context->m_tiledDepthBuffer );
+            RenderDevice::DestroyTexture( context->m_stencilTexture );
+            RenderDevice::DestroyTexture( context->m_depthTexture );
             RenderDevice::DestroyTexture( context->m_colorTexture );
             RenderDevice::DestroyTexture( context->m_normalTexture );
             RenderDevice::DestroyTexture( context->m_depthStencilTexture );
 
             context->m_width                = width;
             context->m_height               = height;
+            context->m_tileWidth            = width / ProgramCache::ms_tileSize;
+            context->m_tileHeight           = height / ProgramCache::ms_tileSize;
+
             context->m_depthStencilTexture  = RenderDevice::CreateRenderTexture( TF_D24S8, width, height );
             context->m_normalTexture        = RenderDevice::CreateRenderTexture( TF_RG16F, width, height );
-            context->m_colorTexture         = RenderDevice::CreateRenderTexture( TF_SRGBA8, width, height );
-            context->m_linearDepthTexture   = RenderDevice::CreateRenderTexture( TF_R32F, width, height );
+            context->m_colorTexture         = RenderDevice::CreateRenderTexture( TF_RGBA8, width, height );
+            context->m_depthTexture         = RenderDevice::CreateRenderTexture( TF_R32F, width, height );
+            context->m_stencilTexture       = RenderDevice::CreateRenderTexture( TF_R8UI, width, height );
+            context->m_tiledDepthBuffer     = RenderDevice::CreateShaderStorageBuffer( context->m_tileWidth * context->m_tileHeight * sizeof(U32), 0, BU_DYNAMIC );
             context->m_lightTexture         = RenderDevice::CreateRenderTexture( TF_RGBA16F, width, height );
             context->m_finalColorBuffer     = RenderDevice::CreateRenderbuffer( TF_SRGBA8, width, height );
         }
 
         {
-            F32 fWidth                  = (F32)width;
-            F32 fHeight                 = (F32)height;
+            F32 fWidth                      = (F32)width;
+            F32 fHeight                     = (F32)height;
 
-            FrameParameters * params	= reinterpret_cast< FrameParameters * >( RenderDevice::MapUniformBuffer( context->m_uniformBuffer, BA_WRITE_ONLY ) );
+            FrameParameters * params	    = reinterpret_cast< FrameParameters * >( RenderDevice::MapUniformBuffer( context->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-            params->m_viewportSize      = Vector4( fWidth, fHeight, 1.0f/fWidth, 1.0f/fHeight );
-            params->m_depthRange        = Vector4( camera->m_near, camera->m_far, camera->m_far-camera->m_near, 1.0f/(camera->m_far-camera->m_near) );
-            params->m_viewScale         = camera->GetViewScaleFar();
-            params->m_ambientSkyLight   = context->m_scene->GetAmbientSkyLight();
-            params->m_ambientGroundLight= context->m_scene->GetAmbientGroundLight();
-            params->m_cameraPosition    = camera->m_position;
-            params->m_viewMatrix        = camera->GetViewMatrix();
-            params->m_projMatrix        = camera->GetProjMatrix();
-            params->m_viewProjMatrix    = camera->GetViewProjMatrix();
+            params->m_viewportSize          = Vector4( fWidth, fHeight, 1.0f/fWidth, 1.0f/fHeight );
+            params->m_depthRange            = Vector4( camera->m_near, camera->m_far, camera->m_far-camera->m_near, 1.0f/(camera->m_far-camera->m_near) );
+            params->m_viewScale             = camera->GetViewScaleFar();
+            params->m_ambientSkyLight       = context->m_scene->GetAmbientSkyLight();
+            params->m_ambientGroundLight    = context->m_scene->GetAmbientGroundLight();
+            params->m_cameraPosition        = camera->m_position;
+            params->m_viewMatrix            = camera->GetViewMatrix();
+            params->m_projMatrix            = camera->GetProjMatrix();
+            params->m_viewProjMatrix        = camera->GetViewProjMatrix();
 
             RenderDevice::UnmapUniformBuffer();
         }
@@ -127,9 +151,9 @@ namespace Graphic
         context->m_opaqueList.Clear();
 
         DebugRenderer::UpdateContext( context->m_debugRendererContext );
-        Rasterizer::UpdateContext( context->m_rasterizerContext, width, height, camera, context->m_linearDepthTexture );
+        Rasterizer::UpdateContext( context->m_rasterizerContext, width, height, camera );
         EnvMapRenderer::UpdateContext( context->m_envMapRendererContext, envMapSize, camera, scene );
-        LightRenderer::UpdateContext( context->m_lightRendererContext, width, height, camera, context->m_linearDepthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightBlurTexture );
+        LightRenderer::UpdateContext( context->m_lightRendererContext, width, height, camera, context->m_tileWidth, context->m_tileHeight, context->m_tiledDepthBuffer, context->m_depthTexture, context->m_normalTexture, context->m_colorTexture, context->m_envMapRendererContext->m_lightTexture, context->m_envMapRendererContext->m_lightBlurTexture, context->m_lightTexture );
     }
 
     void FrameRenderer::DestroyContext( Context * context )
@@ -142,16 +166,19 @@ namespace Graphic
         Rasterizer::DestroyContext( context->m_rasterizerContext );
         DebugRenderer::DestroyContext( context->m_debugRendererContext );
 
-        RenderDevice::DestroyBuffer( context->m_uniformBuffer );
+        RenderDevice::DestroyUniformBuffer( context->m_uniformBuffer );
 
         RenderDevice::DestroyFramebuffer( context->m_finalFramebuffer );
         RenderDevice::DestroyFramebuffer( context->m_lightFramebuffer );
-        RenderDevice::DestroyFramebuffer( context->m_linearizeDepthFramebuffer );
+        RenderDevice::DestroyFramebuffer( context->m_resolveStencilFramebuffer );
+        RenderDevice::DestroyFramebuffer( context->m_resolveDepthFramebuffer );
         RenderDevice::DestroyFramebuffer( context->m_geomFramebuffer );
 
         RenderDevice::DestroyRenderbuffer( context->m_finalColorBuffer );
         RenderDevice::DestroyTexture( context->m_lightTexture );
-        RenderDevice::DestroyTexture( context->m_linearDepthTexture );
+        RenderDevice::DestroyShaderStorageBuffer( context->m_tiledDepthBuffer );
+        RenderDevice::DestroyTexture( context->m_stencilTexture );
+        RenderDevice::DestroyTexture( context->m_depthTexture );
         RenderDevice::DestroyTexture( context->m_colorTexture );
         RenderDevice::DestroyTexture( context->m_normalTexture );
         RenderDevice::DestroyTexture( context->m_depthStencilTexture );
@@ -163,33 +190,32 @@ namespace Graphic
     {
         const Scene * scene = context->m_scene;
 
-        //m_envMapRenderer->Render( context->m_envMapRendererContext );
+        m_envMapRenderer->Render( context->m_envMapRendererContext );
 
-        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::Malloc( sizeof(Light*) * scene->GetLights().Size() ) );
+        const Mesh ** meshes = reinterpret_cast< const Mesh ** >( MemoryManager::FrameAlloc( sizeof(Mesh*) * scene->GetMeshes().Size() ) );
+        SizeT meshCount = 0;
+
+        const Light ** lights = reinterpret_cast< const Light ** >( MemoryManager::FrameAlloc( sizeof(Light*) * scene->GetLights().Size() ) );
         SizeT lightCount = 0;
         {
+            Camera::ApplyFrustumCulling( context->m_camera, scene->GetMeshes().ConstPtr(), scene->GetMeshes().Size(), meshes, meshCount );
             Camera::ApplyFrustumCulling( context->m_camera, scene->GetLights().ConstPtr(), scene->GetLights().Size(), lights, lightCount );
-
-            m_rasterizer->Render( lights, lightCount, context->m_rasterizerContext );
         }
 
         // Render meshes
         {
-            const Scene::MeshArray& meshes = scene->GetMeshes();
-            m_meshRenderer->Render( meshes.ConstPtr(), meshes.Size(), context->m_meshRendererContext );
+            m_meshRenderer->Render( meshes, meshCount, context->m_meshRendererContext );
         }
 
         // Render lights
         {
             m_lightRenderer->Render( lights, lightCount, context->m_lightRendererContext );
         }
-
-        MemoryManager::Free( lights );
     }
 
     void FrameRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
-        //m_envMapRenderer->Draw( context->m_envMapRendererContext, renderCache );
+        m_envMapRenderer->Draw( context->m_envMapRendererContext, renderCache );
 
         RenderDevice::SetViewport( 0, 0, context->m_width, context->m_height );
 
@@ -206,21 +232,25 @@ namespace Graphic
             context->m_opaqueList.Draw( renderCache );
         }
 
-        // Linearize depth
+        // Resolve depth stencil texture
         {
-            RenderDevice::BindFramebuffer( context->m_linearizeDepthFramebuffer, FT_DRAW );
-            RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_linearDepthTexture, 0 );
+            RenderDevice::BindFramebuffer( context->m_resolveDepthFramebuffer, FT_DRAW );
+            RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_depthTexture, 0 );
 
-            LinearizeDepth( context, renderCache );
+            ResolveDepth( context, renderCache );
+            TileDepth( context, renderCache );
+
+            RenderDevice::BindFramebuffer( context->m_resolveStencilFramebuffer, FT_DRAW );
+            RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_stencilTexture, 0 );
+
+            ResolveStencil( context, renderCache );
         }
-
-        m_rasterizer->Draw( context->m_rasterizerContext );
 
         // Draw Lights
         {
-            RenderDevice::BindFramebuffer( context->m_lightFramebuffer, FT_DRAW );
+            /*RenderDevice::BindFramebuffer( context->m_lightFramebuffer, FT_DRAW );
             RenderDevice::AttachTexture( FT_DRAW, FA_DEPTH_STENCIL, context->m_depthStencilTexture, 0 );
-            RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_lightTexture, 0 );
+            RenderDevice::AttachTexture( FT_DRAW, FA_COLOR0, context->m_lightTexture, 0 );*/
 
             m_lightRenderer->Draw( context->m_lightRendererContext, renderCache );
         }
@@ -247,16 +277,32 @@ namespace Graphic
         }
     }
 
-    void FrameRenderer::LinearizeDepth( const Context * context, RenderCache& renderCache ) const
+    void FrameRenderer::ResolveDepth( const Context * context, RenderCache& renderCache ) const
     {
         renderCache.SetSRGBWrite( false );
-        renderCache.SetRenderState( m_renderStateLinearDepth );
+        renderCache.SetRenderState( m_renderStateResolveDepthStencil );
 
-        ProgramCache::UseProgram( m_programLinearDepth );
-
-        RenderDevice::BindTexture( context->m_depthStencilTexture, 0 );
-
+        ProgramCache::UseProgram( m_programResolveDepth );
+        RenderDevice::BindDepthStencilTexture( context->m_depthStencilTexture, 0, DSM_DEPTH );
         QuadGeometry::GetInstance().Draw();
+    }
+
+    void FrameRenderer::ResolveStencil( const Context * context, RenderCache& renderCache ) const
+    {
+        renderCache.SetSRGBWrite( false );
+        renderCache.SetRenderState( m_renderStateResolveDepthStencil );
+
+        ProgramCache::UseProgram( m_programResolveStencil );
+        RenderDevice::BindDepthStencilTexture( context->m_depthStencilTexture, 0, DSM_STENCIL );
+        QuadGeometry::GetInstance().Draw();
+    }
+
+    void FrameRenderer::TileDepth( const Context * context, RenderCache& renderCache ) const
+    {
+        RenderDevice::BindImageTexture( context->m_depthTexture, 0, 0, BA_READ_ONLY, TF_R32F );
+        RenderDevice::BindShaderStorageBuffer( context->m_tiledDepthBuffer, 0 );
+        ProgramCache::UseProgram( m_programTileDepth );
+        RenderDevice::DispatchCompute( context->m_tileWidth, context->m_tileHeight, 1 );
     }
 
     void FrameRenderer::ApplyToneMapping( const Context * context, RenderCache& renderCache ) const
@@ -278,9 +324,9 @@ namespace Graphic
 
         ProgramCache::UseProgram( m_programOverlay );
 
-        RenderDevice::BindTexture( context->m_lightRendererContext->m_linearDepthTexture, 0 );
-        RenderDevice::BindTexture( context->m_lightRendererContext->m_normalTexture, 1 );
-        RenderDevice::BindTexture( context->m_lightRendererContext->m_colorTexture, 2 );
+        RenderDevice::BindTexture( context->m_lightRendererContext->m_depthTexture  , 0 );
+        RenderDevice::BindTexture( context->m_lightRendererContext->m_normalTexture , 1 );
+        RenderDevice::BindTexture( context->m_lightRendererContext->m_colorTexture  , 2 );
         RenderDevice::BindTextureCube( context->m_envMapRendererContext->m_lightTexture, 3 );
         RenderDevice::BindTextureCube( context->m_envMapRendererContext->m_lightBlurTexture, 4 );
         RenderDevice::BindTexture( context->m_lightTexture, 5 );

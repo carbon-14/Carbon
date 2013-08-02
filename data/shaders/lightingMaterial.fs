@@ -8,8 +8,6 @@ layout(binding=1) uniform sampler2D GBufferNormal;
 layout(binding=2) uniform sampler2D GBufferColor;
 layout(binding=3) uniform samplerCube EnvMap;
 
-const float FresnelCoeff = 0.0;
-
 const vec4 BoxCenter = vec4( 0.0, 0.0, 0.0, 1.0 );
 const vec4 BoxSize = vec4( 19.7, 15.25, 7.4, 1.0 );
 

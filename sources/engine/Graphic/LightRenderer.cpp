@@ -12,7 +12,7 @@
 
 namespace Graphic
 {
-    void LightRenderer::Initialize(  DebugRenderer * debugRenderer )
+    void LightRenderer::Initialize( Rasterizer * rasterizer, DebugRenderer * debugRenderer )
     {
         // Directional light
         {
@@ -56,6 +56,12 @@ namespace Graphic
 
         U32 materialLightingId      = ProgramCache::CreateId( "lightingMaterial" );
         m_programMaterial           = ProgramCache::GetProgram( materialLightingId );
+
+        U32 tileLightingId          = ProgramCache::CreateId( "tileLighting" );
+        m_programTileLighting       = ProgramCache::GetProgram( tileLightingId );
+
+        U32 tileEnvLightingId       = ProgramCache::CreateId( "tileEnvLighting" );
+        m_programTileEnvLighting    = ProgramCache::GetProgram( tileEnvLightingId );
 
         m_stateMaskClear0.m_colorWriteMask          = 0;
         m_stateMaskClear0.m_enableCullFace          = true;
@@ -110,10 +116,9 @@ namespace Graphic
         m_stateAmbientMask.m_stencilRef             = 1;
         m_stateAmbientMask.m_depthPass              = O_REPLACE;
 
+        m_stateAmbientLighting.m_enableDepthTest    = true;
         m_stateAmbientLighting.m_depthWriteMask     = false;
-        m_stateAmbientLighting.m_enableStencilTest  = true;
-        m_stateAmbientLighting.m_stencilRef         = 0;
-        m_stateAmbientLighting.m_stencilFunc        = F_EQUAL;
+        m_stateAmbientLighting.m_depthFunc          = F_NOTEQUAL;
 
         m_stateAlbedoMask.m_colorWriteMask          = 0;
         m_stateAlbedoMask.m_enableDepthTest         = false;
@@ -130,46 +135,50 @@ namespace Graphic
         m_stateAlbedoLighting.m_dstBlendFunc        = BF_SRC_COLOR;
         m_stateAlbedoLighting.m_blendMode           = BM_ADD;
 
-        m_stateMaterialLighting.m_depthWriteMask      = false;
-        m_stateMaterialLighting.m_enableStencilTest   = true;
-        m_stateMaterialLighting.m_stencilRef          = 0;
-        m_stateMaterialLighting.m_stencilFunc         = F_EQUAL;
-        m_stateMaterialLighting.m_enableBlend         = true;
-        m_stateMaterialLighting.m_srcBlendFunc        = BF_ONE;
-        m_stateMaterialLighting.m_dstBlendFunc        = BF_ONE;
-        m_stateMaterialLighting.m_blendMode           = BM_ADD;
+        m_stateMaterialLighting.m_depthWriteMask    = false;
+        m_stateMaterialLighting.m_enableStencilTest = true;
+        m_stateMaterialLighting.m_stencilRef        = 0;
+        m_stateMaterialLighting.m_stencilFunc       = F_EQUAL;
+        m_stateMaterialLighting.m_enableBlend       = true;
+        m_stateMaterialLighting.m_srcBlendFunc      = BF_ONE;
+        m_stateMaterialLighting.m_dstBlendFunc      = BF_ONE;
+        m_stateMaterialLighting.m_blendMode         = BM_ADD;
 
-        m_debugRenderer = debugRenderer;
+        m_rasterizer                                = rasterizer;
+        m_debugRenderer                             = debugRenderer;
     }
 
     void LightRenderer::Destroy()
     {
         m_debugRenderer = 0;
+        m_rasterizer    = 0;
 
         m_geomSpot.Destroy();
         m_geomOmni.Destroy();
         m_geomDirectional.Destroy();
     }
 
-    LightRenderer::Context * LightRenderer::CreateContext( DebugRenderer::Context * debugContext )
+    LightRenderer::Context * LightRenderer::CreateContext( Rasterizer::Context * rasterizerContext, DebugRenderer::Context * debugContext )
     {
         Context * context = MemoryManager::New< Context >();
 
-        context->m_renderLights         = (RenderLight*)MemoryManager::Malloc( 16 * sizeof(RenderLight), MemoryUtils::AlignOf<RenderLight>() );
+        context->m_tileWidth            = 0;
+        context->m_tileHeight           = 0;
+        context->m_lightBufferSize      = 0;
+        context->m_lightBuffer          = 0;
+        context->m_lightingParameters   = RenderDevice::CreateUniformBuffer( sizeof(LightingParameters), 0, BU_DYNAMIC );
 
-        RenderLight * it                = context->m_renderLights;
-        const RenderLight * end         = it + 16;
-        for ( ; it!=end; ++it )
-        {
-            it->m_uniformBuffer = RenderDevice::CreateUniformBuffer( sizeof(LightParameters), 0, BU_DYNAMIC );
-        }
+        context->m_cameraZFar           = 0.0f;
 
-        context->m_renderLightSize      = 16;
-        context->m_renderLightCount     = 0;
-
-        context->m_linearDepthTexture   = 0;
+        context->m_tiledDepthBuffer     = 0;
+        context->m_depthTexture         = 0;
         context->m_normalTexture        = 0;
         context->m_colorTexture         = 0;
+        context->m_envSharpTexture      = 0;
+        context->m_envBlurTexture       = 0;
+        context->m_lightTexture         = 0;
+
+        context->m_rasterizerContext    = rasterizerContext;
 
         context->m_debugContext         = debugContext;
         context->m_debugDraw            = false;
@@ -177,7 +186,7 @@ namespace Graphic
         return context;
     }
 
-    void LightRenderer::UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture, Handle normalTexture, Handle colorTexture, Handle envTexture )
+    void LightRenderer::UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, SizeT tileWidth, SizeT tileHeight, Handle tiledDepthBuffer, Handle depthTexture, Handle normalTexture, Handle colorTexture, Handle envSharpTexture, Handle envBlurTexture, Handle lightTexture )
     {
         const Matrix tr =
         {
@@ -190,199 +199,124 @@ namespace Graphic
         Vector c = Select( camera->GetViewScaleNear(), Zero4, Mask<0,0,0,1>() );
         Vector cos = Abs( Swizzle<2,2,2,2>(c) );
 
-        context->m_renderLightCount     = 0;
-        context->m_colSphereRadius      = Splat( 0.5f ) * SquareLength(c) / cos;
-        context->m_colSphereCenter      = camera->m_position - context->m_colSphereRadius * camera->GetInvViewMatrix().m_column[2];
-        context->m_viewMatrix           = camera->GetViewMatrix();
-        context->m_viewProjMatrix       = camera->GetViewProjMatrix();
-        context->m_linearDepthTexture   = linearDepthTexture;
-        context->m_normalTexture        = normalTexture;
-        context->m_colorTexture         = colorTexture;
-        context->m_envTexture           = envTexture;
+        context->m_tileWidth        = tileWidth;
+        context->m_tileHeight       = tileHeight;
+        context->m_cameraZFar       = camera->m_far;
+        context->m_viewMatrix       = camera->GetViewMatrix();
+        context->m_viewProjMatrix   = camera->GetViewProjMatrix();
+        context->m_tiledDepthBuffer = tiledDepthBuffer;
+        context->m_depthTexture     = depthTexture;
+        context->m_normalTexture    = normalTexture;
+        context->m_colorTexture     = colorTexture;
+        context->m_envSharpTexture  = envSharpTexture;
+        context->m_envBlurTexture   = envBlurTexture;
+        context->m_lightTexture     = lightTexture;
     }
 
     void LightRenderer::DestroyContext( Context * context )
     {
-        RenderLight * it = context->m_renderLights;
-        const RenderLight * end = it + context->m_renderLightSize;
-        for ( ; it!=end; ++it )
-        {
-            RenderDevice::DestroyBuffer( it->m_uniformBuffer );
-        }
-        MemoryManager::Free( context->m_renderLights );
+        RenderDevice::DestroyShaderStorageBuffer( context->m_lightBuffer );
+        RenderDevice::DestroyUniformBuffer( context->m_lightingParameters );
 
         MemoryManager::Delete( context );
     }
 
     void LightRenderer::Render( const Light * const * lights, SizeT lightCount, Context * context ) const
     {
-		const Light * const * it = lights;
+        SizeT size = lightCount * sizeof( LightInfos );
+        if ( size > context->m_lightBufferSize )
+        {
+            RenderDevice::DestroyShaderStorageBuffer( context->m_lightBuffer );
+
+            context->m_lightBufferSize = size;
+
+            context->m_lightBuffer = RenderDevice::CreateShaderStorageBuffer( size, 0, BU_DYNAMIC );
+        }
+
+        LightInfos * lightBuffer = reinterpret_cast< LightInfos * >( RenderDevice::MapShaderStorageBuffer( context->m_lightBuffer, BA_WRITE_ONLY ) );
+
+        m_rasterizer->Render( lights, lightBuffer, lightCount, context->m_rasterizerContext );
+
+        const Light * const * it = lights;
 		const Light * const * end = lights + lightCount;
-		for ( ; it != end; ++it )
+		for ( ; it != end; ++it, ++lightBuffer )
 		{
 			const Light * light = *it;
-			(this->*(m_renderFunc[light->m_type]))( light, context );
+			(this->*(m_renderFunc[light->m_type]))( light, lightBuffer, context );
 		}
+
+        RenderDevice::UnmapShaderStorageBuffer();
+
+        LightingParameters * lightingParameters = reinterpret_cast< LightingParameters * >( RenderDevice::MapUniformBuffer( context->m_lightingParameters, BA_WRITE_ONLY ) );
+        lightingParameters->m_lightCount = lightCount;
+        RenderDevice::UnmapUniformBuffer();
     }
 
     void LightRenderer::Draw( const Context * context, RenderCache& renderCache ) const
     {
-        RenderDevice::BindTexture( context->m_linearDepthTexture    , 0 );
-        RenderDevice::BindTexture( context->m_normalTexture         , 1 );
-        RenderDevice::BindTexture( context->m_colorTexture          , 2 );
-        RenderDevice::BindTextureCube( context->m_envTexture        , 3 );
+        RenderDevice::BindTexture( context->m_colorTexture                  , 0 );
+        RenderDevice::BindTextureCube( context->m_envSharpTexture           , 1 );
+        RenderDevice::BindTextureCube( context->m_envBlurTexture            , 2 );
+        RenderDevice::BindImageTexture( context->m_depthTexture             , 0, 0, BA_READ_ONLY    , TF_R32F );
+        RenderDevice::BindImageTexture( context->m_normalTexture            , 1, 0, BA_READ_ONLY    , TF_RG16F );
+        RenderDevice::BindImageTexture( context->m_lightTexture             , 2, 0, BA_WRITE_ONLY   , TF_RGBA16F );
+        RenderDevice::BindShaderStorageBuffer( context->m_tiledDepthBuffer  , 0 );
+        RenderDevice::BindShaderStorageBuffer( context->m_lightBuffer       , 1 );
+        RenderDevice::BindUniformBuffer( context->m_lightingParameters      , 0 );
 
-        renderCache.SetClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-        RenderDevice::Clear( RM_COLOR );
-
-        renderCache.SetSRGBWrite( false );
-
-        ProgramCache::UseProgram( m_programAmbientMask );
-        renderCache.SetRenderState( m_stateAmbientMask );
-        QuadGeometry::GetInstance().Draw();
-
-        ProgramCache::UseProgram( m_programAmbient );
-        renderCache.SetRenderState( m_stateAmbientLighting );
-        QuadGeometry::GetInstance().Draw();
-
-        const RenderLight * it = context->m_renderLights;
-        const RenderLight * end = it + context->m_renderLightCount;
-        for ( ; it!=end; ++it )
-        {
-            RenderDevice::BindUniformBuffer( it->m_uniformBuffer, 0 );
-
-            // Stencil masking
-            ProgramCache::UseProgram( m_programMask );
-
-            if ( it->m_useFrontFace )
-            {
-                renderCache.SetRenderState( m_stateMaskClear0 );
-                 it->m_geometry->Draw();
-        
-                renderCache.SetRenderState( m_stateMaskFront );
-                 it->m_geometry->Draw();
-            }
-            else
-            {
-                renderCache.SetRenderState( m_stateMaskClear1 );
-                it->m_geometry->Draw();
-            }
-
-            renderCache.SetRenderState( m_stateMaskBack );
-            it->m_geometry->Draw();
-
-            // Lighting 
-            ProgramCache::UseProgram( it->m_program );
-
-            renderCache.SetRenderState( m_stateLighting );
-            it->m_geometry->Draw();
-        }
-
-        ProgramCache::UseProgram( m_programAmbientMask );
-        renderCache.SetRenderState( m_stateAlbedoMask );
-        QuadGeometry::GetInstance().Draw();
-
-        ProgramCache::UseProgram( m_programAmbientMask );
-        renderCache.SetRenderState( m_stateAmbientMask );
-        QuadGeometry::GetInstance().Draw();
-
-        ProgramCache::UseProgram( m_programAlbedo );
-        renderCache.SetRenderState( m_stateAlbedoLighting );
-        QuadGeometry::GetInstance().Draw();
-
-        /*ProgramCache::UseProgram( m_programMaterial );
-        renderCache.SetRenderState( m_stateMaterialLighting );
-        QuadGeometry::GetInstance().Draw();*/
+        ProgramCache::UseProgram( m_programTileLighting );
+        RenderDevice::DispatchCompute( context->m_tileWidth, context->m_tileHeight, 1 );
     }
 
-    void LightRenderer::DrawEnv( const Context * context, RenderCache& renderCache ) const
+    void LightRenderer::DrawEnv( const Context * context, CubeFace face, RenderCache& renderCache ) const
     {
-        RenderDevice::BindTexture( context->m_linearDepthTexture    , 0 );
-        RenderDevice::BindTexture( context->m_normalTexture         , 1 );
-        RenderDevice::BindTexture( context->m_colorTexture          , 2 );
+        RenderDevice::BindTexture( context->m_colorTexture                  , 0 );
+        RenderDevice::BindImageTexture( context->m_depthTexture             , 0, 0          , BA_READ_ONLY  , TF_R32F );
+        RenderDevice::BindImageTexture( context->m_normalTexture            , 1, 0          , BA_READ_ONLY  , TF_RG16F );
+        RenderDevice::BindImageTextureCubeFace( context->m_lightTexture     , 2, 0, face    , BA_WRITE_ONLY , TF_RGBA16F );
+        RenderDevice::BindShaderStorageBuffer( context->m_tiledDepthBuffer  , 0 );
+        RenderDevice::BindShaderStorageBuffer( context->m_lightBuffer       , 1 );
+        RenderDevice::BindUniformBuffer( context->m_lightingParameters      , 0 );
 
-        renderCache.SetClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
-        RenderDevice::Clear( RM_COLOR );
-
-        renderCache.SetSRGBWrite( false );
-
-        ProgramCache::UseProgram( m_programAmbientMask );
-        renderCache.SetRenderState( m_stateAmbientMask );
-        QuadGeometry::GetInstance().Draw();
-
-        ProgramCache::UseProgram( m_programEnvAmbient );
-        renderCache.SetRenderState( m_stateAmbientLighting );
-        QuadGeometry::GetInstance().Draw();
-
-        const RenderLight * it = context->m_renderLights;
-        const RenderLight * end = it + context->m_renderLightCount;
-        for ( ; it!=end; ++it )
-        {
-            RenderDevice::BindUniformBuffer( it->m_uniformBuffer, 0 );
-
-            // Stencil masking
-            ProgramCache::UseProgram( m_programMask );
-
-            if ( it->m_useFrontFace )
-            {
-                renderCache.SetRenderState( m_stateMaskClear0 );
-                 it->m_geometry->Draw();
-        
-                renderCache.SetRenderState( m_stateMaskFront );
-                 it->m_geometry->Draw();
-            }
-            else
-            {
-                renderCache.SetRenderState( m_stateMaskClear1 );
-                it->m_geometry->Draw();
-            }
-
-            renderCache.SetRenderState( m_stateMaskBack );
-            it->m_geometry->Draw();
-
-            // Lighting 
-            ProgramCache::UseProgram( it->m_program );
-
-            renderCache.SetRenderState( m_stateLighting );
-            it->m_geometry->Draw();
-        }
-
-        ProgramCache::UseProgram( m_programAmbientMask );
-        renderCache.SetRenderState( m_stateAlbedoMask );
-        QuadGeometry::GetInstance().Draw();
-
-        ProgramCache::UseProgram( m_programAmbientMask );
-        renderCache.SetRenderState( m_stateAmbientMask );
-        QuadGeometry::GetInstance().Draw();
-
-        ProgramCache::UseProgram( m_programAlbedo );
-        renderCache.SetRenderState( m_stateAlbedoLighting );
-        QuadGeometry::GetInstance().Draw();
+        ProgramCache::UseProgram( m_programTileEnvLighting );
+        RenderDevice::DispatchCompute( context->m_tileWidth, context->m_tileHeight, 1 );
     }
 
-    void LightRenderer::RenderDirectional( const Light * light, Context * context ) const
+    void LightRenderer::RenderDirectional( const Light * light, LightInfos * infos, Context * context ) const
     {
-        RenderLight * render_light = GetRenderLight( context );
+        /*RenderLight * render_light = GetRenderLight( context );
         render_light->m_program  = m_programDirectional;
-        render_light->m_geometry = &m_geomDirectional;
+        render_light->m_geometry = &m_geomDirectional;*/
 
         Matrix ori = RMatrix( light->m_orientation );
 
-        Matrix m = ori;
+        /*Matrix m = ori;
         Scale( m, Vector4( 0.5f*light->m_directionalWidth, 0.5f*light->m_directionalHeight, light->m_radius ) );
-        m.m_column[3] = light->m_position;
+        m.m_column[3] = light->m_position;*/
 
-        LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
+        //LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        params->m_lightMatrix		= Mul( context->m_viewProjMatrix, m );
-        params->m_valueInvSqrRadius	= Select( light->m_value, Zero4, Mask<0,0,0,1>() );
-        params->m_position          = TransformVertex( context->m_viewMatrix, light->m_position );
-        params->m_direction         = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
-        params->m_spotParameters    = Zero4;
+        Vector p = TransformVertex( context->m_viewMatrix, light->m_position );
+        F128 q;
+        Store( q, p );
 
-        RenderDevice::UnmapUniformBuffer();
+        F32 posProj = -q[2] / context->m_cameraZFar;
+        F32 radScal = light->m_radius / context->m_cameraZFar;
 
-        // Check if camera position and frustum near corners are outside the light volume
+        U32 minDepth = static_cast< U32 >( Clamp( posProj - radScal, 0.0f, 1.0f ) * 65535.0f );
+        U32 maxDepth = static_cast< U32 >( Clamp( posProj + radScal, 0.0f, 1.0f ) * 65535.0f );
+
+        //params->m_lightMatrix		= Mul( context->m_viewProjMatrix, m );
+        infos->m_valueInvSqrRadius  = Select( light->m_value, Zero4, Mask<0,0,0,1>() );
+        infos->m_position           = p;
+        infos->m_direction          = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
+        infos->m_spotParameters     = Zero4;
+        infos->m_depth              = ( maxDepth << 16 ) | minDepth;
+        infos->m_flags              = light->m_type;
+
+        //RenderDevice::UnmapUniformBuffer();
+
+        /*// Check if camera position and frustum near corners are outside the light volume
         //
 
         Matrix plane_matrix = Transpose( ori );
@@ -398,7 +332,7 @@ namespace Graphic
         F128 c;
         Store(c,outside);
 
-        render_light->m_useFrontFace = c[0] != 0.0f;
+        render_light->m_useFrontFace = c[0] != 0.0f;*/
 
         if ( context->m_debugDraw )
         {
@@ -422,29 +356,38 @@ namespace Graphic
         }
     }
 
-    void LightRenderer::RenderOmni( const Light * light, Context * context ) const
+    void LightRenderer::RenderOmni( const Light * light, LightInfos * infos, Context * context ) const
     {
-        RenderLight * render_light = GetRenderLight( context );
+        /*RenderLight * render_light = GetRenderLight( context );
         render_light->m_program  = m_programOmni;
-        render_light->m_geometry = &m_geomOmni;
-
-        Matrix m = SMatrix( Splat( light->m_radius ) );
-        m.m_column[3] = light->m_position;
+        render_light->m_geometry = &m_geomOmni;*/
 
         CARBON_ASSERT( light->m_radius > 0 );
         F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
 
-        LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
+        //LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        params->m_lightMatrix       = Mul( context->m_viewProjMatrix, m );
-        params->m_valueInvSqrRadius = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params->m_position          = TransformVertex( context->m_viewMatrix, light->m_position );
-        params->m_direction         = Zero4;
-        params->m_spotParameters    = Zero4;
+        Vector p = TransformVertex( context->m_viewMatrix, light->m_position );
+        F128 q;
+        Store( q, p );
 
-        RenderDevice::UnmapUniformBuffer();
+        F32 posProj = -q[2] / context->m_cameraZFar;
+        F32 radScal = light->m_radius / context->m_cameraZFar;
 
-        // Check if camera position and frustum near corners are outside the light volume
+        U32 minDepth = static_cast< U32 >( Clamp( posProj - radScal, 0.0f, 1.0f ) * 65535.0f );
+        U32 maxDepth = static_cast< U32 >( Clamp( posProj + radScal, 0.0f, 1.0f ) * 65535.0f );
+
+        //params->m_lightMatrix       = Mul( context->m_viewProjMatrix, m );
+        infos->m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
+        infos->m_position           = p;
+        infos->m_direction          = Zero4;
+        infos->m_spotParameters     = Zero4;
+        infos->m_depth              = ( maxDepth << 16 ) | minDepth;
+        infos->m_flags              = light->m_type;
+
+        //RenderDevice::UnmapUniformBuffer();
+
+        /*// Check if camera position and frustum near corners are outside the light volume
         //
         Vector dist = Abs( context->m_colSphereCenter - light->m_position );
 
@@ -457,11 +400,14 @@ namespace Graphic
         F128 d;
         Store(d,dist);
 
-        render_light->m_useFrontFace = d[0] != 0.0f;
+        render_light->m_useFrontFace = d[0] != 0.0f;*/
 
         if ( context->m_debugDraw )
         {
             Vector scale = Vector4( -0.05f, +0.05f, 0.0f );
+
+            Matrix m = SMatrix( Splat( light->m_radius ) );
+            m.m_column[3] = light->m_position;
 
             Vector geom[6];
             geom[0] = TransformVertex( m, Swizzle<0,2,2,3>( scale ) );
@@ -482,15 +428,15 @@ namespace Graphic
         }
     }
 
-    void LightRenderer::RenderSpot( const Light * light, Context * context ) const
+    void LightRenderer::RenderSpot( const Light * light, LightInfos * infos, Context * context ) const
     {
-        RenderLight * render_light = GetRenderLight( context );
-        render_light->m_program  = m_programSpot;
+        /*RenderLight * render_light = GetRenderLight( context );
+        render_light->m_program  = m_programSpot;*/
 
         Matrix ori = RMatrix( light->m_orientation );
 
-        Matrix m = ori;
-        m.m_column[3] = light->m_position;
+        /*Matrix m = ori;
+        m.m_column[3] = light->m_position;*/
 
         CARBON_ASSERT( light->m_radius > 0 );
         F32 invSqrRadius = 1.0f / ( light->m_radius * light->m_radius );
@@ -501,7 +447,7 @@ namespace Graphic
         F32 spotCosIn = Cos( 0.5f * light->m_spotInAngle );
         F32 spotCosOut = Cos( 0.5f * light->m_spotOutAngle );
 
-        Vector outside;
+        /*Vector outside;
         if ( light->m_spotOutAngle < HalfPi )
         {
             render_light->m_geometry = &m_geomSpot;
@@ -557,17 +503,29 @@ namespace Graphic
         F128 c;
         Store(c,outside);
 
-        render_light->m_useFrontFace = c[0] != 0.0f;
+        render_light->m_useFrontFace = c[0] != 0.0f;*/
 
-        LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
+        //LightParameters * params	= reinterpret_cast< LightParameters * >( RenderDevice::MapUniformBuffer( render_light->m_uniformBuffer, BA_WRITE_ONLY ) );
 
-        params->m_lightMatrix       = Mul( context->m_viewProjMatrix, m );
-        params->m_valueInvSqrRadius = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
-        params->m_position          = TransformVertex( context->m_viewMatrix, light->m_position );
-        params->m_direction         = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
-        params->m_spotParameters    = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
+        Vector p = TransformVertex( context->m_viewMatrix, light->m_position );
+        F128 q;
+        Store( q, p );
 
-        RenderDevice::UnmapUniformBuffer();
+        F32 posProj = -q[2] / context->m_cameraZFar;
+        F32 radScal = light->m_radius / context->m_cameraZFar;
+
+        U32 minDepth = static_cast< U32 >( Clamp( posProj - radScal, 0.0f, 1.0f ) * 65535.0f );
+        U32 maxDepth = static_cast< U32 >( Clamp( posProj + radScal, 0.0f, 1.0f ) * 65535.0f );
+
+        //params->m_lightMatrix       = Mul( context->m_viewProjMatrix, m );
+        infos->m_valueInvSqrRadius  = Select( light->m_value, Splat( invSqrRadius ), Mask<0,0,0,1>() );
+        infos->m_position           = p;
+        infos->m_direction          = TransformVector( context->m_viewMatrix, -ori.m_column[2] );
+        infos->m_spotParameters     = Vector2( 1.0f, -spotCosOut ) / Splat( spotCosIn - spotCosOut );
+        infos->m_depth              = ( maxDepth << 16 ) | minDepth;
+        infos->m_flags              = light->m_type;
+
+        //RenderDevice::UnmapUniformBuffer();
 
         if ( context->m_debugDraw )
         {
@@ -591,7 +549,7 @@ namespace Graphic
         }
     }
 
-    RenderLight * LightRenderer::GetRenderLight( Context * context ) const
+    /*RenderLight * LightRenderer::GetRenderLight( Context * context ) const
     {
         if ( context->m_renderLightCount == context->m_renderLightSize )
         {
@@ -611,5 +569,5 @@ namespace Graphic
         }
 
         return context->m_renderLights + context->m_renderLightCount++;
-    }
+    }*/
 }

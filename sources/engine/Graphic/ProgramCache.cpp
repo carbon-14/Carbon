@@ -38,7 +38,8 @@ namespace Graphic
 
     Bool dirtyCache = false;
 
-    const ProgramHandle             ProgramCache::ms_invalidHandle = -1;
+    const ProgramHandle             ProgramCache::ms_invalidHandle  = -1;
+    const SizeT                     ProgramCache::ms_tileSize       = 16;
 
     PathString                      ProgramCache::m_dataPath;
     PathString                      ProgramCache::m_cachePath;
@@ -102,7 +103,7 @@ namespace Graphic
             ProgramSetArray::Iterator end  = m_programSets.End();
             for ( ; it != end; ++it )
             {
-                RenderDevice::DestroyBuffer( it->m_uniformBuffer );
+                RenderDevice::DestroyUniformBuffer( it->m_uniformBuffer );
             }
             m_programSets.Clear();
         }
@@ -283,7 +284,7 @@ namespace Graphic
             ProgramSetArray::Iterator end  = m_programSets.End();
             for ( ; it != end; ++it )
             {
-                RenderDevice::DestroyBuffer( it->m_uniformBuffer );
+                RenderDevice::DestroyUniformBuffer( it->m_uniformBuffer );
             }
             m_programSets.Clear();
             LoadProgramSets();

@@ -178,8 +178,8 @@ namespace Level4_NS
             RenderDevice::DestroyTexture( m_textures[1] );
 
             RenderDevice::DestroyVertexArray( m_geom.m_vertexArray );
-            RenderDevice::DestroyBuffer( m_geom.m_indexBuffer );
-            RenderDevice::DestroyBuffer( m_geom.m_vertexBuffer );
+            RenderDevice::DestroyIndexBuffer( m_geom.m_indexBuffer );
+            RenderDevice::DestroyVertexBuffer( m_geom.m_vertexBuffer );
         }
 
     private:

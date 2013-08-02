@@ -1,19 +1,19 @@
 
 layout (local_size_x = 16, local_size_y = 16) in;
 
-layout(binding = 0, r32f) uniform image2D linearDepthImg;
+layout(binding = 0, r32f) uniform image2D depthImage;
 
-layout(binding = 0) writeonly buffer depthBuffer
+layout(binding = 0) writeonly buffer tiledDepth
 {
-    uint depth[];
+    uint tiledDepthBuffer[];
 };
 
-shared int minDepth;
-shared int maxDepth;
+shared uint minDepth;
+shared uint maxDepth;
 
 void main()
 {
-    float linearDepth = imageLoad(linearDepthImg, ivec2(gl_GlobalInvocationID.xy));
+    uint depth = uint( 65535.0 * imageLoad(depthImage, ivec2(gl_GlobalInvocationID.xy)) );
     
     if ( gl_LocalInvocationIndex == 0 )
     {
@@ -23,13 +23,8 @@ void main()
     
     barrier();
 
-    if ( linearDepth != 0.0 )
-    {
-        int iLinearDepth = int( 65535.0 * linearDepth );
-
-        atomicMin( minDepth, iLinearDepth );
-        atomicMax( maxDepth, iLinearDepth );
-    }
+    atomicMin( minDepth, depth );
+    atomicMax( maxDepth, depth );
 
     barrier();
 
@@ -37,6 +32,6 @@ void main()
     {
         uint id = gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.y;
 
-        depth[ id ] = ( minDepth << 16 ) | maxDepth;
+        tiledDepthBuffer[ id ] = ( maxDepth << 16 ) | minDepth;
     }
 }

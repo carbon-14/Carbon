@@ -51,8 +51,8 @@ namespace Graphic
     void DirectionalGeometry::Destroy()
     {
         RenderDevice::DestroyVertexArray( m_vertexArray );
-        RenderDevice::DestroyBuffer( m_indexBuffer );
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
+        RenderDevice::DestroyIndexBuffer( m_indexBuffer );
+        RenderDevice::DestroyVertexBuffer( m_vertexBuffer );
     }
 
     void DirectionalGeometry::Draw() const
@@ -109,8 +109,8 @@ namespace Graphic
     void OmniGeometry::Destroy()
     {
         RenderDevice::DestroyVertexArray( m_vertexArray );
-        RenderDevice::DestroyBuffer( m_indexBuffer );
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
+        RenderDevice::DestroyIndexBuffer( m_indexBuffer );
+        RenderDevice::DestroyVertexBuffer( m_vertexBuffer );
     }
 
     void OmniGeometry::Draw() const
@@ -158,8 +158,8 @@ namespace Graphic
     void SpotGeometry::Destroy()
     {
         RenderDevice::DestroyVertexArray( m_vertexArray );
-        RenderDevice::DestroyBuffer( m_indexBuffer );
-        RenderDevice::DestroyBuffer( m_vertexBuffer );
+        RenderDevice::DestroyIndexBuffer( m_indexBuffer );
+        RenderDevice::DestroyVertexBuffer( m_vertexBuffer );
     }
 
     void SpotGeometry::Draw() const

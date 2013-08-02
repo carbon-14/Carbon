@@ -107,7 +107,7 @@ namespace Graphic
         Vector r = c.m_column[3];
         c.m_column[3] = One4;
 
-        Matrix clipProj	= Mul( c, clip );
+        Matrix clipProj	= Mul( c , clip );
         Vector zProj	= Mul( c, zAxis );
 
         Vector test;

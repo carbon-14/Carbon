@@ -21,16 +21,20 @@ namespace Graphic
             Scene *                     m_scene;
 
             SizeT                       m_size;
+            SizeT                       m_tileSize;
             Handle                      m_depthStencilTexture;
             Handle                      m_normalTexture;
             Handle                      m_colorTexture;
-            Handle                      m_linearDepthTexture;
+            Handle                      m_depthTexture;
+            Handle                      m_stencilTexture;
+            Handle                      m_tiledDepthBuffer;
 
             Handle                      m_lightTexture;
             Handle                      m_lightBlurTexture;
 
             Handle                      m_geomFramebuffer;
-            Handle                      m_linearizeDepthFramebuffer;
+            Handle                      m_resolveDepthFramebuffer;
+            Handle                      m_resolveStencilFramebuffer;
             Handle                      m_lightFramebuffer;
 
             struct Face
@@ -40,13 +44,14 @@ namespace Graphic
                 RenderList              m_opaqueList;
 
                 DebugRenderer::Context *m_debugRendererContext;
+                Rasterizer::Context *   m_rasterizerContext;
                 MeshRenderer::Context * m_meshRendererContext;
                 LightRenderer::Context *m_lightRendererContext;
             }                           m_cube[6];
         };
 
     public:
-        void Initialize( DebugRenderer * debugRenderer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer );
+        void Initialize( DebugRenderer * debugRenderer, Rasterizer * rasterizer, MeshRenderer * meshRenderer, LightRenderer * lightRenderer );
         void Destroy();
 
         static Context * CreateContext();
@@ -57,16 +62,21 @@ namespace Graphic
         void Draw( const Context * context, RenderCache& renderCache ) const;
 
     private:
-        void LinearizeDepth( const Context * context, RenderCache& renderCache ) const;
+        void ResolveDepth( const Context * context, RenderCache& renderCache ) const;
+        void ResolveStencil( const Context * context, RenderCache& renderCache ) const;
+        void TileDepth( const Context * context, RenderCache& renderCache ) const;
 
         DebugRenderer * m_debugRenderer;
+        Rasterizer *    m_rasterizer;
         MeshRenderer *  m_meshRenderer;
         LightRenderer * m_lightRenderer;
 
-        ProgramHandle   m_programLinearDepth;
+        ProgramHandle   m_programResolveDepth;
+        ProgramHandle   m_programResolveStencil;
+        ProgramHandle   m_programTileDepth;
         ProgramHandle   m_programBlur[3];
 
-        RenderState     m_renderStateLinearDepth;
+        RenderState     m_renderStateResolveDepthStencil;
 
         Handle          m_blurUniformBuffer;
     };

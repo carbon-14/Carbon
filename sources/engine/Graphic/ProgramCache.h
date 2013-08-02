@@ -21,6 +21,7 @@ namespace Graphic
 
     public:
         static const ProgramHandle      ms_invalidHandle;
+        static const SizeT              ms_tileSize;
 
         static Bool                     Initialize( const Char * shaderPath );
         static void                     Destroy();

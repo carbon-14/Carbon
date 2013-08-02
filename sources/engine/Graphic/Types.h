@@ -61,15 +61,29 @@ namespace Graphic
     enum TextureFormat
     {
         TF_R8 = 0,
+        TF_R8UI,
+        TF_R8I,
         TF_R16,
+        TF_R16UI,
+        TF_R16I,
         TF_R16F,
+        TF_R32UI,
+        TF_R32I,
         TF_R32F,
         TF_RG8,
+        TF_RG8UI,
+        TF_RG8I,
         TF_RG16,
+        TF_RG16UI,
+        TF_RG16I,
         TF_RG16F,
         TF_RGBA8,
+        TF_RGBA8UI,
+        TF_RGBA8I,
         TF_SRGBA8,
         TF_RGBA16,
+        TF_RGBA16UI,
+        TF_RGBA16I,
         TF_RGBA16F,
         TF_D24S8
     };
@@ -119,6 +133,13 @@ namespace Graphic
         CBB_COLOR3  = 1 << 3,
         CBB_BACK    = 1 << 4
     };
+
+    enum DepthStencilTextureMode
+    {
+        DSM_DEPTH   = 0,
+        DSM_STENCIL
+    };
+
 
     enum PrimitiveType
     {
@@ -240,6 +261,25 @@ namespace Graphic
         LI_FRAME    = 5,
         LI_INSTANCE = 6,
         LI_MATERIAL = 7
+    };
+
+    enum BarrierBit
+    {
+        BB_VERTEX_ATTRIB_ARRAY  = 1 << 0,
+        BB_ELLEMENT_ARRAY       = 1 << 1,
+        BB_UNIFORM              = 1 << 2,
+        BB_TEXTURE_FETCH        = 1 << 3,
+        BB_SHADER_IMAGE_ACCESS  = 1 << 4,
+        BB_COMMAND              = 1 << 5,
+        BB_PIXEL_BUFFER         = 1 << 6,
+        BB_TEXTURE_UPDATE       = 1 << 7,
+        BB_BUFFER_UPDATE        = 1 << 8,
+        BB_FRAMEBUFFER          = 1 << 9,
+        BB_TRANSFORM_FEEDBACK   = 1 << 10,
+        BB_ATOMIC_COUNTER       = 1 << 11,
+        BB_SHADER_STORAGE       = 1 << 12,
+        BB_QUERY_BUFFER         = 1 << 13,
+        BB_ALL                  = 0xffffffff
     };
 
     struct AttribDeclaration

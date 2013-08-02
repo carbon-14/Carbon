@@ -70,7 +70,7 @@ namespace Graphic
         };
 
         Vector zPlane = -planes[ FP_NEAR ];
-        Vector zAxis = Select( zPlane, One4, Mask<0,0,0,1>() );
+        Vector zAxis = Select( zPlane, Zero4, Mask<0,0,0,1>() );
         Vector near = Swizzle<3,3,3,3>( zPlane );
         Vector far = Swizzle<3,3,3,3>( planes[ FP_FAR ] );
 
@@ -85,10 +85,10 @@ namespace Graphic
         {
             const Matrix m =
             {
-                it[0]->m_sphere,
-                it[1]->m_sphere,
-                it[2]->m_sphere,
-                it[3]->m_sphere
+                it[0]->GetBoundingSphere(),
+                it[1]->GetBoundingSphere(),
+                it[2]->GetBoundingSphere(),
+                it[3]->GetBoundingSphere()
             };
 
             F128 results;
@@ -103,9 +103,9 @@ namespace Graphic
         if ( r )
         {
             Matrix m;
-            m.m_column[0] = end[0]->m_sphere;
-            m.m_column[1] = ( r > 1 ) ? end[1]->m_sphere : Zero4;
-            m.m_column[2] = ( r > 2 ) ? end[2]->m_sphere : Zero4;
+            m.m_column[0] = end[0]->GetBoundingSphere();
+            m.m_column[1] = ( r > 1 ) ? end[1]->GetBoundingSphere() : Zero4;
+            m.m_column[2] = ( r > 2 ) ? end[2]->GetBoundingSphere() : Zero4;
             m.m_column[3] = Zero4;
 
             F128 results;

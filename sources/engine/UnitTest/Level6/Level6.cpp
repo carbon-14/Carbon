@@ -317,7 +317,7 @@ namespace Level6_NS
             m_textures[0] = 0;
             m_textures[1] = 0;
 
-            RenderDevice::DestroyBuffer( m_uniformBuffers[4].m_handle );
+            RenderDevice::DestroyUniformBuffer( m_uniformBuffers[4].m_handle );
         }
 
     private:
@@ -612,10 +612,10 @@ void Level6::PostExecute()
 
     m_renderCache.Clear();
 
-    RenderDevice::DestroyBuffer( flashParameters );
-    RenderDevice::DestroyBuffer( lightParameters );
-    RenderDevice::DestroyBuffer( ambientParameters );
-    RenderDevice::DestroyBuffer( cameraParameters );
+    RenderDevice::DestroyUniformBuffer( flashParameters );
+    RenderDevice::DestroyUniformBuffer( lightParameters );
+    RenderDevice::DestroyUniformBuffer( ambientParameters );
+    RenderDevice::DestroyUniformBuffer( cameraParameters );
 }
 
 void Level6::Execute()

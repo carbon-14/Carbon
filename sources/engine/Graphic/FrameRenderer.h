@@ -37,15 +37,21 @@ namespace Graphic
 
             SizeT                       m_width;
             SizeT                       m_height;
+            SizeT                       m_tileWidth;
+            SizeT                       m_tileHeight;
             Handle                      m_depthStencilTexture;
             Handle                      m_normalTexture;
             Handle                      m_colorTexture;
-            Handle                      m_linearDepthTexture;
+            Handle                      m_depthTexture;
+            Handle                      m_stencilTexture;
+            Handle                      m_tiledDepthBuffer;
+
             Handle                      m_lightTexture;
             Handle                      m_finalColorBuffer;
-
+            
             Handle                      m_geomFramebuffer;
-            Handle                      m_linearizeDepthFramebuffer;
+            Handle                      m_resolveDepthFramebuffer;
+            Handle                      m_resolveStencilFramebuffer;
             Handle                      m_lightFramebuffer;
             Handle                      m_finalFramebuffer;
 
@@ -74,7 +80,9 @@ namespace Graphic
         void Draw( const Context * context, RenderCache& renderCache ) const;
 
     private:
-        void LinearizeDepth( const Context * context, RenderCache& renderCache ) const;
+        void ResolveDepth( const Context * context, RenderCache& renderCache ) const;
+        void ResolveStencil( const Context * context, RenderCache& renderCache ) const;
+        void TileDepth( const Context * context, RenderCache& renderCache ) const;
         void ApplyToneMapping( const Context * context, RenderCache& renderCache ) const;
         void DrawOverlay( const Context * context, RenderCache& renderCache ) const;
 
@@ -84,11 +92,13 @@ namespace Graphic
         LightRenderer *     m_lightRenderer;
         EnvMapRenderer *    m_envMapRenderer;
 
-        ProgramHandle       m_programLinearDepth;
+        ProgramHandle       m_programResolveDepth;
+        ProgramHandle       m_programResolveStencil;
+        ProgramHandle       m_programTileDepth;
         ProgramHandle       m_programToneMapping;
         ProgramHandle       m_programOverlay;
 
-        RenderState         m_renderStateLinearDepth;
+        RenderState         m_renderStateResolveDepthStencil;
         RenderState         m_renderStateToneMapping;
         RenderState         m_renderStateOverlay;
     };

@@ -33,15 +33,29 @@ namespace Graphic
     const GLenum ToGLTextureFormat[] =
     {
         GL_R8,                  // TF_R8
+        GL_R8UI,                // TF_R8UI
+        GL_R8I,                 // TF_R8I
         GL_R16,                 // TF_R16
+        GL_R16UI,               // TF_R16UI
+        GL_R16I,                // TF_R16I
         GL_R16F,                // TF_R16F
+        GL_R32UI,               // TF_R32UI
+        GL_R32I,                // TF_R32I
         GL_R32F,                // TF_R32F
         GL_RG8,                 // TF_RG8
+        GL_RG8UI,               // TF_RG8UI
+        GL_RG8I,                // TF_RG8I
         GL_RG16,                // TF_RG16
+        GL_RG16UI,              // TF_RG16UI
+        GL_RG16I,               // TF_RG16I
         GL_RG16F,               // TF_RG16F
         GL_RGBA8,               // TF_RGBA8
+        GL_RGBA8UI,             // TF_RGBA8UI
+        GL_RGBA8I,              // TF_RGBA8I
         GL_SRGB8_ALPHA8,        // TF_SRGBA8
         GL_RGBA16,              // TF_RGBA16
+        GL_RGBA16UI,            // TF_RGBA16UI
+        GL_RGBA16I,             // TF_RGBA16I
         GL_RGBA16F,             // TF_RGBA16F
         GL_DEPTH24_STENCIL8     // TF_D24S8
     };
@@ -74,6 +88,11 @@ namespace Graphic
         GL_DEPTH_STENCIL_ATTACHMENT,    // FA_DEPTH_STENCIL
     };
 
+    const GLenum ToGLDepthStencilTextureMode[] =
+    {
+        GL_DEPTH_COMPONENT, // DSM_DEPTH
+        GL_STENCIL_INDEX    // DSM_STENCIL
+    };
 
     const GLenum ToGLDataType[] =
     {
@@ -250,9 +269,10 @@ namespace Graphic
     static GLuint   s_samplerCache[ s_maxTextureUnitCount ];
     static GLuint   s_activeTexture;
     static GLuint   s_textureCache[ s_maxTextureUnitCount ];
+    static GLuint   s_depthStencilTextureModeCache[ s_maxTextureUnitCount ];
     static GLuint   s_uniformCache[ s_maxUniformBufferCount ];
     static GLuint   s_shaderStorageCache[ s_maxShaderStorageBufferCount ];
-    static GLuint   s_framebufferCache;
+    static GLuint   s_framebufferCache[2];                                                  // read/draw
     static GLuint   s_programCache;
 
     //===================================================================================
@@ -314,6 +334,11 @@ namespace Graphic
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ARRAY_BUFFER );
     }
 
+    void IRenderDevice::DestroyVertexBuffer( Handle buffer )
+    {
+        glDeleteBuffers( 1, (GLuint*)&buffer );
+    }
+
     void * IRenderDevice::MapVertexBuffer( Handle buffer, BufferAccess access )
     {
         return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_ARRAY_BUFFER ); 
@@ -329,6 +354,11 @@ namespace Graphic
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_ELEMENT_ARRAY_BUFFER );
     }
 
+    void IRenderDevice::DestroyIndexBuffer( Handle buffer )
+    {
+        glDeleteBuffers( 1, (GLuint*)&buffer );
+    }
+
     void * IRenderDevice::MapIndexBuffer( Handle buffer, BufferAccess access )
     {
         return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_ELEMENT_ARRAY_BUFFER ); 
@@ -342,6 +372,19 @@ namespace Graphic
     Handle IRenderDevice::CreateUniformBuffer( SizeT size, const void * data, BufferUsage usage )
     {
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_UNIFORM_BUFFER );
+    }
+
+    void IRenderDevice::DestroyUniformBuffer( Handle buffer )
+    {
+        for ( SizeT i=0; i<s_maxUniformBufferCount; ++i )
+        {
+            if ( s_uniformCache[i] == buffer )
+            {
+                glBindBufferBase( GL_UNIFORM_BUFFER, i, 0 );
+                s_uniformCache[i] = 0;
+            }
+        }
+        glDeleteBuffers( 1, (GLuint*)&buffer );
     }
 
     void * IRenderDevice::MapUniformBuffer( Handle buffer, BufferAccess access )
@@ -368,6 +411,19 @@ namespace Graphic
         return CreateBuffer( size, data, ToGLBufferUsage[ usage ], GL_SHADER_STORAGE_BUFFER );
     }
 
+    void IRenderDevice::DestroyShaderStorageBuffer( Handle buffer )
+    {
+        for ( SizeT i=0; i<s_maxShaderStorageBufferCount; ++i )
+        {
+            if ( s_shaderStorageCache[i] == buffer )
+            {
+                glBindBufferBase( GL_SHADER_STORAGE_BUFFER, i, 0 );
+                s_shaderStorageCache[i] = 0;
+            }
+        }
+        glDeleteBuffers( 1, (GLuint*)&buffer );
+    }
+
     void * IRenderDevice::MapShaderStorageBuffer( Handle buffer, BufferAccess access )
     {
         return MapBuffer( buffer, ToGLBufferAccess[ access ], GL_SHADER_STORAGE_BUFFER );
@@ -378,18 +434,13 @@ namespace Graphic
         glUnmapBuffer( GL_SHADER_STORAGE_BUFFER );
     }
 
-    void IRenderDevice::BindShaderStorageBuffer( Handle ubuffer, SizeT location )
+    void IRenderDevice::BindShaderStorageBuffer( Handle ssbuffer, SizeT location )
     {
-        if ( ubuffer != s_shaderStorageCache[location] )
+        if ( ssbuffer != s_shaderStorageCache[location] )
         {
-            glBindBufferBase( GL_SHADER_STORAGE_BUFFER, location, ubuffer );
-            s_shaderStorageCache[location] = ubuffer;
+            glBindBufferBase( GL_SHADER_STORAGE_BUFFER, location, ssbuffer );
+            s_shaderStorageCache[location] = ssbuffer;
         }
-    }
-
-    void IRenderDevice::DestroyBuffer( Handle buffer )
-    {
-        glDeleteBuffers( 1, (GLuint*)&buffer );
     }
 
     Handle IRenderDevice::CreateVertexArray( const VertexDeclaration& vDecl, Handle vbuffer, Handle ibuffer )
@@ -520,6 +571,12 @@ namespace Graphic
         glDispatchCompute( groupX, groupY, groupZ );
     }
 
+    void IRenderDevice::MemoryBarrier( U32 barriers )
+    {
+        glMemoryBarrier( barriers );
+    }
+
+
     Handle IRenderDevice::CreateTexture( SizeT internalFormat, SizeT externalFormat, SizeT levelCount, Bool compressed, const SizeT * size, const SizeT * width, const SizeT * height, void ** data )
     {
         GLuint texture;
@@ -569,6 +626,16 @@ namespace Graphic
 
     void IRenderDevice::DestroyTexture( Handle texture )
     {
+        for ( SizeT i=0; i<s_maxTextureUnitCount; ++i )
+        {
+            if ( s_textureCache[i] == texture )
+            {
+                glActiveTexture( GL_TEXTURE0 + i );
+                glBindTexture( GL_TEXTURE_2D, 0 );
+                glBindTexture( GL_TEXTURE_CUBE_MAP, 0 );
+                s_textureCache[i] = 0;
+            }
+        }
         glDeleteTextures( 1, (GLuint*)&texture );
     }
 
@@ -597,6 +664,27 @@ namespace Graphic
         {
             glBindTexture( GL_TEXTURE_CUBE_MAP, texture );
             s_textureCache[unit] = texture;
+        }
+    }
+
+    void IRenderDevice::BindDepthStencilTexture( Handle texture, SizeT unit, DepthStencilTextureMode mode )
+    {
+        if ( unit != s_activeTexture )
+        {
+            glActiveTexture( GL_TEXTURE0 + unit );
+            s_activeTexture = unit;
+        }
+        if ( texture != s_textureCache[unit] )
+        {
+            glBindTexture( GL_TEXTURE_2D, texture );
+            s_textureCache[unit] = texture;
+        }
+
+        GLuint glMode = ToGLDepthStencilTextureMode[mode];
+        if ( glMode != s_depthStencilTextureModeCache[unit] )
+        {
+            glTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, glMode );
+            s_depthStencilTextureModeCache[unit] = glMode;
         }
     }
 
@@ -639,6 +727,14 @@ namespace Graphic
 
     void IRenderDevice::DestroySampler( Handle sampler )
     {
+        for ( SizeT i=0; i<s_maxTextureUnitCount; ++i )
+        {
+            if ( s_samplerCache[i] == sampler )
+            {
+                glBindSampler( i, 0 );
+                s_samplerCache[i] = 0;
+            }
+        }
         glDeleteSamplers( 1, (GLuint*)&sampler );
     }
 
@@ -683,15 +779,34 @@ namespace Graphic
 
     void IRenderDevice::DestroyFramebuffer( Handle framebuffer )
     {
+        for ( SizeT i=0; i<2; ++i )
+        {
+            if ( s_framebufferCache[i] == framebuffer )
+            {
+                glBindFramebuffer( ToGLFramebufferTarget[ i ], 0 );
+                s_framebufferCache[i] = 0;
+            }
+        }
         glDeleteFramebuffers( 1, (GLuint*)&framebuffer );
     }
 
     void IRenderDevice::BindFramebuffer( Handle framebuffer, FramebufferTarget target )
     {
-        if ( framebuffer != s_framebufferCache )
+        if ( target == FT_READ && framebuffer != s_framebufferCache[ FT_READ ] )
         {
-            glBindFramebuffer( ToGLFramebufferTarget[ target ], framebuffer );
-            s_framebufferCache = framebuffer;
+            glBindFramebuffer( ToGLFramebufferTarget[ FT_READ ], framebuffer );
+            s_framebufferCache[ FT_READ ] = framebuffer;
+        }
+        else if ( target == FT_DRAW && framebuffer != s_framebufferCache[ FT_DRAW ] )
+        {
+            glBindFramebuffer( ToGLFramebufferTarget[ FT_DRAW ], framebuffer );
+            s_framebufferCache[ FT_DRAW ] = framebuffer;
+        }
+        else if ( framebuffer != s_framebufferCache[ FT_READ ] || framebuffer != s_framebufferCache[ FT_DRAW ] )
+        {
+            glBindFramebuffer( ToGLFramebufferTarget[ FT_BOTH ], framebuffer );
+            s_framebufferCache[ FT_READ ] = framebuffer;
+            s_framebufferCache[ FT_DRAW ] = framebuffer;
         }
     }
 
@@ -885,8 +1000,10 @@ namespace Graphic
             glActiveTexture( GL_TEXTURE0 + i );
             glBindTexture( GL_TEXTURE_2D, 0 );
             glBindTexture( GL_TEXTURE_CUBE_MAP, 0 );
+            glTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_DEPTH_COMPONENT );
             s_samplerCache[i] = 0;
             s_textureCache[i] = 0;
+            s_depthStencilTextureModeCache[i] = GL_DEPTH_COMPONENT;
         }
 
         glActiveTexture( GL_TEXTURE0 );
@@ -905,7 +1022,8 @@ namespace Graphic
         }
 
         glBindFramebuffer( GL_FRAMEBUFFER, 0 );
-        s_framebufferCache = 0;
+        s_framebufferCache[ FT_READ ] = 0;
+        s_framebufferCache[ FT_DRAW ] = 0;
 
         glUseProgram( 0 );
         s_programCache = 0;

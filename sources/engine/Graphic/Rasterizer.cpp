@@ -20,8 +20,7 @@ namespace Graphic
 
     void Rasterizer::Initialize()
     {
-        const U32 programTileDepthId    = ProgramCache::CreateId( "tileDepth" );
-        m_programTileDepth              = ProgramCache::GetProgram( programTileDepthId );
+
     }
 
     void Rasterizer::Destroy()
@@ -34,46 +33,26 @@ namespace Graphic
         Context * context = MemoryManager::New< Context >();
 
         context->m_camera = 0;
-        context->m_linearDepthTexture = 0;
         context->m_width = 0;
         context->m_height = 0;
-        context->m_size = 0;
-        
-        context->m_depthBuffer = 0;
-        context->m_mapBuffer = 0;
-        context->m_mapInfos = 0;
+
+        context->m_quadBuffer = 0;
+        context->m_quadBufferSize = 0;
 
         return context;
     }
 
-    void Rasterizer::UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera, Handle linearDepthTexture )
+    void Rasterizer::UpdateContext( Context * context, SizeT width, SizeT height, const Camera * camera )
     {
         context->m_camera = camera;
-        context->m_linearDepthTexture = linearDepthTexture;
 
-        context->m_width = width / ms_tileSize;
-        context->m_height = height / ms_tileSize;
-        context->m_size = context->m_width * context->m_height;
-
-        //context->m_vCount = width / ms_tileSize + 1;
-        //context->m_hCount = height / ms_tileSize + 1;
+        context->m_width = width / ProgramCache::ms_tileSize;
+        context->m_height = height / ProgramCache::ms_tileSize;
 
         if ( camera->m_projectionType == PT_PERSPECTIVE )
         {
             context->m_vPlanes.Resize( context->m_width + 1 );
             context->m_hPlanes.Resize( context->m_height + 1 );
-            /*if ( context->m_vCount > context->m_vSize )
-            {
-                MemoryManager::Free( context->m_vPlanes );
-                context->m_vPlanes = reinterpret_cast< Vector * >( MemoryManager::Malloc( sizeof(Vector) * context->m_vCount, MemoryUtils::AlignOf< Vector >() ) );
-                context->m_vSize = context->m_vCount;
-            }
-            if ( context->m_hCount > context->m_hSize )
-            {
-                MemoryManager::Free( context->m_hPlanes );
-                context->m_hPlanes = reinterpret_cast< Vector * >( MemoryManager::Malloc( sizeof(Vector) * context->m_hCount, MemoryUtils::AlignOf< Vector >() ) );
-                context->m_hSize = context->m_hCount;
-            }*/
 
             F32 size = 2.0f * Tan( 0.5f * camera->m_fov );
 
@@ -81,58 +60,34 @@ namespace Graphic
 
             for ( SizeT i=0; i<context->m_vPlanes.Size(); ++i )
             {
-                Vector dir = vScale * Splat( Min( static_cast< F32 >( i * ms_tileSize ) / width, 1.0f ) - 0.5f ) - camera->GetInvViewMatrix().m_column[2];
+                Vector dir = vScale * Splat( Min( static_cast< F32 >( i * ProgramCache::ms_tileSize ) / width, 1.0f ) - 0.5f ) - camera->GetInvViewMatrix().m_column[2];
                 context->m_vPlanes[ i ] = Normalize( Cross( dir, camera->GetInvViewMatrix().m_column[1] ) );
-                context->m_vPlanes[ i ] = Select( context->m_vPlanes[ i ], Dot( context->m_vPlanes[ i ], camera->m_position ), Mask<0,0,0,1>() );
+                context->m_vPlanes[ i ] = Select( context->m_vPlanes[ i ], -Dot( context->m_vPlanes[ i ], camera->m_position ), Mask<0,0,0,1>() );
             }
 
             Vector hScale = Splat( size / camera->m_aspectRatio ) * camera->GetInvViewMatrix().m_column[1];
             for ( SizeT i=0; i<context->m_hPlanes.Size(); ++i )
             {
-                Vector dir = hScale * Splat( Min( static_cast< F32 >( i * ms_tileSize ) / height, 1.0f ) - 0.5f ) - camera->GetInvViewMatrix().m_column[2];
+                Vector dir = hScale * Splat( Min( static_cast< F32 >( i * ProgramCache::ms_tileSize ) / height, 1.0f ) - 0.5f ) - camera->GetInvViewMatrix().m_column[2];
                 context->m_hPlanes[ i ] = Normalize( Cross( camera->GetInvViewMatrix().m_column[0], dir ) );
-                context->m_hPlanes[ i ] = Select( context->m_hPlanes[ i ], Dot( context->m_hPlanes[ i ], camera->m_position ), Mask<0,0,0,1>() );
+                context->m_hPlanes[ i ] = Select( context->m_hPlanes[ i ], -Dot( context->m_hPlanes[ i ], camera->m_position ), Mask<0,0,0,1>() );
             }
         }
-
-        if ( context->m_size > context->m_mapCount.Capacity() )
-        {
-            RenderDevice::DestroyTexture( context->m_mapInfos );
-            RenderDevice::DestroyTexture( context->m_mapBuffer );
-            RenderDevice::DestroyTexture( context->m_depthBuffer );
-
-            context->m_depthBuffer = RenderDevice::CreateShaderStorageBuffer( context->m_size * sizeof(U32), 0, BU_DYNAMIC );
-            context->m_mapBuffer = RenderDevice::CreateShaderStorageBuffer( context->m_size * sizeof(U16) * 8, 0, BU_DYNAMIC );
-            context->m_mapInfos = RenderDevice::CreateShaderStorageBuffer( context->m_size * sizeof(U32), 0, BU_DYNAMIC );
-        }
-
-        context->m_mapCount.Resize( context->m_size );
-        context->m_mapData.Resize( context->m_size * ms_maxCount );
-
-        MemoryUtils::MemSet( context->m_mapCount.Ptr(), 0, context->m_size );
     }
 
     void Rasterizer::DestroyContext( Context * context )
     {
-        RenderDevice::DestroyTexture( context->m_mapInfos );
-        RenderDevice::DestroyTexture( context->m_mapBuffer );
-        RenderDevice::DestroyTexture( context->m_depthBuffer );
-
         MemoryManager::Delete( context );
     }
 
-    void Rasterizer::Draw( const Context * context ) const
+    /*void Rasterizer::Draw( const Context * context ) const
     {
-        RenderDevice::BindImageTexture( context->m_linearDepthTexture, 0, 0, BA_READ_ONLY, TF_R32F );
-        RenderDevice::BindShaderStorageBuffer( context->m_depthBuffer, 0 );
-        ProgramCache::UseProgram( m_programTileDepth );
-        RenderDevice::DispatchCompute( context->m_width, context->m_height, 1 );
-        glMemoryBarrier( GL_SHADER_STORAGE_BARRIER_BIT );
+        RenderDevice::MemoryBarrier( BB_SHADER_STORAGE );
 
         CARBON_ASSERT( context->m_size < 128*128 );
 
         U16 depth[128*128*2];
-        MemoryUtils::MemCpy( depth, RenderDevice::MapShaderStorageBuffer( context->m_depthBuffer, BA_READ_ONLY ), context->m_size * sizeof(U32) );
+        MemoryUtils::MemCpy( depth, RenderDevice::MapShaderStorageBuffer( context->m_tiledDepthBuffer, BA_READ_ONLY ), context->m_size * sizeof(U32) );
         RenderDevice::UnmapShaderStorageBuffer();
 
         Vector nearPlane = context->m_camera->GetFrustum().GetPlanes()[ FP_NEAR ];
@@ -202,7 +157,7 @@ namespace Graphic
         RenderDevice::UnmapShaderStorageBuffer();
     }
 
-    void Rasterizer::FillQuad( const Vector ** quad, const Vector * sphere, Context * context ) const
+    void Rasterizer::FillQuad( const Vector ** quad, U16 index, U16 * indexBuffer, U16 * indexCountBuffer, Context * context ) const
     {
         SizeT rowBegin = quad[0] - context->m_vPlanes.Begin();
         SizeT rowEnd = quad[1] - context->m_vPlanes.Begin();
@@ -212,18 +167,18 @@ namespace Graphic
         SizeT pitchCount = context->m_vPlanes.Capacity() - 1;
         SizeT pitchMap = ( context->m_vPlanes.Capacity() - 1 ) * ms_maxCount;
 
-        const Vector ** colMap = context->m_mapData.Begin() + colBegin * pitchMap;
-        U8 * colCount = context->m_mapCount.Begin() + colBegin * pitchCount;
-        U8 * colCountEnd = context->m_mapCount.Begin() + colEnd * pitchCount;
+        U16 * colMap = indexBuffer + colBegin * pitchMap;
+        U16 * colCount = indexCountBuffer + colBegin * pitchCount;
+        U16 * colCountEnd = indexCountBuffer + colEnd * pitchCount;
         for ( ; colCount!=colCountEnd; colCount += pitchCount, colMap += pitchMap )
         {
-            const Vector ** map = colMap + rowBegin * ms_maxCount;
-            U8 * count = colCount + rowBegin;
-            U8 * countEnd = colCount + rowEnd;
+            U16 * map = colMap + rowBegin * ms_maxCount;
+            U16 * count = colCount + rowBegin;
+            U16 * countEnd = colCount + rowEnd;
             for ( ; count!=countEnd; ++count, map += ms_maxCount )
             {
                 CARBON_ASSERT( *count < ms_maxCount );
-                map[ (*count)++ ] = sphere;
+                map[ (*count)++ ] = index;
             }
         }
     }
@@ -241,5 +196,5 @@ namespace Graphic
         Vector back = ( depth - radius ) < maxDepth;
 
         return And( front, back );
-    }
+    }*/
 }

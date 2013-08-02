@@ -8,10 +8,7 @@
 
 using namespace Graphic;
 
-const SizeT frameAllocatorSize  = 32 * 1024;
-
-const SizeT frameWidth          = 1280;
-const SizeT frameHeight         = 720;
+const SizeT frameAllocatorSize  = 64 * 1024;
 
 const U32 FRAME_MAX_COUNT       = 60;
 
@@ -52,10 +49,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-BOOL CreateRenderWindow( HINSTANCE hInstance, RenderWindow& window )
+BOOL CreateRenderWindow( HINSTANCE hInstance, RenderWindow& window, SizeT width, SizeT height, bool fullscreen )
 {
-    window.width = frameWidth;
-    window.height = frameHeight;
+    window.width = width;
+    window.height = height;
     window.hInstance = hInstance;
 
     window.wc.style         = 0;
@@ -71,13 +68,15 @@ BOOL CreateRenderWindow( HINSTANCE hInstance, RenderWindow& window )
 
     if ( !RegisterClass(&window.wc) ) return FALSE;
 
+    DWORD dwStyle = fullscreen ? ( WS_POPUP | WS_CLIPCHILDREN | WS_CLIPSIBLINGS ) : ( WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU );
+
     window.hwnd = CreateWindow( "CarbonWndClass",
                                 "CarbonEngine",
-                                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+                                dwStyle,
                                 CW_USEDEFAULT,
                                 CW_USEDEFAULT,
-                                frameWidth,
-                                frameHeight,
+                                width,
+                                height,
                                 NULL,
                                 NULL,
                                 hInstance,
@@ -89,13 +88,26 @@ BOOL CreateRenderWindow( HINSTANCE hInstance, RenderWindow& window )
         return FALSE;
     }
 
+    if ( fullscreen )
+    {
+        DEVMODE dmScreenSettings;
+	    memset(&dmScreenSettings, 0, sizeof(DEVMODE));
+
+	    dmScreenSettings.dmSize         = sizeof(DEVMODE);
+	    dmScreenSettings.dmPelsWidth	= width;
+	    dmScreenSettings.dmPelsHeight	= height;
+	    dmScreenSettings.dmFields       = DM_PELSWIDTH | DM_PELSHEIGHT;
+
+	    ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN);
+    }
+
     RECT rcClient, rcWind;
     POINT ptDiff;
     GetClientRect(window.hwnd, &rcClient);
     GetWindowRect(window.hwnd, &rcWind);
     ptDiff.x = (rcWind.right - rcWind.left) - rcClient.right;
     ptDiff.y = (rcWind.bottom - rcWind.top) - rcClient.bottom;
-    MoveWindow(window.hwnd,rcWind.left, rcWind.top, frameWidth + ptDiff.x, frameHeight + ptDiff.y, TRUE);
+    MoveWindow(window.hwnd,rcWind.left, rcWind.top, width + ptDiff.x, height + ptDiff.y, TRUE);
 
     return TRUE;
 }

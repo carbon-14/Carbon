@@ -96,7 +96,7 @@ namespace Graphic
         CARBON_ASSERT( m_renderContext == 0 );
     }
 
-    Bool RenderDevice::Initialize( HINSTANCE hInstance, HWND window )
+    Bool RenderDevice::Initialize( HINSTANCE hInstance, HWND window, Bool debug )
     {
         CARBON_ASSERT( m_window == 0 );
         CARBON_ASSERT( m_deviceContext == 0 );
@@ -159,10 +159,13 @@ namespace Graphic
             return false;
         }
 
+        int flags = debug ? WGL_CONTEXT_DEBUG_BIT_ARB : 0;
+
         int rcAttribs[] =
         {
             WGL_CONTEXT_MAJOR_VERSION_ARB   , 4,
             WGL_CONTEXT_MINOR_VERSION_ARB   , 2,
+            WGL_CONTEXT_FLAGS_ARB           , flags,
             WGL_CONTEXT_PROFILE_MASK_ARB    , WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
             0 //End
         };

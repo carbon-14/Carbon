@@ -29,6 +29,8 @@ namespace Graphic
 
         Handle GetUniformBuffer() const;
 
+        Vector GetBoundingSphere() const;
+
         void Finalize();
         Bool IsFinalized() const;
         
@@ -50,6 +52,8 @@ namespace Graphic
         SizeT                       m_geomCount;
 
         Handle                      m_uniformBuffer;
+
+        Vector                      m_boundingSphere;
 
         Bool                        m_isFinalized;
     };

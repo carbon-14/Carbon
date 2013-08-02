@@ -25,7 +25,7 @@ namespace Graphic
 
     Mesh::~Mesh()
     {
-        RenderDevice::DestroyBuffer( m_uniformBuffer );
+        RenderDevice::DestroyUniformBuffer( m_uniformBuffer );
     }
 
     void Mesh::Update()
@@ -37,6 +37,8 @@ namespace Graphic
         params->m_transform.m_column[3] = m_position;
 
         RenderDevice::UnmapUniformBuffer();
+
+        m_boundingSphere = m_resource->GetBoundingSphere() + Select( m_position, Zero4, Mask<0,0,0,1>() );
     }
 
     void Mesh::SetResource( MeshResource * resource )
@@ -65,6 +67,11 @@ namespace Graphic
         return m_uniformBuffer;
     }
 
+    Vector Mesh::GetBoundingSphere() const
+    {
+        return m_boundingSphere;
+    }
+
     void Mesh::Finalize()
     {
         for ( m_geomCount=0; m_geomCount<m_resource->GetSubMeshCount(); ++m_geomCount )
@@ -78,6 +85,8 @@ namespace Graphic
             geom.m_vertexArray  = sub_mesh.m_vertexArray;
             geom.m_indexCount   = sub_mesh.m_indexCount;
         }
+
+        m_boundingSphere = m_resource->GetBoundingSphere() + Select( m_position, Zero4, Mask<0,0,0,1>() );
 
         m_isFinalized = true;
     }

@@ -11,7 +11,7 @@
 namespace Graphic
 {
     class Mesh;
-    struct Light;
+    class Light;
     class Camera;
 
     class _GraphicExport Scene

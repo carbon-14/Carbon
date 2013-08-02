@@ -8,7 +8,7 @@ namespace Graphic
         RenderDevice();
         ~RenderDevice();
 
-        Bool                    Initialize( HINSTANCE hInstance, HWND window );
+        Bool                    Initialize( HINSTANCE hInstance, HWND window, Bool debug = false );
         void                    Destroy();
         void                    Swap();
 
