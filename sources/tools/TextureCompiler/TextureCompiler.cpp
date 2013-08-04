@@ -39,6 +39,8 @@ unsigned int width, height;
 int bit_depth, channels;
 unsigned char * data;
 
+const double half_pi = 1.57079632679;
+
 bool RecursiveCreateDirectory( const char * dir )
 {
 #if defined( CARBON_PLATFORM_WIN32 )
@@ -471,12 +473,12 @@ const int colorMask[ 5 ] = { -1, 0, -1, 1, 2 }; // greyscale, rgb, rgba selector
 
 const GLint internalFormatTable[ 2 * TP_COUNT ] [ 3 ] =
 {
-    { GL_R8             , GL_SRGB8              , GL_SRGB8_ALPHA8               },   // TP_COLOR
-    { GL_R8             , GL_RGB8               , GL_RGBA8                      },   // TP_LINEAR
-    { 0                 , GL_RG8                , GL_RG8                        },   // TP_NORMAL
-    { GL_COMPRESSED_RED , GL_COMPRESSED_SRGB    , GL_COMPRESSED_SRGB_ALPHA      },   // TP_COLOR    - COMPRESSED -
-    { GL_COMPRESSED_RED , GL_COMPRESSED_RGB     , GL_COMPRESSED_RGBA            },   // TP_LINEAR   - COMPRESSED -
-    { 0                 , GL_COMPRESSED_RG      , GL_COMPRESSED_RG              },   // TP_NORMAL   - COMPRESSED -
+    { GL_R8             , GL_SRGB8                      , GL_SRGB8_ALPHA8               },   // TP_COLOR
+    { GL_R8             , GL_RGB8                       , GL_RGBA8                      },   // TP_LINEAR
+    { 0                 , GL_RG16_SNORM                 , GL_RG16_SNORM                 },   // TP_NORMAL
+    { GL_COMPRESSED_RED , GL_COMPRESSED_SRGB            , GL_COMPRESSED_SRGB_ALPHA      },   // TP_COLOR    - COMPRESSED -
+    { GL_COMPRESSED_RED , GL_COMPRESSED_RGB             , GL_COMPRESSED_RGBA            },   // TP_LINEAR   - COMPRESSED -
+    { 0                 , GL_COMPRESSED_SIGNED_RG_RGTC2 , GL_COMPRESSED_SIGNED_RG_RGTC2 },   // TP_NORMAL   - COMPRESSED -
 };
 
 const GLint externalFormatTable[ TP_COUNT ] [ 3 ] =
@@ -485,6 +487,9 @@ const GLint externalFormatTable[ TP_COUNT ] [ 3 ] =
     { GL_RED    , GL_BGR    , GL_BGRA   },   // TP_LINEAR
     { 0         , GL_RG     , GL_RG     }    // TP_NORMAL
 };
+
+const GLint internalFormatFloat[ 3 ] = { GL_R8, GL_RGB8, GL_RGBA8 };
+const GLint externalFormatFloat[ 3 ] = { GL_RED, GL_RGB, GL_RGBA };
 
 struct TextureHeader
 {
@@ -503,10 +508,6 @@ struct LevelDesc
 
 bool BuildTexture( const char * outFilename, TextureProfile profile, int options )
 {
-    GLuint map;
-    glGenTextures(1, &map);
-    glBindTexture(GL_TEXTURE_2D, map);
-    
     if ( channels < 0 || channels > 4 )
         return false;
 
@@ -518,55 +519,6 @@ bool BuildTexture( const char * outFilename, TextureProfile profile, int options
     bool compress = (options & OT_COMPRESS) != 0;
     bool mipmap = (options & OT_MIPMAPGEN) != 0;
 
-    GLint internal_format = internalFormatTable[ profile + (compress ? TP_COUNT : 0) ] [ mask ];
-    GLint external_format = externalFormatTable[ profile ] [ mask ];
-
-    GLint testFormat = GL_COMPRESSED_RG;
-
-    if ( internal_format == 0 )
-        return false;
-    
-    if ( profile == TP_NORMAL )
-    {
-        // rearrange data
-        const size_t offset = channels;
-        unsigned char * in = data;
-        unsigned char * out = data;
-        const unsigned char * end = in + channels*width*height;
-        while ( in != end )
-        {
-            // normalize
-            double x = (double)in[0] * 2.0 / 255.0 - 1.0;
-            double y = (double)in[1] * 2.0 / 255.0 - 1.0;
-            double z = (double)in[2] * 2.0 / 255.0 - 1.0;
-
-            double n = sqrt( x * x + y * y + z * z );
-
-            x = 255.0 * ( 0.5 * x / n + 0.5 );
-            y = 255.0 * ( 0.5 * y / n + 0.5 );
-
-            out[0] = (unsigned char)x;
-            out[1] = (unsigned char)y;
-
-            in += channels;
-            out += 2;
-        }
-    }
-    else if ( channels != 1 )
-    {
-        // swap red & blue channels
-        const size_t offset = channels;
-        unsigned char * pix = data;
-        const unsigned char * end = pix + channels*width*height;
-        while ( pix != end )
-        {
-            pix[0] = pix[2] - pix[0];
-            pix[2] = pix[2] - pix[0];
-            pix[0] = pix[2] + pix[0];
-            pix += channels;
-        }
-    }
-
     unsigned int levelCount = 1;
     if ( mipmap )
     {
@@ -574,24 +526,92 @@ bool BuildTexture( const char * outFilename, TextureProfile profile, int options
         levelCount = (unsigned int)( std::log( (double)levelCount ) / std::log( 2.0 ) ) + 1;
     }
 
-    if ( compress )
-    {
-        glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, external_format, GL_UNSIGNED_BYTE, data);        
+    // generate float texture
+    GLuint fmap;
+    glGenTextures(1, &fmap);
+    glBindTexture(GL_TEXTURE_2D, fmap);
 
-        GLint compressed;
-        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_COMPRESSED, &compressed);
-        if ( compressed == GL_FALSE )
-        {
-            free( data );
-            glDeleteTextures( 1, &map );
-            return false;
-        }
-    }
-    else
+    float * fdata = 0;
+    if ( profile == TP_COLOR )
     {
-        glTexStorage2D( GL_TEXTURE_2D, levelCount, internal_format, width, height );
-        glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, width, height, external_format, GL_UNSIGNED_BYTE, data );
+        fdata = (float*)malloc( width*height*channels*sizeof(float) );
+
+        unsigned char * in = data;
+        float * out = fdata;
+        const unsigned char * end = in + channels*width*height;
+        while ( in != end )
+        {
+            for ( int i=0; i<channels; ++i )
+            {
+                double c = double(*(in++)) / 255.0;
+
+                if ( i<3 )
+                {
+                    // srgb to linear
+
+                    if ( c <= 0.04045 )
+                    {
+                        c /= 12.92;
+                    }
+                    else
+                    {
+                        c = pow( ( c + 0.055 ) / 1.055, 2.4 );
+                    }
+                }
+
+                *(out++) = (float)c;
+            }
+        }
+
+        glTexStorage2D( GL_TEXTURE_2D, levelCount, internalFormatFloat[ mask ], width, height );
+        glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, width, height, externalFormatFloat[ mask ], GL_FLOAT, fdata );
     }
+    else if ( profile == TP_LINEAR )
+    {
+        fdata = (float*)malloc( width*height*channels*sizeof(float) );
+
+        unsigned char * in = data;
+        float * out = fdata;
+        const unsigned char * end = in + channels*width*height;
+        while ( in != end )
+        {
+            *(out++) = (float)(*(in++) / 255.0);
+        }
+
+        glTexStorage2D( GL_TEXTURE_2D, levelCount, internalFormatFloat[ mask ], width, height );
+        glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, width, height, externalFormatFloat[ mask ], GL_FLOAT, fdata );
+    }
+    else if ( profile == TP_NORMAL )
+    {
+        fdata = (float*)malloc( width*height*2*sizeof(float) );
+
+        unsigned char * in = data;
+        float * out = fdata;
+        const unsigned char * end = in + channels*width*height;
+        while ( in != end )
+        {
+            // normalize
+            double x = double(in[0]) * 2.0 / 255.0 - 1.0;
+            double y = double(in[1]) * 2.0 / 255.0 - 1.0;
+            double z = double(in[2]) * 2.0 / 255.0 - 1.0;
+            in += channels;
+
+            double n = sqrt( x * x + y * y + z * z );
+
+            x /= n;
+            y /= n;
+
+            // get angle
+            *(out++) = float(asin(x));
+            *(out++) = float(asin(y));
+        }
+
+        glTexStorage2D( GL_TEXTURE_2D, levelCount, GL_RG32F, width, height );
+        glTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RG, GL_FLOAT, fdata );
+    }
+
+    if ( fdata == 0 )
+        return false;
 
     if ( mipmap )
     {
@@ -601,6 +621,162 @@ bool BuildTexture( const char * outFilename, TextureProfile profile, int options
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     }
+
+    GLint internal_format = internalFormatTable[ profile + (compress ? TP_COUNT : 0) ] [ mask ];
+    GLint external_format = externalFormatTable[ profile ] [ mask ];
+    GLint data_type = ( profile == TP_NORMAL ) ? GL_BYTE : GL_UNSIGNED_BYTE;
+
+    if ( internal_format == 0 )
+        return false;
+
+    GLuint map;
+    glGenTextures(1, &map);
+    glBindTexture(GL_TEXTURE_2D, map);
+
+    if ( compress )
+    {
+        glTexImage2D( GL_TEXTURE_2D, 0, internal_format, width, height, 0, external_format, data_type, 0 );
+        if ( mipmap )
+        {
+            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        }
+    }
+    else
+    {
+        glTexStorage2D( GL_TEXTURE_2D, levelCount, internal_format, width, height );
+    }
+
+    if ( profile == TP_COLOR )
+    {
+        for ( size_t i=0; i<levelCount; ++i )
+        {
+            glBindTexture(GL_TEXTURE_2D, fmap);
+            glGetTexImage(GL_TEXTURE_2D, i, externalFormatFloat[ mask ], GL_FLOAT, fdata );
+
+            GLint mipWidth, mipHeight;
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_WIDTH     , &mipWidth);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_HEIGHT    , &mipHeight);
+
+            float * in = fdata;
+            unsigned char * out = data;
+            const float * end = in + channels*mipWidth*mipHeight;
+            while ( in != end )
+            {
+                for ( int i=0; i<channels; ++i )
+                {
+                    double c = double(*(in++));
+
+                    if ( i<3 )
+                    {
+                        // linear to srgb
+
+                        if ( c <= 0.00313080495 )
+                        {
+                            c *= 12.92;
+                        }
+                        else
+                        {
+                            c = 1.055 * pow( c, 1.0/2.4 ) - 0.055;
+                        }
+                    }
+
+                    out[i] = unsigned char( c * 255.0 + 0.5 );
+                }
+
+                out += channels;
+            }
+
+            if ( channels != 1 )
+            {
+                // bgr format
+                unsigned char * pix = data;
+                unsigned char * pend = data + channels*mipWidth*mipHeight;
+                while ( pix != pend )
+                {
+                    pix[0] = pix[2] - pix[0];
+                    pix[2] = pix[2] - pix[0];
+                    pix[0] = pix[2] + pix[0];
+                    pix += channels;
+                }
+            }
+
+            glBindTexture( GL_TEXTURE_2D, map );
+            glTexSubImage2D( GL_TEXTURE_2D, i, 0, 0, mipWidth, mipHeight, external_format, data_type, data );
+        }
+    }
+    else if ( profile == TP_LINEAR )
+    {
+        for ( size_t i=0; i<levelCount; ++i )
+        {
+            glBindTexture(GL_TEXTURE_2D, fmap);
+            glGetTexImage(GL_TEXTURE_2D, i, externalFormatFloat[ mask ], GL_FLOAT, fdata );
+
+            GLint mipWidth, mipHeight;
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_WIDTH     , &mipWidth);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_HEIGHT    , &mipHeight);
+
+            float * in = fdata;
+            unsigned char * out = data;
+            const float * end = in + channels*mipWidth*mipHeight;
+            while ( in != end )
+            {
+                *(out++) = unsigned char( (*(in++)) * 255.0f + 0.5f );
+            }
+
+            if ( channels != 1 )
+            {
+                // bgr format
+                unsigned char * pix = data;
+                unsigned char * pend = data + channels*mipWidth*mipHeight;
+                while ( pix != pend )
+                {
+                    pix[0] = pix[2] - pix[0];
+                    pix[2] = pix[2] - pix[0];
+                    pix[0] = pix[2] + pix[0];
+                    pix += channels;
+                }
+            }
+
+            glBindTexture( GL_TEXTURE_2D, map );
+            glTexSubImage2D( GL_TEXTURE_2D, i, 0, 0, mipWidth, mipHeight, external_format, data_type, data );
+        }
+    }
+    else if ( profile == TP_NORMAL )
+    {
+        for ( size_t i=0; i<levelCount; ++i )
+        {
+            glBindTexture(GL_TEXTURE_2D, fmap);
+            glGetTexImage(GL_TEXTURE_2D, i, GL_RG, GL_FLOAT, fdata );
+
+            GLint mipWidth, mipHeight;
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_WIDTH     , &mipWidth);
+            glGetTexLevelParameteriv(GL_TEXTURE_2D, i, GL_TEXTURE_HEIGHT    , &mipHeight);
+
+            float * in = fdata;
+            char * out = (char*)data;
+            const float * end = in + 2*mipWidth*mipHeight;
+            while ( in != end )
+            {
+                double x = double( *(in++) );
+
+                x = max( x, -half_pi );
+                x = min( x, half_pi );
+                x = sin( x );
+
+                *(out++) = char( x * 127.5 );
+            }
+
+            glBindTexture( GL_TEXTURE_2D, map );
+            glTexSubImage2D( GL_TEXTURE_2D, i, 0, 0, mipWidth, mipHeight, external_format, data_type, data );
+        }
+    }
+
+    free(fdata);
+    glDeleteTextures( 1, &fmap );
 
     if ( ! BuildDirectory( outFilename ) )
     {
@@ -641,12 +817,12 @@ bool BuildTexture( const char * outFilename, TextureProfile profile, int options
     levelDesc.width     = img_width;
     levelDesc.height    = img_height;
 
-    unsigned char * img = (unsigned char *)malloc(img_size * sizeof(unsigned char));
+    void * img = malloc(img_size * sizeof(unsigned char));
 
     if ( compress )
         glGetCompressedTexImage(GL_TEXTURE_2D, 0, img );
     else
-        glGetTexImage(GL_TEXTURE_2D, 0, external_format, GL_UNSIGNED_BYTE, img );
+        glGetTexImage(GL_TEXTURE_2D, 0, external_format, data_type, img );
 
     fwrite(&levelDesc,1,sizeof(levelDesc),fp);
     fwrite(img,1,img_size,fp);
@@ -669,7 +845,7 @@ bool BuildTexture( const char * outFilename, TextureProfile profile, int options
         if ( compress )
             glGetCompressedTexImage(GL_TEXTURE_2D, i, img );
         else
-            glGetTexImage(GL_TEXTURE_2D, i, external_format, GL_UNSIGNED_BYTE, img );
+            glGetTexImage(GL_TEXTURE_2D, i, external_format, data_type, img );
 
         fwrite(&levelDesc,1,sizeof(levelDesc),fp);
         fwrite(img,1,img_size,fp);
@@ -724,6 +900,8 @@ bool CompileTexture( const char * filename, const char * dir, TextureProfile pro
     strcpy( outFilename + len - 3, "btx" );
 
     bool success = BuildTexture( outFilename, profile, options );
+
+    free( data );
 
     DestroyOpenGL();
 
