@@ -77,7 +77,9 @@ void main()
 
     vec3 ambient = LightAmbient( N, ViewMatrix[1], AmbientGroundLight, AmbientSkyLight ).rgb;
     vec3 diffuse = vec3(0.0);
-    vec3 specular = mix( texture( EnvMapSharp, R.xyz ), texture( EnvMapBlur, R.xyz ), Roughness ).rgb;
+    vec3 specular = vec3(0.0);
+
+    specular = mix( texture( EnvMapSharp, R.xyz ), texture( EnvMapBlur, R.xyz ), Roughness ).rgb;
 
     if ( gl_LocalInvocationIndex == 0 )
     {
@@ -293,7 +295,7 @@ void main()
         }
     }
 
-    vec3 light = gbuffer.albedo * ( ambient + diffuse ) + vec3(gbuffer.mask) * specular * fresnelTerm;
+    vec3 light = gbuffer.albedo * ( ambient + diffuse ) + gbuffer.mask * specular * fresnelTerm;
     //light = vec3(lightsZCount[2]) / 32.0;
 
     imageStore( lightImage, coord, vec4(light,1.0) );
