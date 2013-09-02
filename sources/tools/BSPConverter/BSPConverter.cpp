@@ -199,19 +199,19 @@ bool BuildCollada( const char * filename )
     const BSPHeader * header = reinterpret_cast< BSPHeader * >( data );
 
     const BSPTexture * textures = reinterpret_cast< BSPTexture * >( data + header->dirEntries[ LTextures ].offset );
-    unsigned int textureCount = header->dirEntries[ LTextures ].length / sizeof(BSPTexture);
+    size_t textureCount = header->dirEntries[ LTextures ].length / sizeof(BSPTexture);
 
     const BSPModel * models = reinterpret_cast< BSPModel * >( data + header->dirEntries[ LModels ].offset );
-    unsigned int modelCount = header->dirEntries[ LModels ].length / sizeof(BSPModel);
+    size_t modelCount = header->dirEntries[ LModels ].length / sizeof(BSPModel);
 
     const BSPVertex * vertices = reinterpret_cast< BSPVertex* >( data + header->dirEntries[ LVertices ].offset );
-    unsigned int vertexCount = header->dirEntries[ LVertices ].length / sizeof(BSPVertex);
+    size_t vertexCount = header->dirEntries[ LVertices ].length / sizeof(BSPVertex);
 
     const BSPMeshvert * meshverts = reinterpret_cast< BSPMeshvert * >( data + header->dirEntries[ LMeshverts ].offset );
-    unsigned int meshvertCount = header->dirEntries[ LMeshverts ].length / sizeof(BSPMeshvert);
+    size_t meshvertCount = header->dirEntries[ LMeshverts ].length / sizeof(BSPMeshvert);
 
     const BSPFace * faces = reinterpret_cast< BSPFace * >( data + header->dirEntries[ LFaces ].offset );
-    unsigned int faceCount = header->dirEntries[ LFaces ].length / sizeof(BSPFace);
+    size_t faceCount = header->dirEntries[ LFaces ].length / sizeof(BSPFace);
 
     xmlDocPtr doc;
 
@@ -227,17 +227,17 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_images = xmlNewChild( root, NULL, BAD_CAST "library_images", NULL );
 
-        const BSPTexture * it = textures;
-        const BSPTexture * end = textures + textureCount;
-        for ( ; it != end; ++it )
+        const BSPTexture * texture = textures;
+        const BSPTexture * texture_end = textures + textureCount;
+        for ( ; texture != texture_end; ++texture )
         {
             char strID[64];
-            MakeStringID( it->name, strID );
+            MakeStringID( texture->name, strID );
 
             xmlNodePtr image = xmlNewChild( lib_images, NULL, BAD_CAST "image", NULL );
             xmlNewProp( image, BAD_CAST "id", BAD_CAST strID );
             xmlNewProp( image, BAD_CAST "name", BAD_CAST strID );
-            xmlNewChild( image, NULL, BAD_CAST "init_from", BAD_CAST it->name );
+            xmlNewChild( image, NULL, BAD_CAST "init_from", BAD_CAST texture->name );
         }
     }
 
@@ -245,12 +245,12 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_effects = xmlNewChild( root, NULL, BAD_CAST "library_effects", NULL );
 
-        const BSPTexture * it = textures;
-        const BSPTexture * end = textures + textureCount;
-        for ( ; it != end; ++it )
+        const BSPTexture * texture = textures;
+        const BSPTexture * texture_end = textures + textureCount;
+        for ( ; texture != texture_end; ++texture )
         {
             char strID[64];
-            MakeStringID( it->name, strID );
+            MakeStringID( texture->name, strID );
 
             std::string effectID = strID;
             effectID += "-effect";
@@ -277,7 +277,7 @@ bool BuildCollada( const char * filename )
             xmlNodePtr param_sampler = xmlNewChild( profile_common, NULL, BAD_CAST "newparam", NULL );
             xmlNewProp( param_sampler, BAD_CAST "sid", BAD_CAST samplerID.c_str() );
             xmlNodePtr sampler = xmlNewChild( param_sampler, NULL, BAD_CAST "sampler2D", NULL );
-            xmlNewChild( sampler, NULL, BAD_CAST "init_from", BAD_CAST surfaceID.c_str() );
+            xmlNewChild( sampler, NULL, BAD_CAST "source", BAD_CAST surfaceID.c_str() );
 
             // technique
             xmlNodePtr technique = xmlNewChild( profile_common, NULL, BAD_CAST "technique", NULL );
@@ -290,6 +290,8 @@ bool BuildCollada( const char * filename )
             xmlNodePtr ambient_color = xmlNewChild( ambient, NULL, BAD_CAST "color", BAD_CAST "0 0 0 1" );
             xmlNewProp( ambient_color, BAD_CAST "sid", BAD_CAST "ambient" );
             xmlNodePtr diffuse = xmlNewChild( phong, NULL, BAD_CAST "diffuse", NULL );
+            xmlNodePtr diffuse_color = xmlNewChild( diffuse, NULL, BAD_CAST "color", BAD_CAST "0.5 0.5 0.5 1" );
+            xmlNewProp( diffuse_color, BAD_CAST "sid", BAD_CAST "diffuse" );
             xmlNodePtr diffuse_texture = xmlNewChild( diffuse, NULL, BAD_CAST "texture", NULL );
             xmlNewProp( diffuse_texture, BAD_CAST "texture", BAD_CAST samplerID.c_str() );
             xmlNewProp( diffuse_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
@@ -309,12 +311,12 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_materials = xmlNewChild( root, NULL, BAD_CAST "library_materials", NULL );
 
-        const BSPTexture * it = textures;
-        const BSPTexture * end = textures + textureCount;
-        for ( ; it != end; ++it )
+        const BSPTexture * texture = textures;
+        const BSPTexture * texture_end = textures + textureCount;
+        for ( ; texture != texture_end; ++texture )
         {
             char strID[64];
-            MakeStringID( it->name, strID );
+            MakeStringID( texture->name, strID );
 
             std::string materialID = strID;
             materialID += "-material";
@@ -335,13 +337,13 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_geometries = xmlNewChild( root, NULL, BAD_CAST "library_geometries", NULL );
 
-        int model_counter = 0;
+        size_t model_counter = 0;
 
-        const BSPModel * it = models;
-        const BSPModel * end = models + modelCount;
-        for ( ; it != end; ++it, ++model_counter )
+        const BSPModel * model = models;
+        const BSPModel * model_end = models + modelCount;
+        for ( ; model != model_end; ++model, ++model_counter )
         {
-            if ( it->n_faces == 0 )
+            if ( model->n_faces == 0 )
                 continue;
 
             char strID[64];
@@ -367,30 +369,363 @@ bool BuildCollada( const char * filename )
                 for ( size_t i=0; i<vertexCount; ++i )
                 {
                     char pos[64];
-                    sprintf( pos, "%f %f %f", vertices[i].position[0], vertices[i].position[1], vertices[i].position[2] );
-
-                    if ( i > 0 )
-                    {
-                        positions_array += " ";
-                    }
+                    sprintf( pos, "%f %f %f ", vertices[i].position[0], vertices[i].position[1], vertices[i].position[2] );
 
                     positions_array += pos;
                 }
 
+                std::string arrayID = positionsID;
+                arrayID += "-array";
+
+                size_t pos_count = vertexCount * 3;
+                char ver_count_str[16];
+                char pos_count_str[16];
+                sprintf( ver_count_str, "%i", vertexCount );
+                sprintf( pos_count_str, "%i", pos_count );
+
+                xmlNodePtr float_array = xmlNewChild( source, NULL, BAD_CAST "float_array", BAD_CAST positions_array.c_str() );
+                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST arrayID.c_str() );
+                xmlNewProp( float_array, BAD_CAST "count", BAD_CAST pos_count_str );
+
+                std::string arrayIDRef = "#";
+                arrayIDRef += arrayID;
+
+                xmlNodePtr technique_common = xmlNewChild( source, NULL, BAD_CAST "technique_common", NULL );
+                xmlNodePtr accessor = xmlNewChild( technique_common, NULL, BAD_CAST "accessor", NULL );
+                xmlNewProp( accessor, BAD_CAST "source", BAD_CAST arrayIDRef.c_str() );
+                xmlNewProp( accessor, BAD_CAST "count", BAD_CAST ver_count_str );
+                xmlNewProp( accessor, BAD_CAST "stride", BAD_CAST "3" );
+
+                xmlNodePtr paramX = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramX, BAD_CAST "name", BAD_CAST "X" );
+                xmlNewProp( paramX, BAD_CAST "type", BAD_CAST "float" );
+
+                xmlNodePtr paramY = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramY, BAD_CAST "name", BAD_CAST "Y" );
+                xmlNewProp( paramY, BAD_CAST "type", BAD_CAST "float" );
+
+                xmlNodePtr paramZ = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramZ, BAD_CAST "name", BAD_CAST "Z" );
+                xmlNewProp( paramZ, BAD_CAST "type", BAD_CAST "float" );
+            }
+
+            // normals
+            {
+                std::string normalsID = geometryID;
+                normalsID += "-normals";
+                
+                xmlNodePtr source = xmlNewChild( mesh, NULL, BAD_CAST "source", NULL );
+                xmlNewProp( source, BAD_CAST "id", BAD_CAST normalsID.c_str() );
+
+                std::string normals_array;
+                for ( size_t i=0; i<vertexCount; ++i )
+                {
+                    char pos[64];
+                    sprintf( pos, "%f %f %f ", vertices[i].normal[0], vertices[i].normal[1], vertices[i].normal[2] );
+
+                    normals_array += pos;
+                }
+
+                std::string arrayID = normalsID;
+                arrayID += "-array";
+
+                size_t nor_count = vertexCount * 3;
+                char ver_count_str[16];
+                char nor_count_str[16];
+                sprintf( ver_count_str, "%i", vertexCount );
+                sprintf( nor_count_str, "%i", nor_count );
+
+                xmlNodePtr float_array = xmlNewChild( source, NULL, BAD_CAST "float_array", BAD_CAST normals_array.c_str() );
+                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST arrayID.c_str() );
+                xmlNewProp( float_array, BAD_CAST "count", BAD_CAST nor_count_str );
+
+                std::string arrayIDRef = "#";
+                arrayIDRef += arrayID;
+
+                xmlNodePtr technique_common = xmlNewChild( source, NULL, BAD_CAST "technique_common", NULL );
+                xmlNodePtr accessor = xmlNewChild( technique_common, NULL, BAD_CAST "accessor", NULL );
+                xmlNewProp( accessor, BAD_CAST "source", BAD_CAST arrayIDRef.c_str() );
+                xmlNewProp( accessor, BAD_CAST "count", BAD_CAST ver_count_str );
+                xmlNewProp( accessor, BAD_CAST "stride", BAD_CAST "3" );
+
+                xmlNodePtr paramX = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramX, BAD_CAST "name", BAD_CAST "X" );
+                xmlNewProp( paramX, BAD_CAST "type", BAD_CAST "float" );
+
+                xmlNodePtr paramY = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramY, BAD_CAST "name", BAD_CAST "Y" );
+                xmlNewProp( paramY, BAD_CAST "type", BAD_CAST "float" );
+
+                xmlNodePtr paramZ = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramZ, BAD_CAST "name", BAD_CAST "Z" );
+                xmlNewProp( paramZ, BAD_CAST "type", BAD_CAST "float" );
+            }
+
+            // texcoords
+            {
+                std::string texcoordsID = geometryID;
+                texcoordsID += "-map-0";
+                
+                xmlNodePtr source = xmlNewChild( mesh, NULL, BAD_CAST "source", NULL );
+                xmlNewProp( source, BAD_CAST "id", BAD_CAST texcoordsID.c_str() );
+
+                std::string texcoords_array;
+                for ( size_t i=0; i<vertexCount; ++i )
+                {
+                    char pos[64];
+                    sprintf( pos, "%f %f ", vertices[i].texcoord[0][0], vertices[i].texcoord[0][1] );
+
+                    texcoords_array += pos;
+                }
+
+                std::string arrayID = texcoordsID;
+                arrayID += "-array";
+
+                size_t uvs_count = vertexCount * 2;
+                char ver_count_str[16];
+                char uvs_count_str[16];
+                sprintf( ver_count_str, "%i", vertexCount );
+                sprintf( uvs_count_str, "%i", uvs_count );
+
+                xmlNodePtr float_array = xmlNewChild( source, NULL, BAD_CAST "float_array", BAD_CAST texcoords_array.c_str() );
+                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST arrayID.c_str() );
+                xmlNewProp( float_array, BAD_CAST "count", BAD_CAST uvs_count_str );
+
+                std::string arrayIDRef = "#";
+                arrayIDRef += arrayID;
+
+                xmlNodePtr technique_common = xmlNewChild( source, NULL, BAD_CAST "technique_common", NULL );
+                xmlNodePtr accessor = xmlNewChild( technique_common, NULL, BAD_CAST "accessor", NULL );
+                xmlNewProp( accessor, BAD_CAST "source", BAD_CAST arrayIDRef.c_str() );
+                xmlNewProp( accessor, BAD_CAST "count", BAD_CAST ver_count_str );
+                xmlNewProp( accessor, BAD_CAST "stride", BAD_CAST "2" );
+
+                xmlNodePtr paramS = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramS, BAD_CAST "name", BAD_CAST "S" );
+                xmlNewProp( paramS, BAD_CAST "type", BAD_CAST "float" );
+
+                xmlNodePtr paramT = xmlNewChild( accessor, NULL, BAD_CAST "param", NULL );
+                xmlNewProp( paramT, BAD_CAST "name", BAD_CAST "T" );
+                xmlNewProp( paramT, BAD_CAST "type", BAD_CAST "float" );
+            }
+
+            std::string verticesID = geometryID;
+            verticesID += "-vertices";
+                
+            xmlNodePtr vertices_node = xmlNewChild( mesh, NULL, BAD_CAST "vertices", NULL );
+            xmlNewProp( vertices_node, BAD_CAST "id", BAD_CAST verticesID.c_str() );
+
+            std::string positionsIDRef = "#";
+            positionsIDRef += geometryID;
+            positionsIDRef += "-positions";
+
+            xmlNodePtr input_node = xmlNewChild( vertices_node, NULL, BAD_CAST "input", NULL );
+            xmlNewProp( input_node, BAD_CAST "semantic", BAD_CAST "POSITION" );
+            xmlNewProp( input_node, BAD_CAST "source", BAD_CAST positionsIDRef.c_str() );
+
+            // polylists
+            {
+                std::vector< int > index_buffer;
+
+                const BSPFace * face = faces + model->face;
+                const BSPFace * face_end = faces + model->face + model->n_faces;
+                for ( ; face != face_end; ++face )
+                {
+                    if ( face->type == 1 || face->type == 3 )
+                    {
+                        const BSPMeshvert * meshvert = meshverts + face->meshvert;
+                        const BSPMeshvert * meshvert_end = meshverts + face->meshvert + face->n_meshverts;
+                        for ( ; meshvert != meshvert_end; ++meshvert )
+                        {
+                            index_buffer.push_back( face->vertex + meshvert->offset );
+                        }
+                    }
+
+                    if (    face->type == 2
+                        ||  face->type == 4
+                        ||  ( face + 1 == face_end )
+                        ||  face->type != (face+1)->type
+                        ||  face->texture != (face+1)->texture )
+                    {
+                        if ( ! index_buffer.empty() )
+                        {
+                            const BSPTexture * texture = textures + face->texture;
+
+                            char strID[64];
+                            MakeStringID( texture->name, strID );
+
+                            std::string materialIDRef = "#";
+                            materialIDRef += strID;
+                            materialIDRef += "-material";
+
+                            size_t poly_count = index_buffer.size() / 3;
+                            char poly_count_str[16];
+                            sprintf( poly_count_str, "%i", poly_count );
+
+                            xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
+                            xmlNewProp( polylist, BAD_CAST "material", BAD_CAST materialIDRef.c_str() );
+                            xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
+
+                            std::string verticesIDRef = "#";
+                            verticesIDRef += geometryID;
+                            verticesIDRef += "-vertices";
+
+                            xmlNodePtr input_vertices = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
+                            xmlNewProp( input_vertices, BAD_CAST "semantic", BAD_CAST "VERTEX" );
+                            xmlNewProp( input_vertices, BAD_CAST "source", BAD_CAST verticesIDRef.c_str() );
+                            xmlNewProp( input_vertices, BAD_CAST "offset", BAD_CAST "0" );
+
+                            std::string normalsIDRef = "#";
+                            normalsIDRef += geometryID;
+                            normalsIDRef += "-normals";
+
+                            xmlNodePtr input_normals = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
+                            xmlNewProp( input_normals, BAD_CAST "semantic", BAD_CAST "NORMAL" );
+                            xmlNewProp( input_normals, BAD_CAST "source", BAD_CAST normalsIDRef.c_str() );
+                            xmlNewProp( input_normals, BAD_CAST "offset", BAD_CAST "1" );
+
+                            std::string texcoordsIDRef = "#";
+                            texcoordsIDRef += geometryID;
+                            texcoordsIDRef += "-map-0";
+
+                            xmlNodePtr input_texcoords = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
+                            xmlNewProp( input_texcoords, BAD_CAST "semantic", BAD_CAST "TEXCOORD" );
+                            xmlNewProp( input_texcoords, BAD_CAST "source", BAD_CAST texcoordsIDRef.c_str() );
+                            xmlNewProp( input_texcoords, BAD_CAST "offset", BAD_CAST "2" );
+                            xmlNewProp( input_texcoords, BAD_CAST "set", BAD_CAST "0" );
+
+                            std::string vcount;
+                            std::string p;
+
+                            for ( size_t i=0; i<poly_count; ++i )
+                            {
+                                vcount += "3 ";
+                                
+                                size_t offset = 3 * i;
+                                char triangle_str[128];
+                                sprintf( triangle_str, "%i %i %i %i %i %i %i %i %i ", index_buffer[offset+0], index_buffer[offset+0], index_buffer[offset+0]
+                                                                                    , index_buffer[offset+1], index_buffer[offset+1], index_buffer[offset+1]
+                                                                                    , index_buffer[offset+2], index_buffer[offset+2], index_buffer[offset+2] );
+
+                                p += triangle_str;
+                            }
+
+                            xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
+                            xmlNewChild( polylist, NULL, BAD_CAST "p", BAD_CAST p.c_str() );
+
+                            index_buffer.clear();
+                        }
+                    }
+                }
             }
         }
     }
 
+    // library_visual_scenes
+    {
+        xmlNodePtr lib_visual_scenes = xmlNewChild( root, NULL, BAD_CAST "library_visual_scenes", NULL );
+        xmlNodePtr visual_scene = xmlNewChild( lib_visual_scenes, NULL, BAD_CAST "visual_scene", NULL );
+        xmlNewProp( visual_scene, BAD_CAST "id", BAD_CAST "Scene" );
+        xmlNewProp( visual_scene, BAD_CAST "name", BAD_CAST "Scene" );
+
+        size_t model_counter = 0;
+
+        const BSPModel * model = models;
+        const BSPModel * model_end = models + modelCount;
+        for ( ; model != model_end; ++model, ++model_counter )
+        {
+            if ( model->n_faces == 0 )
+                continue;
+
+            char strID[64];
+            sprintf( strID, "model_%i", model_counter );
+
+            xmlNodePtr node = xmlNewChild( visual_scene, NULL, BAD_CAST "node", NULL );
+            xmlNewProp( node, BAD_CAST "id", BAD_CAST strID );
+            xmlNewProp( node, BAD_CAST "name", BAD_CAST strID );
+            xmlNewProp( node, BAD_CAST "type", BAD_CAST "NODE" );
+
+            xmlNodePtr translate = xmlNewChild( node, NULL, BAD_CAST "translate", BAD_CAST "0 0 0" );
+            xmlNewProp( translate, BAD_CAST "sid", BAD_CAST "location" );
+
+            xmlNodePtr rotateZ = xmlNewChild( node, NULL, BAD_CAST "rotate", BAD_CAST "0 0 1 0" );
+            xmlNewProp( rotateZ, BAD_CAST "sid", BAD_CAST "rotationZ" );
+
+            xmlNodePtr rotateY = xmlNewChild( node, NULL, BAD_CAST "rotate", BAD_CAST "0 1 0 0" );
+            xmlNewProp( rotateY, BAD_CAST "sid", BAD_CAST "rotationY" );
+
+            xmlNodePtr rotateX = xmlNewChild( node, NULL, BAD_CAST "rotate", BAD_CAST "1 0 0 0" );
+            xmlNewProp( rotateX, BAD_CAST "sid", BAD_CAST "rotationX" );
+
+            xmlNodePtr scale = xmlNewChild( node, NULL, BAD_CAST "scale", BAD_CAST "1 1 1" );
+            xmlNewProp( scale, BAD_CAST "sid", BAD_CAST "scale" );
+
+            std::string geometryIDRef = "#";
+            geometryIDRef += strID;
+            geometryIDRef += "-mesh";
+
+            xmlNodePtr instance_geometry = xmlNewChild( node, NULL, BAD_CAST "instance_geometry", NULL );
+            xmlNewProp( instance_geometry, BAD_CAST "url", BAD_CAST geometryIDRef.c_str() );
+
+            xmlNodePtr bind_material = xmlNewChild( instance_geometry, NULL, BAD_CAST "bind_material", NULL );
+            xmlNodePtr technique_common = xmlNewChild( bind_material, NULL, BAD_CAST "technique_common", NULL );
+
+            const BSPTexture * texture = textures;
+            const BSPTexture * texture_end = textures + textureCount;
+            for ( ; texture != texture_end; ++texture )
+            {
+                char strID[64];
+                MakeStringID( texture->name, strID );
+
+                std::string materialID = strID;
+                materialID += "-material";
+
+                std::string materialIDRef = "#";
+                materialIDRef += materialID;
+
+                xmlNodePtr instance_material = xmlNewChild( technique_common, NULL, BAD_CAST "instance_material", NULL );
+                xmlNewProp( instance_material, BAD_CAST "symbol", BAD_CAST materialID.c_str() );
+                xmlNewProp( instance_material, BAD_CAST "target", BAD_CAST materialIDRef.c_str() );
+
+                xmlNodePtr bind_vertex_input = xmlNewChild( instance_material, NULL, BAD_CAST "bind_vertex_input", NULL );
+                xmlNewProp( bind_vertex_input, BAD_CAST "semantic", BAD_CAST "UVMap" );
+                xmlNewProp( bind_vertex_input, BAD_CAST "input_semantic", BAD_CAST "TEXCOORD" );
+                xmlNewProp( bind_vertex_input, BAD_CAST "input_set", BAD_CAST "0" );
+            }
+        }
+    }
+
+    // scene
+    {
+        xmlNodePtr scene = xmlNewChild( root, NULL, BAD_CAST "scene", NULL );
+        xmlNodePtr instance_visual_scene = xmlNewChild( scene, NULL, BAD_CAST "instance_visual_scene", NULL );
+        xmlNewProp( instance_visual_scene, BAD_CAST "url", BAD_CAST "#Scene" );
+    }
 
     xmlChar *xmlbuff;
     int buffersize;
 
     xmlDocDumpFormatMemory(doc, &xmlbuff, &buffersize, 1);
-    printf("%s", (char *) xmlbuff);
 
-    /*
-     * Free associated memory.
-     */
+    FILE *fp;
+
+    if (fopen_s(&fp,filename, "wb"))
+    {
+        xmlFree(xmlbuff);
+        xmlFreeDoc(doc);
+        return false;
+    }
+
+    if (fwrite(xmlbuff,1,buffersize,fp) != buffersize)
+    {
+        fclose(fp);
+        xmlFree(xmlbuff);
+        xmlFreeDoc(doc);
+        return false;
+    }
+
+    fclose(fp);
+
     xmlFree(xmlbuff);
     xmlFreeDoc(doc);
 
