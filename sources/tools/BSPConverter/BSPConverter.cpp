@@ -287,11 +287,10 @@ bool BuildCollada( const char * filename )
             xmlNodePtr emission_color = xmlNewChild( emission, NULL, BAD_CAST "color", BAD_CAST "0 0 0 1" );
             xmlNewProp( emission_color, BAD_CAST "sid", BAD_CAST "emission" );
             xmlNodePtr ambient = xmlNewChild( phong, NULL, BAD_CAST "ambient", NULL );
-            xmlNodePtr ambient_color = xmlNewChild( ambient, NULL, BAD_CAST "color", BAD_CAST "0 0 0 1" );
-            xmlNewProp( ambient_color, BAD_CAST "sid", BAD_CAST "ambient" );
+            xmlNodePtr ambient_texture = xmlNewChild( ambient, NULL, BAD_CAST "texture", NULL );
+            xmlNewProp( ambient_texture, BAD_CAST "texture", BAD_CAST samplerID.c_str() );
+            xmlNewProp( ambient_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
             xmlNodePtr diffuse = xmlNewChild( phong, NULL, BAD_CAST "diffuse", NULL );
-            xmlNodePtr diffuse_color = xmlNewChild( diffuse, NULL, BAD_CAST "color", BAD_CAST "0.5 0.5 0.5 1" );
-            xmlNewProp( diffuse_color, BAD_CAST "sid", BAD_CAST "diffuse" );
             xmlNodePtr diffuse_texture = xmlNewChild( diffuse, NULL, BAD_CAST "texture", NULL );
             xmlNewProp( diffuse_texture, BAD_CAST "texture", BAD_CAST samplerID.c_str() );
             xmlNewProp( diffuse_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
@@ -525,28 +524,21 @@ bool BuildCollada( const char * filename )
 
             // polylists
             {
-                std::vector< int > index_buffer;
-
                 const BSPFace * face = faces + model->face;
                 const BSPFace * face_end = faces + model->face + model->n_faces;
                 for ( ; face != face_end; ++face )
                 {
                     if ( face->type == 1 || face->type == 3 )
                     {
+                        std::vector< int > index_buffer;
+
                         const BSPMeshvert * meshvert = meshverts + face->meshvert;
                         const BSPMeshvert * meshvert_end = meshverts + face->meshvert + face->n_meshverts;
                         for ( ; meshvert != meshvert_end; ++meshvert )
                         {
                             index_buffer.push_back( face->vertex + meshvert->offset );
                         }
-                    }
 
-                    if (    face->type == 2
-                        ||  face->type == 4
-                        ||  ( face + 1 == face_end )
-                        ||  face->type != (face+1)->type
-                        ||  face->texture != (face+1)->texture )
-                    {
                         if ( ! index_buffer.empty() )
                         {
                             const BSPTexture * texture = textures + face->texture;
@@ -554,16 +546,15 @@ bool BuildCollada( const char * filename )
                             char strID[64];
                             MakeStringID( texture->name, strID );
 
-                            std::string materialIDRef = "#";
-                            materialIDRef += strID;
-                            materialIDRef += "-material";
+                            std::string materialID = strID;
+                            materialID += "-material";
 
                             size_t poly_count = index_buffer.size() / 3;
                             char poly_count_str[16];
                             sprintf( poly_count_str, "%i", poly_count );
 
                             xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
-                            xmlNewProp( polylist, BAD_CAST "material", BAD_CAST materialIDRef.c_str() );
+                            xmlNewProp( polylist, BAD_CAST "material", BAD_CAST materialID.c_str() );
                             xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
 
                             std::string verticesIDRef = "#";
@@ -612,8 +603,6 @@ bool BuildCollada( const char * filename )
 
                             xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
                             xmlNewChild( polylist, NULL, BAD_CAST "p", BAD_CAST p.c_str() );
-
-                            index_buffer.clear();
                         }
                     }
                 }
