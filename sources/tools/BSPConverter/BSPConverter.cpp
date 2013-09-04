@@ -65,6 +65,60 @@ bool BuildDirectory( const char * path )
     return true;
 }
 
+bool RootPath( const char * ifilename, char * path )
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    char dir[ 256 ];
+    char * fileStart;
+    if ( GetFullPathName( ifilename, 256, dir, &fileStart ) == 0 )
+    {
+        return false;
+    }
+
+    strcpy( fileStart, ".." );
+
+    if ( GetFullPathName( dir, 256, path, &fileStart ) == 0 )
+    {
+        return false;
+    }
+
+#endif
+}
+
+bool FindFileExtension( const char * ifilename, char * extension )
+{
+#if defined( CARBON_PLATFORM_WIN32 )
+    WIN32_FIND_DATA find_data;
+    HANDLE handle;
+    handle = FindFirstFile( ifilename, &find_data );
+    if ( handle == INVALID_HANDLE_VALUE )
+    {
+        return false;
+    }
+
+    bool fmt = false;
+    char * ptr = find_data.cFileName;
+    while ( *ptr != 0 )
+    {
+        if ( fmt )
+        {
+            *(extension++) = *ptr;
+        }
+        else if ( *ptr == '.' )
+        {
+            fmt = true;
+        }
+
+        ++ptr;
+    }
+
+    *extension = 0;
+
+    FindClose(handle);
+#endif
+    return true;
+}
+
 void MakeStringID( const char * istr, char * ostr )
 {
     for ( ; *istr != 0; ++istr, ++ostr )
@@ -84,6 +138,28 @@ void MakeStringID( const char * istr, char * ostr )
 
     *ostr = 0;
 }
+
+float QuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
+{
+    float invi = 1.0f - i;
+    return c0 * invi * invi  +  c1 * 2.0f * i * invi  +  c2 * i * i;
+}
+
+float QuadraticBezierSurface( float u, float v, const float * ctrl )
+{
+    float a = QuadraticBezierInterpolation( u, ctrl[0], ctrl[1], ctrl[2] );
+    float b = QuadraticBezierInterpolation( u, ctrl[3], ctrl[4], ctrl[5] );
+    float c = QuadraticBezierInterpolation( u, ctrl[6], ctrl[7], ctrl[8] );
+
+    return QuadraticBezierInterpolation( v, a, b, c );
+}
+
+float DerivateQuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
+{
+    return 2.0f * ( c0 * ( i - 1.0f )  +  c1 * ( 1.0f - 2.0f * i )  +  c2 * i );
+}
+
+
 
 // BSP format found on :
 // http://www.mralligator.com/q3/
@@ -171,7 +247,62 @@ struct BSPFace
     int     size[2];
 };
 
+struct COLLADAImage
+{
+    std::string id;
+    std::string name;
+    std::string init_from;
+};
+
+struct COLLADAEffect
+{
+    std::string id;
+    std::string surface_id;
+    std::string surface_init_from;
+    std::string sampler_id;
+};
+
+struct COLLADAMaterial
+{
+    std::string id;
+    std::string name;
+    std::string instance_effect;
+};
+
+struct COLLADAGeometrySource
+{
+    std::string             id;
+    std::string             float_array_id;
+    std::vector< float >    float_array;
+};
+
+struct COLLADAGeometryPolylist
+{
+    std::string         material;
+    std::vector< int >  p;
+};
+
+struct COLLADAGeometry
+{
+    std::string                             id;
+    std::string                             name;
+    COLLADAGeometrySource                   positions;
+    COLLADAGeometrySource                   normals;
+    COLLADAGeometrySource                   texcoords;
+    std::string                             vertices_id;
+    std::vector< COLLADAGeometryPolylist >  polylists;
+};
+
+char root_path[128];
+
+size_t tesselation_steps = 1;
+
 char * data;
+
+std::vector< COLLADAImage >     library_images;
+std::vector< COLLADAEffect >    library_effects;
+std::vector< COLLADAMaterial >  library_materials;
+std::vector< COLLADAGeometry >  library_geometries;
 
 bool LoadBSP( const char * filename )
 {
@@ -213,6 +344,340 @@ bool BuildCollada( const char * filename )
     const BSPFace * faces = reinterpret_cast< BSPFace * >( data + header->dirEntries[ LFaces ].offset );
     size_t faceCount = header->dirEntries[ LFaces ].length / sizeof(BSPFace);
 
+    // library_images
+    {
+        const BSPTexture * texture = textures;
+        const BSPTexture * texture_end = textures + textureCount;
+        for ( ; texture != texture_end; ++texture )
+        {
+            COLLADAImage image;
+
+            char strID[64];
+            MakeStringID( texture->name, strID );
+
+            image.id        = strID;
+            image.name      = strID;
+            image.init_from = texture->name;
+
+            char texture_name[128];
+            sprintf( texture_name, "%s/%s.*", root_path, texture->name );
+
+            char file_extension[8];
+
+            if ( FindFileExtension( texture_name, file_extension ) )
+            {
+                image.init_from += ".";
+                image.init_from += file_extension;
+            }
+
+            library_images.push_back( image );
+        }
+    }
+
+    // library_effects
+    {
+        const BSPTexture * texture = textures;
+        const BSPTexture * texture_end = textures + textureCount;
+        for ( ; texture != texture_end; ++texture )
+        {
+            COLLADAEffect effect;
+
+            char strID[64];
+            MakeStringID( texture->name, strID );
+
+            effect.id                   = strID;
+            effect.id                   += "-effect";
+            effect.surface_id           = strID;
+            effect.surface_id           += "-surface";
+            effect.surface_init_from    = strID;
+            effect.sampler_id           = strID;
+            effect.sampler_id           += "-sampler";
+
+            library_effects.push_back( effect );
+        }
+    }
+
+    // library_materials
+    {
+        const BSPTexture * texture = textures;
+        const BSPTexture * texture_end = textures + textureCount;
+        for ( ; texture != texture_end; ++texture )
+        {
+            COLLADAMaterial material;
+
+            char strID[64];
+            MakeStringID( texture->name, strID );
+
+            material.id                 = strID;
+            material.id                 += "-material";
+            material.name               = strID;
+            material.instance_effect    = "#";
+            material.instance_effect    += strID;
+            material.instance_effect    += "-effect";
+
+            library_materials.push_back( material );
+        }
+    }
+
+    // library_geometries
+    {
+        size_t model_counter = 0;
+
+        const BSPModel * model = models;
+        const BSPModel * model_end = models + modelCount;
+        for ( ; model != model_end; ++model, ++model_counter )
+        {
+            if ( model->n_faces == 0 )
+                continue;
+
+            COLLADAGeometry geometry;
+
+            char strID[64];
+            sprintf( strID, "model_%i", model_counter );
+
+            geometry.id = strID;
+            geometry.id += "-mesh";
+            geometry.name   = strID;
+
+            // positions
+            {
+                COLLADAGeometrySource& positions = geometry.positions;
+
+                positions.id = geometry.id;
+                positions.id += "-positions";
+
+                positions.float_array_id = positions.id;
+                positions.float_array_id += "-array";
+
+                for ( size_t i=0; i<vertexCount; ++i )
+                {
+                    positions.float_array.push_back( vertices[i].position[0] );
+                    positions.float_array.push_back( vertices[i].position[1] );
+                    positions.float_array.push_back( vertices[i].position[2] );
+                }
+            }
+
+            // normals
+            {
+                COLLADAGeometrySource& normals = geometry.normals;
+
+                normals.id = geometry.id;
+                normals.id += "-normals";
+
+                normals.float_array_id = normals.id;
+                normals.float_array_id += "-array";
+
+                for ( size_t i=0; i<vertexCount; ++i )
+                {
+                    normals.float_array.push_back( vertices[i].normal[0] );
+                    normals.float_array.push_back( vertices[i].normal[1] );
+                    normals.float_array.push_back( vertices[i].normal[2] );
+                }
+            }
+
+            // texcoords
+            {
+                COLLADAGeometrySource& texcoords = geometry.texcoords;
+
+                texcoords.id = geometry.id;
+                texcoords.id += "-map-0";
+
+                texcoords.float_array_id = texcoords.id;
+                texcoords.float_array_id += "-array";
+
+                for ( size_t i=0; i<vertexCount; ++i )
+                {
+                    texcoords.float_array.push_back( vertices[i].texcoord[0][0] );
+                    texcoords.float_array.push_back( 1.0f - vertices[i].texcoord[0][1] );
+                }
+            }
+
+            geometry.vertices_id = geometry.id;
+            geometry.vertices_id += "-vertices";
+
+            // polylists
+            {
+                std::vector< int > index_buffer;
+
+                const BSPFace * face = faces + model->face;
+                const BSPFace * face_end = faces + model->face + model->n_faces;
+                for ( ; face != face_end; ++face )
+                {
+                    if ( face->type == 1 || face->type == 2 || face->type == 3 )
+                    {
+                        // Bezier patches
+                        if ( face->type == 2 )
+                        {
+                            for ( size_t i=0; i<(face->size[0]-1)/2; ++i )
+                            {
+                                for ( size_t j=0; j<(face->size[1]-1)/2; ++j )
+                                {
+                                    int ctrl_points[9];
+                                    for ( size_t u=0; u<3; ++u )
+                                    {
+                                        for ( size_t v=0; v<3; ++v )
+                                        {
+                                            ctrl_points[ u + 3 * v ] = face->vertex + 2 * i + u + ( 2 * j + v ) * face->size[0];
+                                        }
+                                    }
+
+                                    size_t x_tesselation_steps = 1;
+                                    for ( size_t k=0; k<3; ++k )
+                                    {
+                                        float v0[3];
+                                        float v1[3];
+
+                                        v0[0] = vertices[ ctrl_points[0+3*k] ].position[0] - vertices[ ctrl_points[1+3*k] ].position[0];
+                                        v0[1] = vertices[ ctrl_points[0+3*k] ].position[1] - vertices[ ctrl_points[1+3*k] ].position[1];
+                                        v0[2] = vertices[ ctrl_points[0+3*k] ].position[2] - vertices[ ctrl_points[1+3*k] ].position[2];
+                                        float v0_len = sqrt( v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2] );
+                                        v0[0] /= v0_len;
+                                        v0[1] /= v0_len;
+                                        v0[2] /= v0_len;
+
+                                        v1[0] = vertices[ ctrl_points[2+3*k] ].position[0] - vertices[ ctrl_points[1+3*k] ].position[0];
+                                        v1[1] = vertices[ ctrl_points[2+3*k] ].position[1] - vertices[ ctrl_points[1+3*k] ].position[1];
+                                        v1[2] = vertices[ ctrl_points[2+3*k] ].position[2] - vertices[ ctrl_points[1+3*k] ].position[2];
+                                        float v1_len = sqrt( v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2] );
+                                        v1[0] /= v1_len;
+                                        v1[1] /= v1_len;
+                                        v1[2] /= v1_len;
+
+                                        if ( ( v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2] ) > -0.9f )
+                                        {
+                                            x_tesselation_steps = tesselation_steps;
+                                            break;
+                                        }
+                                    }
+
+                                    size_t y_tesselation_steps = 1;
+                                    for ( size_t k=0; k<3; ++k )
+                                    {
+                                        float v0[3];
+                                        float v1[3];
+
+                                        v0[0] = vertices[ ctrl_points[0+k] ].position[0] - vertices[ ctrl_points[3+k] ].position[0];
+                                        v0[1] = vertices[ ctrl_points[0+k] ].position[1] - vertices[ ctrl_points[3+k] ].position[1];
+                                        v0[2] = vertices[ ctrl_points[0+k] ].position[2] - vertices[ ctrl_points[3+k] ].position[2];
+                                        float v0_len = sqrt( v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2] );
+                                        v0[0] /= v0_len;
+                                        v0[1] /= v0_len;
+                                        v0[2] /= v0_len;
+
+                                        v1[0] = vertices[ ctrl_points[6+k] ].position[0] - vertices[ ctrl_points[3+k] ].position[0];
+                                        v1[1] = vertices[ ctrl_points[6+k] ].position[1] - vertices[ ctrl_points[3+k] ].position[1];
+                                        v1[2] = vertices[ ctrl_points[6+k] ].position[2] - vertices[ ctrl_points[3+k] ].position[2];
+                                        float v1_len = sqrt( v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2] );
+                                        v1[0] /= v1_len;
+                                        v1[1] /= v1_len;
+                                        v1[2] /= v1_len;
+
+                                        if ( ( v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2] ) > -0.9f )
+                                        {
+                                            y_tesselation_steps = tesselation_steps;
+                                            break;
+                                        }
+                                    }
+
+                                    const size_t x_bsize = x_tesselation_steps + 1;
+                                    const size_t y_bsize = y_tesselation_steps + 1;
+
+                                    size_t offset = geometry.positions.float_array.size() / 3;
+
+                                    for ( size_t v=0; v<y_bsize; ++v )
+                                    {
+                                        const float v_ratio = static_cast<float>(v) / static_cast<float>(y_tesselation_steps);
+
+                                        for ( size_t u=0; u<x_bsize; ++u )
+                                        {
+                                            const float u_ratio = static_cast<float>(u) / static_cast<float>(x_tesselation_steps);
+
+                                            float du[3];
+                                            float dv[3];
+
+                                            float p[9];
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].position[0];    }
+                                                geometry.positions.float_array.push_back( QuadraticBezierSurface( u_ratio, v_ratio, p ) );
+                                            }
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].position[1];    }
+                                                geometry.positions.float_array.push_back( QuadraticBezierSurface( u_ratio, v_ratio, p ) );
+                                            }
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].position[2];    }
+                                                geometry.positions.float_array.push_back( QuadraticBezierSurface( u_ratio, v_ratio, p ) );
+                                            }
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].texcoord[0][0]; }
+                                                geometry.texcoords.float_array.push_back( QuadraticBezierSurface( u_ratio, v_ratio, p ) );
+                                            }
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].texcoord[0][1]; }
+                                                geometry.texcoords.float_array.push_back( 1.0f - QuadraticBezierSurface( u_ratio, v_ratio, p ) );
+                                            }
+
+                                            geometry.normals.float_array.push_back( 0.0f );
+                                            geometry.normals.float_array.push_back( 0.0f );
+                                            geometry.normals.float_array.push_back( 1.0f );
+                                        }
+                                    }
+
+                                    for ( size_t u=0; u<x_tesselation_steps; ++u )
+                                    {
+                                        for ( size_t v=0; v<y_tesselation_steps; ++v )
+                                        {
+                                            index_buffer.push_back( offset + u + v * x_bsize );
+                                            index_buffer.push_back( offset + (u+1) + (v+1) * x_bsize );
+                                            index_buffer.push_back( offset + u + (v+1) * x_bsize );
+                                    
+                                            index_buffer.push_back( offset + u + v * x_bsize );
+                                            index_buffer.push_back( offset + (u+1) + v * x_bsize );
+                                            index_buffer.push_back( offset + (u+1) + (v+1) * x_bsize );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            const BSPMeshvert * meshvert = meshverts + face->meshvert;
+                            const BSPMeshvert * meshvert_end = meshverts + face->meshvert + face->n_meshverts;
+                            for ( ; meshvert != meshvert_end; meshvert += 3 )
+                            {
+                                index_buffer.push_back( face->vertex + meshvert->offset );
+                                index_buffer.push_back( face->vertex + (meshvert+2)->offset );
+                                index_buffer.push_back( face->vertex + (meshvert+1)->offset );
+                            }
+                        }
+                    }
+
+                    if (    face->type == 4
+                        ||  (face+1) == face_end
+                        ||  (face+1)->texture != face->texture
+                        ||  (face+1)->type != face->type )
+                    {
+                        if ( ! index_buffer.empty() )
+                        {
+                            COLLADAGeometryPolylist polylist;
+
+                            polylist.material = library_materials[ face->texture ].id;
+                            polylist.p = index_buffer;
+
+                            geometry.polylists.push_back( polylist );
+
+                            index_buffer.clear();
+                        }
+                    }
+                }
+            }
+
+            library_geometries.push_back( geometry );
+        }
+    }
+
+    // write XML document
+
     xmlDocPtr doc;
 
     doc = xmlNewDoc(BAD_CAST "1.0");
@@ -227,17 +692,14 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_images = xmlNewChild( root, NULL, BAD_CAST "library_images", NULL );
 
-        const BSPTexture * texture = textures;
-        const BSPTexture * texture_end = textures + textureCount;
-        for ( ; texture != texture_end; ++texture )
+        std::vector< COLLADAImage >::const_iterator it = library_images.begin();
+        std::vector< COLLADAImage >::const_iterator end = library_images.end();
+        for ( ; it != end; ++it )
         {
-            char strID[64];
-            MakeStringID( texture->name, strID );
-
             xmlNodePtr image = xmlNewChild( lib_images, NULL, BAD_CAST "image", NULL );
-            xmlNewProp( image, BAD_CAST "id", BAD_CAST strID );
-            xmlNewProp( image, BAD_CAST "name", BAD_CAST strID );
-            xmlNewChild( image, NULL, BAD_CAST "init_from", BAD_CAST texture->name );
+            xmlNewProp( image, BAD_CAST "id", BAD_CAST it->id.c_str() );
+            xmlNewProp( image, BAD_CAST "name", BAD_CAST it->name.c_str() );
+            xmlNewChild( image, NULL, BAD_CAST "init_from", BAD_CAST it->init_from.c_str() );
         }
     }
 
@@ -245,39 +707,26 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_effects = xmlNewChild( root, NULL, BAD_CAST "library_effects", NULL );
 
-        const BSPTexture * texture = textures;
-        const BSPTexture * texture_end = textures + textureCount;
-        for ( ; texture != texture_end; ++texture )
+        std::vector< COLLADAEffect >::const_iterator it = library_effects.begin();
+        std::vector< COLLADAEffect >::const_iterator end = library_effects.end();
+        for ( ; it != end; ++it )
         {
-            char strID[64];
-            MakeStringID( texture->name, strID );
-
-            std::string effectID = strID;
-            effectID += "-effect";
 
             xmlNodePtr effect = xmlNewChild( lib_effects, NULL, BAD_CAST "effect", NULL );
-            xmlNewProp( effect, BAD_CAST "id", BAD_CAST effectID.c_str() );
+            xmlNewProp( effect, BAD_CAST "id", BAD_CAST it->id.c_str() );
 
             xmlNodePtr profile_common = xmlNewChild( effect, NULL, BAD_CAST "profile_COMMON", NULL );
 
-            // surface
-            std::string surfaceID = strID;
-            surfaceID += "-surface";
-
             xmlNodePtr param_surface = xmlNewChild( profile_common, NULL, BAD_CAST "newparam", NULL );
-            xmlNewProp( param_surface, BAD_CAST "sid", BAD_CAST surfaceID.c_str() );
+            xmlNewProp( param_surface, BAD_CAST "sid", BAD_CAST it->surface_id.c_str() );
             xmlNodePtr surface = xmlNewChild( param_surface, NULL, BAD_CAST "surface", NULL );
             xmlNewProp( surface, BAD_CAST "type", BAD_CAST "2D" );
-            xmlNewChild( surface, NULL, BAD_CAST "init_from", BAD_CAST strID );
-
-            // sampler
-            std::string samplerID = strID;
-            samplerID += "-sampler";
+            xmlNewChild( surface, NULL, BAD_CAST "init_from", BAD_CAST it->surface_init_from.c_str() );
 
             xmlNodePtr param_sampler = xmlNewChild( profile_common, NULL, BAD_CAST "newparam", NULL );
-            xmlNewProp( param_sampler, BAD_CAST "sid", BAD_CAST samplerID.c_str() );
+            xmlNewProp( param_sampler, BAD_CAST "sid", BAD_CAST it->sampler_id.c_str() );
             xmlNodePtr sampler = xmlNewChild( param_sampler, NULL, BAD_CAST "sampler2D", NULL );
-            xmlNewChild( sampler, NULL, BAD_CAST "source", BAD_CAST surfaceID.c_str() );
+            xmlNewChild( sampler, NULL, BAD_CAST "source", BAD_CAST it->surface_id.c_str() );
 
             // technique
             xmlNodePtr technique = xmlNewChild( profile_common, NULL, BAD_CAST "technique", NULL );
@@ -287,13 +736,12 @@ bool BuildCollada( const char * filename )
             xmlNodePtr emission_color = xmlNewChild( emission, NULL, BAD_CAST "color", BAD_CAST "0 0 0 1" );
             xmlNewProp( emission_color, BAD_CAST "sid", BAD_CAST "emission" );
             xmlNodePtr ambient = xmlNewChild( phong, NULL, BAD_CAST "ambient", NULL );
-            xmlNodePtr ambient_color = xmlNewChild( ambient, NULL, BAD_CAST "color", BAD_CAST "0 0 0 1" );
-            xmlNewProp( ambient_color, BAD_CAST "sid", BAD_CAST "ambient" );
+            xmlNodePtr ambient_texture = xmlNewChild( ambient, NULL, BAD_CAST "texture", NULL );
+            xmlNewProp( ambient_texture, BAD_CAST "texture", BAD_CAST it->sampler_id.c_str() );
+            xmlNewProp( ambient_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
             xmlNodePtr diffuse = xmlNewChild( phong, NULL, BAD_CAST "diffuse", NULL );
-            xmlNodePtr diffuse_color = xmlNewChild( diffuse, NULL, BAD_CAST "color", BAD_CAST "0.5 0.5 0.5 1" );
-            xmlNewProp( diffuse_color, BAD_CAST "sid", BAD_CAST "diffuse" );
             xmlNodePtr diffuse_texture = xmlNewChild( diffuse, NULL, BAD_CAST "texture", NULL );
-            xmlNewProp( diffuse_texture, BAD_CAST "texture", BAD_CAST samplerID.c_str() );
+            xmlNewProp( diffuse_texture, BAD_CAST "texture", BAD_CAST it->sampler_id.c_str() );
             xmlNewProp( diffuse_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
             xmlNodePtr specular = xmlNewChild( phong, NULL, BAD_CAST "specular", NULL );
             xmlNodePtr specular_color = xmlNewChild( specular, NULL, BAD_CAST "color", BAD_CAST "0.5 0.5 0.5 1" );
@@ -311,25 +759,15 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_materials = xmlNewChild( root, NULL, BAD_CAST "library_materials", NULL );
 
-        const BSPTexture * texture = textures;
-        const BSPTexture * texture_end = textures + textureCount;
-        for ( ; texture != texture_end; ++texture )
+        std::vector< COLLADAMaterial >::const_iterator it = library_materials.begin();
+        std::vector< COLLADAMaterial >::const_iterator end = library_materials.end();
+        for ( ; it != end; ++it )
         {
-            char strID[64];
-            MakeStringID( texture->name, strID );
-
-            std::string materialID = strID;
-            materialID += "-material";
-
-            std::string effectURL = "#";
-            effectURL += strID;
-            effectURL += "-effect";
-
             xmlNodePtr material = xmlNewChild( lib_materials, NULL, BAD_CAST "material", NULL );
-            xmlNewProp( material, BAD_CAST "id", BAD_CAST materialID.c_str() );
-            xmlNewProp( material, BAD_CAST "name", BAD_CAST strID );
+            xmlNewProp( material, BAD_CAST "id", BAD_CAST it->id.c_str() );
+            xmlNewProp( material, BAD_CAST "name", BAD_CAST it->name.c_str() );
             xmlNodePtr instance_effect = xmlNewChild( material, NULL, BAD_CAST "instance_effect", NULL );
-            xmlNewProp( instance_effect, BAD_CAST "url", BAD_CAST effectURL.c_str() );
+            xmlNewProp( instance_effect, BAD_CAST "url", BAD_CAST it->instance_effect.c_str() );
         }
     }
 
@@ -337,58 +775,45 @@ bool BuildCollada( const char * filename )
     {
         xmlNodePtr lib_geometries = xmlNewChild( root, NULL, BAD_CAST "library_geometries", NULL );
 
-        size_t model_counter = 0;
-
-        const BSPModel * model = models;
-        const BSPModel * model_end = models + modelCount;
-        for ( ; model != model_end; ++model, ++model_counter )
+        std::vector< COLLADAGeometry >::const_iterator it = library_geometries.begin();
+        std::vector< COLLADAGeometry >::const_iterator end = library_geometries.end();
+        for ( ; it != end; ++it )
         {
-            if ( model->n_faces == 0 )
-                continue;
-
-            char strID[64];
-            sprintf( strID, "model_%i", model_counter );
-
-            std::string geometryID = strID;
-            geometryID += "-mesh";
-
             xmlNodePtr geometry = xmlNewChild( lib_geometries, NULL, BAD_CAST "geometry", NULL );
-            xmlNewProp( geometry, BAD_CAST "id", BAD_CAST geometryID.c_str() );
-            xmlNewProp( geometry, BAD_CAST "name", BAD_CAST strID );
+            xmlNewProp( geometry, BAD_CAST "id", BAD_CAST it->id.c_str() );
+            xmlNewProp( geometry, BAD_CAST "name", BAD_CAST it->name.c_str() );
             xmlNodePtr mesh = xmlNewChild( geometry, NULL, BAD_CAST "mesh", NULL );
 
             // positions
             {
-                std::string positionsID = geometryID;
-                positionsID += "-positions";
+                const COLLADAGeometrySource& positions = it->positions;
                 
                 xmlNodePtr source = xmlNewChild( mesh, NULL, BAD_CAST "source", NULL );
-                xmlNewProp( source, BAD_CAST "id", BAD_CAST positionsID.c_str() );
+                xmlNewProp( source, BAD_CAST "id", BAD_CAST positions.id.c_str() );
 
                 std::string positions_array;
-                for ( size_t i=0; i<vertexCount; ++i )
+
+                std::vector< float >::const_iterator p_it = positions.float_array.begin();
+                std::vector< float >::const_iterator p_end = positions.float_array.end();
+                for ( ; p_it != p_end; ++p_it )
                 {
-                    char pos[64];
-                    sprintf( pos, "%f %f %f ", vertices[i].position[0], vertices[i].position[1], vertices[i].position[2] );
+                    char pos[32];
+                    sprintf( pos, "%f ", *p_it );
 
                     positions_array += pos;
                 }
 
-                std::string arrayID = positionsID;
-                arrayID += "-array";
-
-                size_t pos_count = vertexCount * 3;
                 char ver_count_str[16];
                 char pos_count_str[16];
                 sprintf( ver_count_str, "%i", vertexCount );
-                sprintf( pos_count_str, "%i", pos_count );
+                sprintf( pos_count_str, "%i", positions.float_array.size() );
 
                 xmlNodePtr float_array = xmlNewChild( source, NULL, BAD_CAST "float_array", BAD_CAST positions_array.c_str() );
-                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST arrayID.c_str() );
+                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST positions.float_array_id.c_str() );
                 xmlNewProp( float_array, BAD_CAST "count", BAD_CAST pos_count_str );
 
                 std::string arrayIDRef = "#";
-                arrayIDRef += arrayID;
+                arrayIDRef += positions.float_array_id;
 
                 xmlNodePtr technique_common = xmlNewChild( source, NULL, BAD_CAST "technique_common", NULL );
                 xmlNodePtr accessor = xmlNewChild( technique_common, NULL, BAD_CAST "accessor", NULL );
@@ -411,36 +836,34 @@ bool BuildCollada( const char * filename )
 
             // normals
             {
-                std::string normalsID = geometryID;
-                normalsID += "-normals";
+                const COLLADAGeometrySource& normals = it->normals;
                 
                 xmlNodePtr source = xmlNewChild( mesh, NULL, BAD_CAST "source", NULL );
-                xmlNewProp( source, BAD_CAST "id", BAD_CAST normalsID.c_str() );
+                xmlNewProp( source, BAD_CAST "id", BAD_CAST normals.id.c_str() );
 
                 std::string normals_array;
-                for ( size_t i=0; i<vertexCount; ++i )
-                {
-                    char pos[64];
-                    sprintf( pos, "%f %f %f ", vertices[i].normal[0], vertices[i].normal[1], vertices[i].normal[2] );
 
-                    normals_array += pos;
+                std::vector< float >::const_iterator n_it = normals.float_array.begin();
+                std::vector< float >::const_iterator n_end = normals.float_array.end();
+                for ( ; n_it != n_end; ++n_it )
+                {
+                    char nor[32];
+                    sprintf( nor, "%f ", *n_it );
+
+                    normals_array += nor;
                 }
 
-                std::string arrayID = normalsID;
-                arrayID += "-array";
-
-                size_t nor_count = vertexCount * 3;
                 char ver_count_str[16];
                 char nor_count_str[16];
                 sprintf( ver_count_str, "%i", vertexCount );
-                sprintf( nor_count_str, "%i", nor_count );
+                sprintf( nor_count_str, "%i", normals.float_array.size() );
 
                 xmlNodePtr float_array = xmlNewChild( source, NULL, BAD_CAST "float_array", BAD_CAST normals_array.c_str() );
-                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST arrayID.c_str() );
+                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST normals.float_array_id.c_str() );
                 xmlNewProp( float_array, BAD_CAST "count", BAD_CAST nor_count_str );
 
                 std::string arrayIDRef = "#";
-                arrayIDRef += arrayID;
+                arrayIDRef += normals.float_array_id;
 
                 xmlNodePtr technique_common = xmlNewChild( source, NULL, BAD_CAST "technique_common", NULL );
                 xmlNodePtr accessor = xmlNewChild( technique_common, NULL, BAD_CAST "accessor", NULL );
@@ -463,36 +886,34 @@ bool BuildCollada( const char * filename )
 
             // texcoords
             {
-                std::string texcoordsID = geometryID;
-                texcoordsID += "-map-0";
+                const COLLADAGeometrySource& texcoords = it->texcoords;
                 
                 xmlNodePtr source = xmlNewChild( mesh, NULL, BAD_CAST "source", NULL );
-                xmlNewProp( source, BAD_CAST "id", BAD_CAST texcoordsID.c_str() );
+                xmlNewProp( source, BAD_CAST "id", BAD_CAST texcoords.id.c_str() );
 
                 std::string texcoords_array;
-                for ( size_t i=0; i<vertexCount; ++i )
-                {
-                    char pos[64];
-                    sprintf( pos, "%f %f ", vertices[i].texcoord[0][0], vertices[i].texcoord[0][1] );
 
-                    texcoords_array += pos;
+                std::vector< float >::const_iterator t_it = texcoords.float_array.begin();
+                std::vector< float >::const_iterator t_end = texcoords.float_array.end();
+                for ( ; t_it != t_end; ++t_it )
+                {
+                    char tex[32];
+                    sprintf( tex, "%f ", *t_it );
+
+                    texcoords_array += tex;
                 }
 
-                std::string arrayID = texcoordsID;
-                arrayID += "-array";
-
-                size_t uvs_count = vertexCount * 2;
                 char ver_count_str[16];
                 char uvs_count_str[16];
                 sprintf( ver_count_str, "%i", vertexCount );
-                sprintf( uvs_count_str, "%i", uvs_count );
+                sprintf( uvs_count_str, "%i", texcoords.float_array.size() );
 
                 xmlNodePtr float_array = xmlNewChild( source, NULL, BAD_CAST "float_array", BAD_CAST texcoords_array.c_str() );
-                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST arrayID.c_str() );
+                xmlNewProp( float_array, BAD_CAST "id", BAD_CAST texcoords.float_array_id.c_str() );
                 xmlNewProp( float_array, BAD_CAST "count", BAD_CAST uvs_count_str );
 
                 std::string arrayIDRef = "#";
-                arrayIDRef += arrayID;
+                arrayIDRef += texcoords.float_array_id;
 
                 xmlNodePtr technique_common = xmlNewChild( source, NULL, BAD_CAST "technique_common", NULL );
                 xmlNodePtr accessor = xmlNewChild( technique_common, NULL, BAD_CAST "accessor", NULL );
@@ -508,16 +929,12 @@ bool BuildCollada( const char * filename )
                 xmlNewProp( paramT, BAD_CAST "name", BAD_CAST "T" );
                 xmlNewProp( paramT, BAD_CAST "type", BAD_CAST "float" );
             }
-
-            std::string verticesID = geometryID;
-            verticesID += "-vertices";
                 
             xmlNodePtr vertices_node = xmlNewChild( mesh, NULL, BAD_CAST "vertices", NULL );
-            xmlNewProp( vertices_node, BAD_CAST "id", BAD_CAST verticesID.c_str() );
+            xmlNewProp( vertices_node, BAD_CAST "id", BAD_CAST it->vertices_id.c_str() );
 
             std::string positionsIDRef = "#";
-            positionsIDRef += geometryID;
-            positionsIDRef += "-positions";
+            positionsIDRef += it->positions.id;
 
             xmlNodePtr input_node = xmlNewChild( vertices_node, NULL, BAD_CAST "input", NULL );
             xmlNewProp( input_node, BAD_CAST "semantic", BAD_CAST "POSITION" );
@@ -525,97 +942,61 @@ bool BuildCollada( const char * filename )
 
             // polylists
             {
-                std::vector< int > index_buffer;
-
-                const BSPFace * face = faces + model->face;
-                const BSPFace * face_end = faces + model->face + model->n_faces;
-                for ( ; face != face_end; ++face )
+                std::vector< COLLADAGeometryPolylist >::const_iterator p_it = it->polylists.begin();
+                std::vector< COLLADAGeometryPolylist >::const_iterator p_end = it->polylists.end();
+                for ( ; p_it != p_end; ++p_it )
                 {
-                    if ( face->type == 1 || face->type == 3 )
+                    size_t count = p_it->p.size() / 3;
+                    char poly_count_str[16];
+                    sprintf( poly_count_str, "%i", count );
+
+                    xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
+                    xmlNewProp( polylist, BAD_CAST "material", BAD_CAST p_it->material.c_str() );
+                    xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
+
+                    std::string verticesIDRef = "#";
+                    verticesIDRef += it->vertices_id;
+
+                    xmlNodePtr input_vertices = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
+                    xmlNewProp( input_vertices, BAD_CAST "semantic", BAD_CAST "VERTEX" );
+                    xmlNewProp( input_vertices, BAD_CAST "source", BAD_CAST verticesIDRef.c_str() );
+                    xmlNewProp( input_vertices, BAD_CAST "offset", BAD_CAST "0" );
+
+                    std::string normalsIDRef = "#";
+                    normalsIDRef += it->normals.id;
+
+                    xmlNodePtr input_normals = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
+                    xmlNewProp( input_normals, BAD_CAST "semantic", BAD_CAST "NORMAL" );
+                    xmlNewProp( input_normals, BAD_CAST "source", BAD_CAST normalsIDRef.c_str() );
+                    xmlNewProp( input_normals, BAD_CAST "offset", BAD_CAST "1" );
+
+                    std::string texcoordsIDRef = "#";
+                    texcoordsIDRef += it->texcoords.id;
+
+                    xmlNodePtr input_texcoords = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
+                    xmlNewProp( input_texcoords, BAD_CAST "semantic", BAD_CAST "TEXCOORD" );
+                    xmlNewProp( input_texcoords, BAD_CAST "source", BAD_CAST texcoordsIDRef.c_str() );
+                    xmlNewProp( input_texcoords, BAD_CAST "offset", BAD_CAST "2" );
+                    xmlNewProp( input_texcoords, BAD_CAST "set", BAD_CAST "0" );
+
+                    std::string vcount;
+                    std::string p;
+
+                    for ( size_t i=0; i<count; ++i )
                     {
-                        const BSPMeshvert * meshvert = meshverts + face->meshvert;
-                        const BSPMeshvert * meshvert_end = meshverts + face->meshvert + face->n_meshverts;
-                        for ( ; meshvert != meshvert_end; ++meshvert )
-                        {
-                            index_buffer.push_back( face->vertex + meshvert->offset );
-                        }
-                    }
-
-                    if (    face->type == 2
-                        ||  face->type == 4
-                        ||  ( face + 1 == face_end )
-                        ||  face->type != (face+1)->type
-                        ||  face->texture != (face+1)->texture )
-                    {
-                        if ( ! index_buffer.empty() )
-                        {
-                            const BSPTexture * texture = textures + face->texture;
-
-                            char strID[64];
-                            MakeStringID( texture->name, strID );
-
-                            std::string materialIDRef = "#";
-                            materialIDRef += strID;
-                            materialIDRef += "-material";
-
-                            size_t poly_count = index_buffer.size() / 3;
-                            char poly_count_str[16];
-                            sprintf( poly_count_str, "%i", poly_count );
-
-                            xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
-                            xmlNewProp( polylist, BAD_CAST "material", BAD_CAST materialIDRef.c_str() );
-                            xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
-
-                            std::string verticesIDRef = "#";
-                            verticesIDRef += geometryID;
-                            verticesIDRef += "-vertices";
-
-                            xmlNodePtr input_vertices = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
-                            xmlNewProp( input_vertices, BAD_CAST "semantic", BAD_CAST "VERTEX" );
-                            xmlNewProp( input_vertices, BAD_CAST "source", BAD_CAST verticesIDRef.c_str() );
-                            xmlNewProp( input_vertices, BAD_CAST "offset", BAD_CAST "0" );
-
-                            std::string normalsIDRef = "#";
-                            normalsIDRef += geometryID;
-                            normalsIDRef += "-normals";
-
-                            xmlNodePtr input_normals = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
-                            xmlNewProp( input_normals, BAD_CAST "semantic", BAD_CAST "NORMAL" );
-                            xmlNewProp( input_normals, BAD_CAST "source", BAD_CAST normalsIDRef.c_str() );
-                            xmlNewProp( input_normals, BAD_CAST "offset", BAD_CAST "1" );
-
-                            std::string texcoordsIDRef = "#";
-                            texcoordsIDRef += geometryID;
-                            texcoordsIDRef += "-map-0";
-
-                            xmlNodePtr input_texcoords = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
-                            xmlNewProp( input_texcoords, BAD_CAST "semantic", BAD_CAST "TEXCOORD" );
-                            xmlNewProp( input_texcoords, BAD_CAST "source", BAD_CAST texcoordsIDRef.c_str() );
-                            xmlNewProp( input_texcoords, BAD_CAST "offset", BAD_CAST "2" );
-                            xmlNewProp( input_texcoords, BAD_CAST "set", BAD_CAST "0" );
-
-                            std::string vcount;
-                            std::string p;
-
-                            for ( size_t i=0; i<poly_count; ++i )
-                            {
-                                vcount += "3 ";
+                        vcount += "3 ";
                                 
-                                size_t offset = 3 * i;
-                                char triangle_str[128];
-                                sprintf( triangle_str, "%i %i %i %i %i %i %i %i %i ", index_buffer[offset+0], index_buffer[offset+0], index_buffer[offset+0]
-                                                                                    , index_buffer[offset+1], index_buffer[offset+1], index_buffer[offset+1]
-                                                                                    , index_buffer[offset+2], index_buffer[offset+2], index_buffer[offset+2] );
+                        size_t offset = 3 * i;
+                        char triangle_str[128];
+                        sprintf( triangle_str, "%i %i %i %i %i %i %i %i %i ", p_it->p[offset+0], p_it->p[offset+0], p_it->p[offset+0]
+                                                                            , p_it->p[offset+1], p_it->p[offset+1], p_it->p[offset+1]
+                                                                            , p_it->p[offset+2], p_it->p[offset+2], p_it->p[offset+2] );
 
-                                p += triangle_str;
-                            }
-
-                            xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
-                            xmlNewChild( polylist, NULL, BAD_CAST "p", BAD_CAST p.c_str() );
-
-                            index_buffer.clear();
-                        }
+                        p += triangle_str;
                     }
+
+                    xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
+                    xmlNewChild( polylist, NULL, BAD_CAST "p", BAD_CAST p.c_str() );
                 }
             }
         }
@@ -628,21 +1009,13 @@ bool BuildCollada( const char * filename )
         xmlNewProp( visual_scene, BAD_CAST "id", BAD_CAST "Scene" );
         xmlNewProp( visual_scene, BAD_CAST "name", BAD_CAST "Scene" );
 
-        size_t model_counter = 0;
-
-        const BSPModel * model = models;
-        const BSPModel * model_end = models + modelCount;
-        for ( ; model != model_end; ++model, ++model_counter )
+        std::vector< COLLADAGeometry >::const_iterator it = library_geometries.begin();
+        std::vector< COLLADAGeometry >::const_iterator end = library_geometries.end();
+        for ( ; it != end; ++it )
         {
-            if ( model->n_faces == 0 )
-                continue;
-
-            char strID[64];
-            sprintf( strID, "model_%i", model_counter );
-
             xmlNodePtr node = xmlNewChild( visual_scene, NULL, BAD_CAST "node", NULL );
-            xmlNewProp( node, BAD_CAST "id", BAD_CAST strID );
-            xmlNewProp( node, BAD_CAST "name", BAD_CAST strID );
+            xmlNewProp( node, BAD_CAST "id", BAD_CAST it->id.c_str() );
+            xmlNewProp( node, BAD_CAST "name", BAD_CAST it->name.c_str() );
             xmlNewProp( node, BAD_CAST "type", BAD_CAST "NODE" );
 
             xmlNodePtr translate = xmlNewChild( node, NULL, BAD_CAST "translate", BAD_CAST "0 0 0" );
@@ -661,8 +1034,7 @@ bool BuildCollada( const char * filename )
             xmlNewProp( scale, BAD_CAST "sid", BAD_CAST "scale" );
 
             std::string geometryIDRef = "#";
-            geometryIDRef += strID;
-            geometryIDRef += "-mesh";
+            geometryIDRef += it->id;
 
             xmlNodePtr instance_geometry = xmlNewChild( node, NULL, BAD_CAST "instance_geometry", NULL );
             xmlNewProp( instance_geometry, BAD_CAST "url", BAD_CAST geometryIDRef.c_str() );
@@ -670,21 +1042,15 @@ bool BuildCollada( const char * filename )
             xmlNodePtr bind_material = xmlNewChild( instance_geometry, NULL, BAD_CAST "bind_material", NULL );
             xmlNodePtr technique_common = xmlNewChild( bind_material, NULL, BAD_CAST "technique_common", NULL );
 
-            const BSPTexture * texture = textures;
-            const BSPTexture * texture_end = textures + textureCount;
-            for ( ; texture != texture_end; ++texture )
+            std::vector< COLLADAMaterial >::const_iterator m_it = library_materials.begin();
+            std::vector< COLLADAMaterial >::const_iterator m_end = library_materials.end();
+            for ( ; m_it != m_end; ++m_it )
             {
-                char strID[64];
-                MakeStringID( texture->name, strID );
-
-                std::string materialID = strID;
-                materialID += "-material";
-
                 std::string materialIDRef = "#";
-                materialIDRef += materialID;
+                materialIDRef += m_it->id;
 
                 xmlNodePtr instance_material = xmlNewChild( technique_common, NULL, BAD_CAST "instance_material", NULL );
-                xmlNewProp( instance_material, BAD_CAST "symbol", BAD_CAST materialID.c_str() );
+                xmlNewProp( instance_material, BAD_CAST "symbol", BAD_CAST m_it->id.c_str() );
                 xmlNewProp( instance_material, BAD_CAST "target", BAD_CAST materialIDRef.c_str() );
 
                 xmlNodePtr bind_vertex_input = xmlNewChild( instance_material, NULL, BAD_CAST "bind_vertex_input", NULL );
@@ -734,6 +1100,12 @@ bool BuildCollada( const char * filename )
 
 bool ConvertBSP( const char * inFilename, const char * outFilename )
 {
+    size_t tesselation_lvl = 4;
+    tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselation_lvl) ));
+
+    if ( ! RootPath( inFilename, root_path ) )
+        return false;
+
     if ( ! LoadBSP( inFilename ) )
         return false;
 
