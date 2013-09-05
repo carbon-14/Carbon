@@ -1190,10 +1190,9 @@ bool BuildCollada( const char * filename )
     return true;
 }
 
-bool ConvertBSP( const char * inFilename, const char * outFilename )
+bool ConvertBSP( const char * inFilename, const char * outFilename, size_t tesselationLevel )
 {
-    size_t tesselation_lvl = 4;
-    max_tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselation_lvl) ));
+    max_tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselationLevel) ));
 
     if ( ! RootPath( inFilename, root_path ) )
         return false;
