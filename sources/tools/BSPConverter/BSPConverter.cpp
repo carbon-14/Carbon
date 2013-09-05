@@ -65,7 +65,7 @@ bool BuildDirectory( const char * path )
     return true;
 }
 
-bool RootPath( const char * ifilename, char * path )
+bool RootPath( const char * ifilename, char * path, size_t size )
 {
 #if defined( CARBON_PLATFORM_WIN32 )
     char dir[ 256 ];
@@ -77,7 +77,7 @@ bool RootPath( const char * ifilename, char * path )
 
     strcpy( fileStart, ".." );
 
-    if ( GetFullPathName( dir, 256, path, &fileStart ) == 0 )
+    if ( GetFullPathName( dir, size, path, &fileStart ) == 0 )
     {
         return false;
     }
@@ -86,12 +86,12 @@ bool RootPath( const char * ifilename, char * path )
     return true;
 }
 
-bool FindFileExtension( const char * ifilename, char * extension )
+bool FindFileName( const char * findString, char * filename, size_t size )
 {
 #if defined( CARBON_PLATFORM_WIN32 )
     WIN32_FIND_DATA find_data;
     HANDLE handle;
-    handle = FindFirstFile( ifilename, &find_data );
+    handle = FindFirstFile( findString, &find_data );
     if ( handle == INVALID_HANDLE_VALUE )
     {
         return false;
@@ -99,25 +99,14 @@ bool FindFileExtension( const char * ifilename, char * extension )
 
     FindClose(handle);
 
-    bool fmt = false;
-    char * ptr = find_data.cFileName;
-    while ( *ptr != 0 )
+    char * fileStart;
+    if ( GetFullPathName( findString, size, filename, &fileStart ) == 0 )
     {
-        if ( fmt )
-        {
-            *(extension++) = *ptr;
-        }
-        else if ( *ptr == '.' )
-        {
-            fmt = true;
-        }
-
-        ++ptr;
+        return false;
     }
 
-    *extension = 0;
+    strcpy( fileStart, find_data.cFileName );
 
-    
 #endif
     return true;
 }
@@ -142,7 +131,7 @@ void MakeStringID( const char * istr, char * ostr )
     *ostr = 0;
 }
 
-float QuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
+float QuadraticBezierCurve( float i, float c0, float c1, float c2 )
 {
     float invi = 1.0f - i;
     return c0 * invi * invi  +  c1 * 2.0f * i * invi  +  c2 * i * i;
@@ -150,34 +139,11 @@ float QuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
 
 float QuadraticBezierSurface( float u, float v, const float * ctrl )
 {
-    float c0 = QuadraticBezierInterpolation( u, ctrl[0], ctrl[1], ctrl[2] );
-    float c1 = QuadraticBezierInterpolation( u, ctrl[3], ctrl[4], ctrl[5] );
-    float c2 = QuadraticBezierInterpolation( u, ctrl[6], ctrl[7], ctrl[8] );
+    float c0 = QuadraticBezierCurve( u, ctrl[0], ctrl[1], ctrl[2] );
+    float c1 = QuadraticBezierCurve( u, ctrl[3], ctrl[4], ctrl[5] );
+    float c2 = QuadraticBezierCurve( u, ctrl[6], ctrl[7], ctrl[8] );
 
-    return QuadraticBezierInterpolation( v, c0, c1, c2 );
-}
-
-float DerivateQuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
-{
-    return 2.0f * ( c0 * ( i - 1.0f )  +  c1 * ( 1.0f - 2.0f * i )  +  c2 * i );
-}
-
-float DerivateQuadraticBezierSurfaceU( float u, float v, const float * ctrl )
-{
-    float c0 = QuadraticBezierInterpolation( v, ctrl[0], ctrl[3], ctrl[6] );
-    float c1 = QuadraticBezierInterpolation( v, ctrl[1], ctrl[4], ctrl[7] );
-    float c2 = QuadraticBezierInterpolation( v, ctrl[2], ctrl[5], ctrl[8] );
-
-    return DerivateQuadraticBezierInterpolation( u, c0, c1, c2 );
-}
-
-float DerivateQuadraticBezierSurfaceV( float u, float v, const float * ctrl )
-{
-    float c0 = QuadraticBezierInterpolation( u, ctrl[0], ctrl[1], ctrl[2] );
-    float c1 = QuadraticBezierInterpolation( u, ctrl[3], ctrl[4], ctrl[5] );
-    float c2 = QuadraticBezierInterpolation( u, ctrl[6], ctrl[7], ctrl[8] );
-
-    return DerivateQuadraticBezierInterpolation( v, c0, c1, c2 );
+    return QuadraticBezierCurve( v, c0, c1, c2 );
 }
 
 
@@ -379,19 +345,20 @@ bool BuildCollada( const char * filename )
 
             image.id        = strID;
             image.name      = strID;
-            image.init_from = texture->name;
 
             std::string texture_name = root_path;
             texture_name += "/";
             texture_name += texture->name;
-            texture_name += ".*";
+            texture_name += "*";
 
-            char file_extension[32];
-
-            if ( FindFileExtension( texture_name.c_str(), file_extension ) )
+            char file_name[1024];
+            if ( FindFileName( texture_name.c_str(), file_name, sizeof(file_name) ) )
             {
-                image.init_from += ".";
-                image.init_from += file_extension;
+                image.init_from = file_name + strlen(root_path) + 1;
+            }
+            else
+            {
+                image.init_from = texture->name;
             }
 
             library_images.push_back( image );
@@ -1194,7 +1161,7 @@ bool ConvertBSP( const char * inFilename, const char * outFilename, size_t tesse
 {
     max_tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselationLevel) ));
 
-    if ( ! RootPath( inFilename, root_path ) )
+    if ( ! RootPath( inFilename, root_path, sizeof(root_path) ) )
         return false;
 
     if ( ! LoadBSP( inFilename ) )
