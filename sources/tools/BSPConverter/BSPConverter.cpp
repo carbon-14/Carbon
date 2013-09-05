@@ -737,7 +737,11 @@ bool BuildCollada( const char * filename )
             xmlNewProp( emission_color, BAD_CAST "sid", BAD_CAST "emission" );
             xmlNodePtr ambient = xmlNewChild( phong, NULL, BAD_CAST "ambient", NULL );
             xmlNodePtr ambient_texture = xmlNewChild( ambient, NULL, BAD_CAST "texture", NULL );
+<<<<<<< HEAD
             xmlNewProp( ambient_texture, BAD_CAST "texture", BAD_CAST it->sampler_id.c_str() );
+=======
+            xmlNewProp( ambient_texture, BAD_CAST "texture", BAD_CAST samplerID.c_str() );
+>>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
             xmlNewProp( ambient_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
             xmlNodePtr diffuse = xmlNewChild( phong, NULL, BAD_CAST "diffuse", NULL );
             xmlNodePtr diffuse_texture = xmlNewChild( diffuse, NULL, BAD_CAST "texture", NULL );
@@ -942,6 +946,7 @@ bool BuildCollada( const char * filename )
 
             // polylists
             {
+<<<<<<< HEAD
                 std::vector< COLLADAGeometryPolylist >::const_iterator p_it = it->polylists.begin();
                 std::vector< COLLADAGeometryPolylist >::const_iterator p_end = it->polylists.end();
                 for ( ; p_it != p_end; ++p_it )
@@ -953,14 +958,46 @@ bool BuildCollada( const char * filename )
                     xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
                     xmlNewProp( polylist, BAD_CAST "material", BAD_CAST p_it->material.c_str() );
                     xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
+=======
+                const BSPFace * face = faces + model->face;
+                const BSPFace * face_end = faces + model->face + model->n_faces;
+                for ( ; face != face_end; ++face )
+                {
+                    if ( face->type == 1 || face->type == 3 )
+                    {
+                        std::vector< int > index_buffer;
+
+                        const BSPMeshvert * meshvert = meshverts + face->meshvert;
+                        const BSPMeshvert * meshvert_end = meshverts + face->meshvert + face->n_meshverts;
+                        for ( ; meshvert != meshvert_end; ++meshvert )
+                        {
+                            index_buffer.push_back( face->vertex + meshvert->offset );
+                        }
+
+                        if ( ! index_buffer.empty() )
+                        {
+                            const BSPTexture * texture = textures + face->texture;
+
+                            char strID[64];
+                            MakeStringID( texture->name, strID );
+
+                            std::string materialID = strID;
+                            materialID += "-material";
+>>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
 
                     std::string verticesIDRef = "#";
                     verticesIDRef += it->vertices_id;
 
+<<<<<<< HEAD
                     xmlNodePtr input_vertices = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
                     xmlNewProp( input_vertices, BAD_CAST "semantic", BAD_CAST "VERTEX" );
                     xmlNewProp( input_vertices, BAD_CAST "source", BAD_CAST verticesIDRef.c_str() );
                     xmlNewProp( input_vertices, BAD_CAST "offset", BAD_CAST "0" );
+=======
+                            xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
+                            xmlNewProp( polylist, BAD_CAST "material", BAD_CAST materialID.c_str() );
+                            xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
+>>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
 
                     std::string normalsIDRef = "#";
                     normalsIDRef += it->normals.id;
@@ -992,7 +1029,16 @@ bool BuildCollada( const char * filename )
                                                                             , p_it->p[offset+1], p_it->p[offset+1], p_it->p[offset+1]
                                                                             , p_it->p[offset+2], p_it->p[offset+2], p_it->p[offset+2] );
 
+<<<<<<< HEAD
                         p += triangle_str;
+=======
+                                p += triangle_str;
+                            }
+
+                            xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
+                            xmlNewChild( polylist, NULL, BAD_CAST "p", BAD_CAST p.c_str() );
+                        }
+>>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
                     }
 
                     xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
