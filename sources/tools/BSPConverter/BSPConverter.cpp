@@ -83,6 +83,7 @@ bool RootPath( const char * ifilename, char * path )
     }
 
 #endif
+    return true;
 }
 
 bool FindFileExtension( const char * ifilename, char * extension )
@@ -95,6 +96,8 @@ bool FindFileExtension( const char * ifilename, char * extension )
     {
         return false;
     }
+
+    FindClose(handle);
 
     bool fmt = false;
     char * ptr = find_data.cFileName;
@@ -114,7 +117,7 @@ bool FindFileExtension( const char * ifilename, char * extension )
 
     *extension = 0;
 
-    FindClose(handle);
+    
 #endif
     return true;
 }
@@ -147,11 +150,11 @@ float QuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
 
 float QuadraticBezierSurface( float u, float v, const float * ctrl )
 {
-    float a = QuadraticBezierInterpolation( u, ctrl[0], ctrl[1], ctrl[2] );
-    float b = QuadraticBezierInterpolation( u, ctrl[3], ctrl[4], ctrl[5] );
-    float c = QuadraticBezierInterpolation( u, ctrl[6], ctrl[7], ctrl[8] );
+    float c0 = QuadraticBezierInterpolation( u, ctrl[0], ctrl[1], ctrl[2] );
+    float c1 = QuadraticBezierInterpolation( u, ctrl[3], ctrl[4], ctrl[5] );
+    float c2 = QuadraticBezierInterpolation( u, ctrl[6], ctrl[7], ctrl[8] );
 
-    return QuadraticBezierInterpolation( v, a, b, c );
+    return QuadraticBezierInterpolation( v, c0, c1, c2 );
 }
 
 float DerivateQuadraticBezierInterpolation( float i, float c0, float c1, float c2 )
@@ -159,6 +162,23 @@ float DerivateQuadraticBezierInterpolation( float i, float c0, float c1, float c
     return 2.0f * ( c0 * ( i - 1.0f )  +  c1 * ( 1.0f - 2.0f * i )  +  c2 * i );
 }
 
+float DerivateQuadraticBezierSurfaceU( float u, float v, const float * ctrl )
+{
+    float c0 = QuadraticBezierInterpolation( v, ctrl[0], ctrl[3], ctrl[6] );
+    float c1 = QuadraticBezierInterpolation( v, ctrl[1], ctrl[4], ctrl[7] );
+    float c2 = QuadraticBezierInterpolation( v, ctrl[2], ctrl[5], ctrl[8] );
+
+    return DerivateQuadraticBezierInterpolation( u, c0, c1, c2 );
+}
+
+float DerivateQuadraticBezierSurfaceV( float u, float v, const float * ctrl )
+{
+    float c0 = QuadraticBezierInterpolation( u, ctrl[0], ctrl[1], ctrl[2] );
+    float c1 = QuadraticBezierInterpolation( u, ctrl[3], ctrl[4], ctrl[5] );
+    float c2 = QuadraticBezierInterpolation( u, ctrl[6], ctrl[7], ctrl[8] );
+
+    return DerivateQuadraticBezierInterpolation( v, c0, c1, c2 );
+}
 
 
 // BSP format found on :
@@ -293,9 +313,11 @@ struct COLLADAGeometry
     std::vector< COLLADAGeometryPolylist >  polylists;
 };
 
+#define PI 3.14159265359f
+
 char root_path[128];
 
-size_t tesselation_steps = 1;
+size_t max_tesselation_steps = 1;
 
 char * data;
 
@@ -359,12 +381,14 @@ bool BuildCollada( const char * filename )
             image.name      = strID;
             image.init_from = texture->name;
 
-            char texture_name[128];
-            sprintf( texture_name, "%s/%s.*", root_path, texture->name );
+            std::string texture_name = root_path;
+            texture_name += "/";
+            texture_name += texture->name;
+            texture_name += ".*";
 
-            char file_extension[8];
+            char file_extension[32];
 
-            if ( FindFileExtension( texture_name, file_extension ) )
+            if ( FindFileExtension( texture_name.c_str(), file_extension ) )
             {
                 image.init_from += ".";
                 image.init_from += file_extension;
@@ -521,62 +545,76 @@ bool BuildCollada( const char * filename )
                                         }
                                     }
 
-                                    size_t x_tesselation_steps = 1;
-                                    for ( size_t k=0; k<3; ++k )
+                                    size_t x_tesselation_steps;
                                     {
-                                        float v0[3];
-                                        float v1[3];
-
-                                        v0[0] = vertices[ ctrl_points[0+3*k] ].position[0] - vertices[ ctrl_points[1+3*k] ].position[0];
-                                        v0[1] = vertices[ ctrl_points[0+3*k] ].position[1] - vertices[ ctrl_points[1+3*k] ].position[1];
-                                        v0[2] = vertices[ ctrl_points[0+3*k] ].position[2] - vertices[ ctrl_points[1+3*k] ].position[2];
-                                        float v0_len = sqrt( v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2] );
-                                        v0[0] /= v0_len;
-                                        v0[1] /= v0_len;
-                                        v0[2] /= v0_len;
-
-                                        v1[0] = vertices[ ctrl_points[2+3*k] ].position[0] - vertices[ ctrl_points[1+3*k] ].position[0];
-                                        v1[1] = vertices[ ctrl_points[2+3*k] ].position[1] - vertices[ ctrl_points[1+3*k] ].position[1];
-                                        v1[2] = vertices[ ctrl_points[2+3*k] ].position[2] - vertices[ ctrl_points[1+3*k] ].position[2];
-                                        float v1_len = sqrt( v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2] );
-                                        v1[0] /= v1_len;
-                                        v1[1] /= v1_len;
-                                        v1[2] /= v1_len;
-
-                                        if ( ( v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2] ) > -0.9f )
+                                        float min_cos = 1.0f;
+                                        for ( size_t k=0; k<3; ++k )
                                         {
-                                            x_tesselation_steps = tesselation_steps;
-                                            break;
+                                            float v0[3];
+                                            float v1[3];
+
+                                            v0[0] = vertices[ ctrl_points[1+3*k] ].position[0] - vertices[ ctrl_points[0+3*k] ].position[0];
+                                            v0[1] = vertices[ ctrl_points[1+3*k] ].position[1] - vertices[ ctrl_points[0+3*k] ].position[1];
+                                            v0[2] = vertices[ ctrl_points[1+3*k] ].position[2] - vertices[ ctrl_points[0+3*k] ].position[2];
+                                            float v0_len = sqrt( v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2] );
+                                            v0[0] /= v0_len;
+                                            v0[1] /= v0_len;
+                                            v0[2] /= v0_len;
+
+                                            v1[0] = vertices[ ctrl_points[2+3*k] ].position[0] - vertices[ ctrl_points[1+3*k] ].position[0];
+                                            v1[1] = vertices[ ctrl_points[2+3*k] ].position[1] - vertices[ ctrl_points[1+3*k] ].position[1];
+                                            v1[2] = vertices[ ctrl_points[2+3*k] ].position[2] - vertices[ ctrl_points[1+3*k] ].position[2];
+                                            float v1_len = sqrt( v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2] );
+                                            v1[0] /= v1_len;
+                                            v1[1] /= v1_len;
+                                            v1[2] /= v1_len;
+
+                                            float proj = v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
+                                            if ( proj < min_cos )
+                                            {
+                                                min_cos = proj;
+                                            }
                                         }
+
+                                        float ratio = acos( min_cos ) / PI;
+
+                                        x_tesselation_steps = floor( 1.0f + ratio * max_tesselation_steps );
                                     }
 
-                                    size_t y_tesselation_steps = 1;
-                                    for ( size_t k=0; k<3; ++k )
+                                    size_t y_tesselation_steps;
                                     {
-                                        float v0[3];
-                                        float v1[3];
-
-                                        v0[0] = vertices[ ctrl_points[0+k] ].position[0] - vertices[ ctrl_points[3+k] ].position[0];
-                                        v0[1] = vertices[ ctrl_points[0+k] ].position[1] - vertices[ ctrl_points[3+k] ].position[1];
-                                        v0[2] = vertices[ ctrl_points[0+k] ].position[2] - vertices[ ctrl_points[3+k] ].position[2];
-                                        float v0_len = sqrt( v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2] );
-                                        v0[0] /= v0_len;
-                                        v0[1] /= v0_len;
-                                        v0[2] /= v0_len;
-
-                                        v1[0] = vertices[ ctrl_points[6+k] ].position[0] - vertices[ ctrl_points[3+k] ].position[0];
-                                        v1[1] = vertices[ ctrl_points[6+k] ].position[1] - vertices[ ctrl_points[3+k] ].position[1];
-                                        v1[2] = vertices[ ctrl_points[6+k] ].position[2] - vertices[ ctrl_points[3+k] ].position[2];
-                                        float v1_len = sqrt( v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2] );
-                                        v1[0] /= v1_len;
-                                        v1[1] /= v1_len;
-                                        v1[2] /= v1_len;
-
-                                        if ( ( v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2] ) > -0.9f )
+                                        float min_cos = 1.0f;
+                                        for ( size_t k=0; k<3; ++k )
                                         {
-                                            y_tesselation_steps = tesselation_steps;
-                                            break;
+                                            float v0[3];
+                                            float v1[3];
+
+                                            v0[0] = vertices[ ctrl_points[3+k] ].position[0] - vertices[ ctrl_points[0+k] ].position[0];
+                                            v0[1] = vertices[ ctrl_points[3+k] ].position[1] - vertices[ ctrl_points[0+k] ].position[1];
+                                            v0[2] = vertices[ ctrl_points[3+k] ].position[2] - vertices[ ctrl_points[0+k] ].position[2];
+                                            float v0_len = sqrt( v0[0]*v0[0] + v0[1]*v0[1] + v0[2]*v0[2] );
+                                            v0[0] /= v0_len;
+                                            v0[1] /= v0_len;
+                                            v0[2] /= v0_len;
+
+                                            v1[0] = vertices[ ctrl_points[6+k] ].position[0] - vertices[ ctrl_points[3+k] ].position[0];
+                                            v1[1] = vertices[ ctrl_points[6+k] ].position[1] - vertices[ ctrl_points[3+k] ].position[1];
+                                            v1[2] = vertices[ ctrl_points[6+k] ].position[2] - vertices[ ctrl_points[3+k] ].position[2];
+                                            float v1_len = sqrt( v1[0]*v1[0] + v1[1]*v1[1] + v1[2]*v1[2] );
+                                            v1[0] /= v1_len;
+                                            v1[1] /= v1_len;
+                                            v1[2] /= v1_len;
+
+                                            float proj = v0[0]*v1[0] + v0[1]*v1[1] + v0[2]*v1[2];
+                                            if ( proj < min_cos )
+                                            {
+                                                min_cos = proj;
+                                            }
                                         }
+
+                                        float ratio = acos( min_cos ) / PI;
+
+                                        y_tesselation_steps = floor( 1.0f + ratio * max_tesselation_steps );
                                     }
 
                                     const size_t x_bsize = x_tesselation_steps + 1;
@@ -592,8 +630,7 @@ bool BuildCollada( const char * filename )
                                         {
                                             const float u_ratio = static_cast<float>(u) / static_cast<float>(x_tesselation_steps);
 
-                                            float du[3];
-                                            float dv[3];
+                                            float n[3];
 
                                             float p[9];
                                             {
@@ -609,6 +646,18 @@ bool BuildCollada( const char * filename )
                                                 geometry.positions.float_array.push_back( QuadraticBezierSurface( u_ratio, v_ratio, p ) );
                                             }
                                             {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].normal[0];    }
+                                                n[0] = QuadraticBezierSurface( u_ratio, v_ratio, p );
+                                            }
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].normal[1];    }
+                                                n[1] = QuadraticBezierSurface( u_ratio, v_ratio, p );
+                                            }
+                                            {
+                                                for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].normal[2];    }
+                                                n[2] = QuadraticBezierSurface( u_ratio, v_ratio, p );
+                                            }
+                                            {
                                                 for ( size_t k=0; k<9; ++k )    { p[ k ] = vertices[ ctrl_points[ k ] ].texcoord[0][0]; }
                                                 geometry.texcoords.float_array.push_back( QuadraticBezierSurface( u_ratio, v_ratio, p ) );
                                             }
@@ -617,9 +666,23 @@ bool BuildCollada( const char * filename )
                                                 geometry.texcoords.float_array.push_back( 1.0f - QuadraticBezierSurface( u_ratio, v_ratio, p ) );
                                             }
 
-                                            geometry.normals.float_array.push_back( 0.0f );
-                                            geometry.normals.float_array.push_back( 0.0f );
-                                            geometry.normals.float_array.push_back( 1.0f );
+                                            float n_len = sqrt( n[0]*n[0] + n[1]*n[1] + n[2]*n[2] );
+                                            if ( n_len < 0.01f )
+                                            {
+                                                n[0] = face->normal[0];
+                                                n[1] = face->normal[1];
+                                                n[2] = face->normal[2];
+                                            }
+                                            else
+                                            {
+                                                n[0] /= n_len;
+                                                n[1] /= n_len;
+                                                n[2] /= n_len;
+                                            }
+
+                                            geometry.normals.float_array.push_back( n[0] );
+                                            geometry.normals.float_array.push_back( n[1] );
+                                            geometry.normals.float_array.push_back( n[2] );
                                         }
                                     }
 
@@ -627,13 +690,42 @@ bool BuildCollada( const char * filename )
                                     {
                                         for ( size_t v=0; v<y_tesselation_steps; ++v )
                                         {
-                                            index_buffer.push_back( offset + u + v * x_bsize );
-                                            index_buffer.push_back( offset + (u+1) + (v+1) * x_bsize );
-                                            index_buffer.push_back( offset + u + (v+1) * x_bsize );
-                                    
-                                            index_buffer.push_back( offset + u + v * x_bsize );
-                                            index_buffer.push_back( offset + (u+1) + v * x_bsize );
-                                            index_buffer.push_back( offset + (u+1) + (v+1) * x_bsize );
+                                            float q[4][3];
+                                            q[0][0] = geometry.positions.float_array[ 3 * ( offset + u + v * x_bsize ) + 0 ];
+                                            q[0][1] = geometry.positions.float_array[ 3 * ( offset + u + v * x_bsize ) + 1 ];
+                                            q[0][2] = geometry.positions.float_array[ 3 * ( offset + u + v * x_bsize ) + 2 ];
+                                            
+                                            q[3][0] = geometry.positions.float_array[ 3 * ( offset + (u+1) + (v+1) * x_bsize ) + 0 ];
+                                            q[3][1] = geometry.positions.float_array[ 3 * ( offset + (u+1) + (v+1) * x_bsize ) + 1 ];
+                                            q[3][2] = geometry.positions.float_array[ 3 * ( offset + (u+1) + (v+1) * x_bsize ) + 2 ];
+
+                                            const float threshold = 0.1f;
+
+                                            if ( abs(q[0][0]-q[3][0]) > threshold || abs(q[0][1]-q[3][1]) > threshold || abs(q[0][2]-q[3][2]) > threshold )
+                                            {
+                                                q[1][0] = geometry.positions.float_array[ 3 * ( offset + (u+1) + v * x_bsize ) + 0 ];
+                                                q[1][1] = geometry.positions.float_array[ 3 * ( offset + (u+1) + v * x_bsize ) + 1 ];
+                                                q[1][2] = geometry.positions.float_array[ 3 * ( offset + (u+1) + v * x_bsize ) + 2 ];
+                                                q[2][0] = geometry.positions.float_array[ 3 * ( offset + u + (v+1) * x_bsize ) + 0 ];
+                                                q[2][1] = geometry.positions.float_array[ 3 * ( offset + u + (v+1) * x_bsize ) + 1 ];
+                                                q[2][2] = geometry.positions.float_array[ 3 * ( offset + u + (v+1) * x_bsize ) + 2 ];
+
+                                                if (    ( abs(q[2][0]-q[0][0]) > threshold || abs(q[2][1]-q[0][1]) > threshold || abs(q[2][2]-q[0][2]) > threshold ) &&
+                                                        ( abs(q[2][0]-q[3][0]) > threshold || abs(q[2][1]-q[3][1]) > threshold || abs(q[2][2]-q[3][2]) > threshold ) )
+                                                {
+                                                    index_buffer.push_back( offset + u + v * x_bsize );
+                                                    index_buffer.push_back( offset + (u+1) + (v+1) * x_bsize );
+                                                    index_buffer.push_back( offset + u + (v+1) * x_bsize );
+                                                }
+
+                                                if (    ( abs(q[1][0]-q[0][0]) > threshold || abs(q[1][1]-q[0][1]) > threshold || abs(q[1][2]-q[0][2]) > threshold ) &&
+                                                        ( abs(q[1][0]-q[3][0]) > threshold || abs(q[1][1]-q[3][1]) > threshold || abs(q[1][2]-q[3][2]) > threshold ) )
+                                                {
+                                                    index_buffer.push_back( offset + u + v * x_bsize );
+                                                    index_buffer.push_back( offset + (u+1) + v * x_bsize );
+                                                    index_buffer.push_back( offset + (u+1) + (v+1) * x_bsize );
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -737,11 +829,7 @@ bool BuildCollada( const char * filename )
             xmlNewProp( emission_color, BAD_CAST "sid", BAD_CAST "emission" );
             xmlNodePtr ambient = xmlNewChild( phong, NULL, BAD_CAST "ambient", NULL );
             xmlNodePtr ambient_texture = xmlNewChild( ambient, NULL, BAD_CAST "texture", NULL );
-<<<<<<< HEAD
             xmlNewProp( ambient_texture, BAD_CAST "texture", BAD_CAST it->sampler_id.c_str() );
-=======
-            xmlNewProp( ambient_texture, BAD_CAST "texture", BAD_CAST samplerID.c_str() );
->>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
             xmlNewProp( ambient_texture, BAD_CAST "texcoord", BAD_CAST "UVMap" );
             xmlNodePtr diffuse = xmlNewChild( phong, NULL, BAD_CAST "diffuse", NULL );
             xmlNodePtr diffuse_texture = xmlNewChild( diffuse, NULL, BAD_CAST "texture", NULL );
@@ -946,7 +1034,6 @@ bool BuildCollada( const char * filename )
 
             // polylists
             {
-<<<<<<< HEAD
                 std::vector< COLLADAGeometryPolylist >::const_iterator p_it = it->polylists.begin();
                 std::vector< COLLADAGeometryPolylist >::const_iterator p_end = it->polylists.end();
                 for ( ; p_it != p_end; ++p_it )
@@ -958,46 +1045,14 @@ bool BuildCollada( const char * filename )
                     xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
                     xmlNewProp( polylist, BAD_CAST "material", BAD_CAST p_it->material.c_str() );
                     xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
-=======
-                const BSPFace * face = faces + model->face;
-                const BSPFace * face_end = faces + model->face + model->n_faces;
-                for ( ; face != face_end; ++face )
-                {
-                    if ( face->type == 1 || face->type == 3 )
-                    {
-                        std::vector< int > index_buffer;
-
-                        const BSPMeshvert * meshvert = meshverts + face->meshvert;
-                        const BSPMeshvert * meshvert_end = meshverts + face->meshvert + face->n_meshverts;
-                        for ( ; meshvert != meshvert_end; ++meshvert )
-                        {
-                            index_buffer.push_back( face->vertex + meshvert->offset );
-                        }
-
-                        if ( ! index_buffer.empty() )
-                        {
-                            const BSPTexture * texture = textures + face->texture;
-
-                            char strID[64];
-                            MakeStringID( texture->name, strID );
-
-                            std::string materialID = strID;
-                            materialID += "-material";
->>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
 
                     std::string verticesIDRef = "#";
                     verticesIDRef += it->vertices_id;
 
-<<<<<<< HEAD
                     xmlNodePtr input_vertices = xmlNewChild( polylist, NULL, BAD_CAST "input", NULL );
                     xmlNewProp( input_vertices, BAD_CAST "semantic", BAD_CAST "VERTEX" );
                     xmlNewProp( input_vertices, BAD_CAST "source", BAD_CAST verticesIDRef.c_str() );
                     xmlNewProp( input_vertices, BAD_CAST "offset", BAD_CAST "0" );
-=======
-                            xmlNodePtr polylist = xmlNewChild( mesh, NULL, BAD_CAST "polylist", NULL );
-                            xmlNewProp( polylist, BAD_CAST "material", BAD_CAST materialID.c_str() );
-                            xmlNewProp( polylist, BAD_CAST "count", BAD_CAST poly_count_str );
->>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
 
                     std::string normalsIDRef = "#";
                     normalsIDRef += it->normals.id;
@@ -1029,16 +1084,7 @@ bool BuildCollada( const char * filename )
                                                                             , p_it->p[offset+1], p_it->p[offset+1], p_it->p[offset+1]
                                                                             , p_it->p[offset+2], p_it->p[offset+2], p_it->p[offset+2] );
 
-<<<<<<< HEAD
                         p += triangle_str;
-=======
-                                p += triangle_str;
-                            }
-
-                            xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
-                            xmlNewChild( polylist, NULL, BAD_CAST "p", BAD_CAST p.c_str() );
-                        }
->>>>>>> 2082577e3a931bf6885ba1b3dcc2de8c9f0c638b
                     }
 
                     xmlNewChild( polylist, NULL, BAD_CAST "vcount", BAD_CAST vcount.c_str() );
@@ -1147,7 +1193,7 @@ bool BuildCollada( const char * filename )
 bool ConvertBSP( const char * inFilename, const char * outFilename )
 {
     size_t tesselation_lvl = 4;
-    tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselation_lvl) ));
+    max_tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselation_lvl) ));
 
     if ( ! RootPath( inFilename, root_path ) )
         return false;
