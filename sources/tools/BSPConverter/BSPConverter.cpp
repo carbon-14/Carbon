@@ -545,7 +545,7 @@ bool BuildCollada( const char * filename )
 
                                         float ratio = acos( min_cos ) / PI;
 
-                                        x_tesselation_steps = floor( 1.0f + ratio * max_tesselation_steps );
+                                        x_tesselation_steps = max( 1, static_cast<size_t>(floor( ratio * max_tesselation_steps )) );
                                     }
 
                                     size_t y_tesselation_steps;
@@ -581,7 +581,7 @@ bool BuildCollada( const char * filename )
 
                                         float ratio = acos( min_cos ) / PI;
 
-                                        y_tesselation_steps = floor( 1.0f + ratio * max_tesselation_steps );
+                                        y_tesselation_steps = max( 1, static_cast<size_t>(floor( ratio * max_tesselation_steps )) );
                                     }
 
                                     const size_t x_bsize = x_tesselation_steps + 1;
@@ -1159,7 +1159,7 @@ bool BuildCollada( const char * filename )
 
 bool ConvertBSP( const char * inFilename, const char * outFilename, size_t tesselationLevel )
 {
-    max_tesselation_steps = static_cast<size_t>(pow( 2.0f, static_cast<float>(tesselationLevel) ));
+    max_tesselation_steps = 6 * tesselationLevel;
 
     if ( ! RootPath( inFilename, root_path, sizeof(root_path) ) )
         return false;

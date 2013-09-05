@@ -12,14 +12,10 @@ int main( int argc, char* argv[] )
     char * oFile = argv[--argc];
     char * iFile = argv[--argc];
 
-    int tesselationLevel = 4;
+    int tesselationLevel = 2;
     if ( argc == 2 )
     {
         sscanf( argv[--argc], "%i", &tesselationLevel );
-        if ( tesselationLevel < 0 )
-        {
-            tesselationLevel = 0;
-        }
     }
 
     if ( ! ConvertBSP( iFile, oFile, tesselationLevel ) )
@@ -32,7 +28,7 @@ int main( int argc, char* argv[] )
 
 exit :
     printf( "usage: BSPConverter <teselation_lvl> <input> <output>\n\n" );
-    printf( "    input      tesselation level ( default : 4 )       ( optional )\n" );
+    printf( "    input      tesselation level ( default : 2 )       ( optional )\n" );
     printf( "    input      input file name                         ( required )\n" );
     printf( "    output     output file name                        ( required )\n" );
     return 0;
